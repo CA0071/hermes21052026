@@ -123,10 +123,12 @@ describe("parseReleaseManifest", () => {
         "593cab28f5d43532b2beb9a71c0fe27820299a8d53127185cb3c1650d6d10dc4",
       metadataSha:
         "9c2cdbcb9e08635b5c6564c680dee423341f02806318bc9b2fdcdf4d76dd86a0",
+      zipUnzipResult: "No errors detected in compressed data",
       zipEntries: 4182,
       zipFileSize: 158837969,
       zipUncompressed: 403784826,
       zipCompressed: 157688391,
+      zipCompressionRatio: "60.9%",
       zipRequiredEntries: [
         "Yat.app/Contents/Info.plist",
         "Yat.app/Contents/Resources/hermes-agent-bundle/hermes-agent/pyproject.toml",
@@ -149,6 +151,23 @@ describe("parseReleaseManifest", () => {
     );
     expect(() => parseReleaseManifest(brokenManifest, paths)).toThrow(
       "Could not read ZIP compressed total",
+    );
+  });
+
+  it("throws a targeted error when the ZIP unzip result is missing", () => {
+    const brokenManifest = manifest.replace(
+      "  unzip test result: No errors detected in compressed data\n",
+      "",
+    );
+    expect(() => parseReleaseManifest(brokenManifest, paths)).toThrow(
+      "Could not read ZIP unzip test result",
+    );
+  });
+
+  it("throws a targeted error when the ZIP compression ratio is missing", () => {
+    const brokenManifest = manifest.replace("  compression ratio: 60.9%\n", "");
+    expect(() => parseReleaseManifest(brokenManifest, paths)).toThrow(
+      "Could not read ZIP compression ratio",
     );
   });
 

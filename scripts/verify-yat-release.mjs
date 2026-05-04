@@ -393,6 +393,11 @@ export function parseReleaseManifest(
       /metadata sha256: ([a-f0-9]{64})/,
       "Hermes metadata sha256",
     ),
+    zipUnzipResult: matchOne(
+      zipVerificationSection,
+      /^ {2}unzip test result: (.+)$/m,
+      "ZIP unzip test result",
+    ),
     zipEntries: Number(
       matchOne(
         zipVerificationSection,
@@ -420,6 +425,11 @@ export function parseReleaseManifest(
         /^ {2}compressed total: (\d+) bytes$/m,
         "ZIP compressed total",
       ),
+    ),
+    zipCompressionRatio: matchOne(
+      zipVerificationSection,
+      /^ {2}compression ratio: ([0-9.]+%)$/m,
+      "ZIP compression ratio",
     ),
     zipRequiredEntries: matchOne(
       zipVerificationSection,
@@ -658,9 +668,16 @@ function main() {
   run("codesign", ["--verify", "--deep", "--strict", "--verbose=2", appPath]);
   run("hdiutil", ["verify", dmgPath]);
 
+  const unzipOutput = run("unzip", ["-t", zipPath]);
+  const unzipSummary = unzipOutput.split("\n").at(-1) ?? "";
+  assert(
+    unzipSummary.startsWith(`${expected.zipUnzipResult} of `),
+    `ZIP unzip test result expected ${expected.zipUnzipResult}, got ${unzipSummary}`,
+  );
+
   const zipInfo = run("zipinfo", ["-t", zipPath]);
   const zipInfoMatch = zipInfo.match(
-    /^(\d+) files, (\d+) bytes uncompressed, (\d+) bytes compressed:/,
+    /^(\d+) files, (\d+) bytes uncompressed, (\d+) bytes compressed:\s+([0-9.]+%)$/,
   );
   assert(zipInfoMatch, `Could not parse zipinfo output: ${zipInfo}`);
   assert(
@@ -674,6 +691,10 @@ function main() {
   assert(
     Number(zipInfoMatch[3]) === expected.zipCompressed,
     "ZIP compressed total does not match manifest",
+  );
+  assert(
+    zipInfoMatch[4] === expected.zipCompressionRatio,
+    "ZIP compression ratio does not match manifest",
   );
   assert(
     statSync(zipPath).size === expected.zipFileSize,
