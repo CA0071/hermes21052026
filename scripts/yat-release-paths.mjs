@@ -26,7 +26,9 @@ export function releasePathsForPackage(packageJson, options = {}) {
 
   return {
     arch,
+    packageName,
     productName,
+    version,
     appFileName,
     appRelativePath: `dist/mac-${arch}/${appFileName}`,
     dmgRelativePath: `dist/${packageName}-${version}.dmg`,

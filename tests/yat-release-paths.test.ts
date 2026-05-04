@@ -12,7 +12,9 @@ describe("releasePathsForPackage", () => {
       }),
     ).toEqual({
       arch: "arm64",
+      packageName: "yat",
       productName: "Yat",
+      version: "0.4.0",
       appFileName: "Yat.app",
       appRelativePath: "dist/mac-arm64/Yat.app",
       dmgRelativePath: "dist/yat-0.4.0.dmg",

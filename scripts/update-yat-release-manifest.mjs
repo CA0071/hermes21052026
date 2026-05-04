@@ -63,12 +63,72 @@ function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function normalizeReleasePaths(manifest, paths) {
+  let nextManifest = manifest;
+  nextManifest = replaceOne(
+    nextManifest,
+    /^[^\n]+ macOS release manifest$/m,
+    `${paths.productName} ${paths.version} macOS release manifest`,
+    "manifest title",
+  );
+  nextManifest = replaceOne(
+    nextManifest,
+    / {2}Product name: .+/,
+    `  Product name: ${paths.productName}`,
+    "product name",
+  );
+  nextManifest = replaceOne(
+    nextManifest,
+    / {2}packaged path: .+\/Contents\/Resources\/hermes-agent-bundle/,
+    `  packaged path: ${paths.appFileName}/Contents/Resources/hermes-agent-bundle`,
+    "packaged Hermes path",
+  );
+
+  nextManifest = nextManifest.replace(
+    /dist\/mac-[^/\s]+\/[^/\s]+\.app/g,
+    paths.appRelativePath,
+  );
+  nextManifest = nextManifest.replace(
+    /dist\/[^\s]+\.dmg/g,
+    paths.dmgRelativePath,
+  );
+  nextManifest = nextManifest.replace(
+    /dist\/[^\s]+\.zip/g,
+    paths.zipRelativePath,
+  );
+  nextManifest = nextManifest.replace(
+    /\/Volumes\/YatVerify\/[^/\s]+\.app/g,
+    `/Volumes/YatVerify/${paths.appFileName}`,
+  );
+  nextManifest = nextManifest.replace(
+    /mountpoint contained [^/\n]+\.app and Applications symlink/,
+    `mountpoint contained ${paths.appFileName} and Applications symlink`,
+  );
+  nextManifest = nextManifest.replace(
+    /^ {4}[^/\n]+\.app\/Contents\/Info\.plist$/m,
+    `    ${paths.appFileName}/Contents/Info.plist`,
+  );
+  nextManifest = nextManifest.replace(
+    /^ {4}[^/\n]+\.app\/Contents\/Resources\/hermes-agent-bundle\/hermes-agent\/pyproject\.toml$/m,
+    `    ${paths.appFileName}/Contents/Resources/hermes-agent-bundle/hermes-agent/pyproject.toml`,
+  );
+  nextManifest = nextManifest.replace(
+    /^ {4}[^/\n]+\.app\/Contents\/Resources\/hermes-agent-bundle\/hermes-bundle\.json$/m,
+    `    ${paths.appFileName}/Contents/Resources/hermes-agent-bundle/hermes-bundle.json`,
+  );
+  nextManifest = nextManifest.replace(
+    /^ {4}[^/\n]+\.app\/Contents\/_CodeSignature\/CodeResources$/m,
+    `    ${paths.appFileName}/Contents/_CodeSignature/CodeResources`,
+  );
+  return nextManifest;
+}
+
 export function refreshManifestText(
   manifest,
   values,
   paths = readPackageReleasePaths(root),
 ) {
-  let nextManifest = manifest;
+  let nextManifest = normalizeReleasePaths(manifest, paths);
   nextManifest = replaceOne(
     nextManifest,
     new RegExp(`${escapeRegExp(paths.appRelativePath)}\\n {4}size: .+`),
