@@ -242,6 +242,11 @@ export function parseReleaseManifest(
     "Bundled Hermes Agent:",
     "Verification already performed:",
   );
+  const mountedDmgSection = sectionBetween(
+    manifest,
+    "Mounted DMG verification:",
+    "ZIP verification:",
+  );
   const zipVerificationSection = sectionBetween(
     manifest,
     "ZIP verification:",
@@ -300,6 +305,21 @@ export function parseReleaseManifest(
       "Hermes short commit",
     ),
     bundleRef: matchOne(bundleSection, /^ {2}ref: (.+)$/m, "Hermes ref"),
+    mountedAppFileName: matchOne(
+      mountedDmgSection,
+      /^ {2}mountpoint contained ([^/\n]+\.app) and Applications symlink$/m,
+      "mounted app file name",
+    ),
+    mountedDisplayName: matchOne(
+      mountedDmgSection,
+      /^ {2}mounted app CFBundleDisplayName: (.+)$/m,
+      "mounted app display name",
+    ),
+    mountedBundleIdentifier: matchOne(
+      mountedDmgSection,
+      /^ {2}mounted app CFBundleIdentifier: (.+)$/m,
+      "mounted app bundle identifier",
+    ),
     dmgSha: matchOne(dmgSection, /sha256: ([a-f0-9]{64})/, "DMG sha256"),
     zipSha: matchOne(zipSection, /sha256: ([a-f0-9]{64})/, "ZIP sha256"),
     metadataSha: matchOne(
@@ -440,6 +460,18 @@ function main() {
   assert(
     expected.bundleRef === bundleMetadata.ref,
     `Manifest Hermes ref expected ${bundleMetadata.ref}, got ${expected.bundleRef}`,
+  );
+  assert(
+    expected.mountedAppFileName === releasePaths.appFileName,
+    `Manifest mounted app file name expected ${releasePaths.appFileName}, got ${expected.mountedAppFileName}`,
+  );
+  assert(
+    expected.mountedDisplayName === releasePaths.productName,
+    `Manifest mounted app display name expected ${releasePaths.productName}, got ${expected.mountedDisplayName}`,
+  );
+  assert(
+    expected.mountedBundleIdentifier === releasePaths.appId,
+    `Manifest mounted app bundle identifier expected ${releasePaths.appId}, got ${expected.mountedBundleIdentifier}`,
   );
 
   for (const [path, label] of [

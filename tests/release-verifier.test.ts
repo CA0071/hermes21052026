@@ -43,6 +43,14 @@ Bundled Hermes Agent:
 Verification already performed:
   zipinfo -t dist/Yat-0.4.0-arm64-mac.zip
 
+Mounted DMG verification:
+  mountpoint contained Yat.app and Applications symlink
+  mounted app CFBundleDisplayName: Yat
+  mounted app CFBundleIdentifier: dev.yat.desktop
+  mounted app size: 392M
+  mounted Hermes bundle size: 74M
+  mounted app codesign verification: valid on disk, satisfies designated requirement
+
 ZIP verification:
   unzip test result: No errors detected in compressed data
   entries: 4182
@@ -71,6 +79,9 @@ describe("parseReleaseManifest", () => {
       bundleCommit: "5d3be898a8671eb9fb99cf18f43165502f54e7f4",
       bundleShortCommit: "5d3be898a867",
       bundleRef: "v2026.4.30-188-g5d3be898a-dirty",
+      mountedAppFileName: "Yat.app",
+      mountedDisplayName: "Yat",
+      mountedBundleIdentifier: "dev.yat.desktop",
       dmgSha:
         "f6096993966b59c8cf52d633e73988b44d7a45f4daab971db08fa85e0f03938c",
       zipSha:
@@ -130,6 +141,16 @@ describe("parseReleaseManifest", () => {
     );
     expect(() => parseReleaseManifest(brokenManifest, paths)).toThrow(
       "Could not read Hermes commit",
+    );
+  });
+
+  it("throws a targeted error when mounted DMG identity is missing", () => {
+    const brokenManifest = manifest.replace(
+      "  mounted app CFBundleIdentifier: dev.yat.desktop\n",
+      "",
+    );
+    expect(() => parseReleaseManifest(brokenManifest, paths)).toThrow(
+      "Could not read mounted app bundle identifier",
     );
   });
 
