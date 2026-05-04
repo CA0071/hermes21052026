@@ -31,6 +31,13 @@ Artifacts:
     sha256: 593cab28f5d43532b2beb9a71c0fe27820299a8d53127185cb3c1650d6d10dc4
 
 Bundled Hermes Agent:
+  bundle path: resources/hermes-agent-bundle
+  packaged path: Yat.app/Contents/Resources/hermes-agent-bundle
+  size: 74M
+  source: /Users/yat/.hermes/hermes-agent
+  commit: 5d3be898a8671eb9fb99cf18f43165502f54e7f4
+  short commit: 5d3be898a867
+  ref: v2026.4.30-188-g5d3be898a-dirty
   metadata sha256: 9c2cdbcb9e08635b5c6564c680dee423341f02806318bc9b2fdcdf4d76dd86a0
 
 Verification already performed:
@@ -58,6 +65,12 @@ describe("parseReleaseManifest", () => {
       productName: "Yat",
       bundleIdentifier: "dev.yat.desktop",
       appRelativePath: "dist/mac-arm64/Yat.app",
+      bundlePath: "resources/hermes-agent-bundle",
+      packagedBundlePath: "Yat.app/Contents/Resources/hermes-agent-bundle",
+      bundleSource: "/Users/yat/.hermes/hermes-agent",
+      bundleCommit: "5d3be898a8671eb9fb99cf18f43165502f54e7f4",
+      bundleShortCommit: "5d3be898a867",
+      bundleRef: "v2026.4.30-188-g5d3be898a-dirty",
       dmgSha:
         "f6096993966b59c8cf52d633e73988b44d7a45f4daab971db08fa85e0f03938c",
       zipSha:
@@ -107,6 +120,16 @@ describe("parseReleaseManifest", () => {
     const brokenManifest = manifest.replace("  dist/mac-arm64/Yat.app\n", "");
     expect(() => parseReleaseManifest(brokenManifest, paths)).toThrow(
       "Could not read manifest app path",
+    );
+  });
+
+  it("throws a targeted error when Hermes bundle metadata is missing", () => {
+    const brokenManifest = manifest.replace(
+      "  commit: 5d3be898a8671eb9fb99cf18f43165502f54e7f4\n",
+      "",
+    );
+    expect(() => parseReleaseManifest(brokenManifest, paths)).toThrow(
+      "Could not read Hermes commit",
     );
   });
 

@@ -229,6 +229,32 @@ export function parseReleaseManifest(
       /^ {2}(dist\/mac-[^\s]+\/[^\s]+\.app)$/m,
       "manifest app path",
     ),
+    bundlePath: matchOne(
+      bundleSection,
+      /^ {2}bundle path: (.+)$/m,
+      "Hermes bundle path",
+    ),
+    packagedBundlePath: matchOne(
+      bundleSection,
+      /^ {2}packaged path: (.+)$/m,
+      "packaged Hermes bundle path",
+    ),
+    bundleSource: matchOne(
+      bundleSection,
+      /^ {2}source: (.+)$/m,
+      "Hermes source",
+    ),
+    bundleCommit: matchOne(
+      bundleSection,
+      /^ {2}commit: (.+)$/m,
+      "Hermes commit",
+    ),
+    bundleShortCommit: matchOne(
+      bundleSection,
+      /^ {2}short commit: (.+)$/m,
+      "Hermes short commit",
+    ),
+    bundleRef: matchOne(bundleSection, /^ {2}ref: (.+)$/m, "Hermes ref"),
     dmgSha: matchOne(dmgSection, /sha256: ([a-f0-9]{64})/, "DMG sha256"),
     zipSha: matchOne(zipSection, /sha256: ([a-f0-9]{64})/, "ZIP sha256"),
     metadataSha: matchOne(
@@ -313,6 +339,7 @@ function main() {
   );
   const docsManifest = readFileSync(docsManifestPath, "utf8");
   const distManifest = readFileSync(distManifestPath, "utf8");
+  const bundleMetadata = JSON.parse(readFileSync(bundleMetadataPath, "utf8"));
 
   assert(
     docsManifest === distManifest,
@@ -339,6 +366,31 @@ function main() {
   assert(
     expected.appRelativePath === releasePaths.appRelativePath,
     `Manifest app path expected ${releasePaths.appRelativePath}, got ${expected.appRelativePath}`,
+  );
+  assert(
+    expected.bundlePath === "resources/hermes-agent-bundle",
+    `Manifest Hermes bundle path expected resources/hermes-agent-bundle, got ${expected.bundlePath}`,
+  );
+  assert(
+    expected.packagedBundlePath ===
+      `${releasePaths.appFileName}/Contents/Resources/hermes-agent-bundle`,
+    `Manifest packaged Hermes bundle path expected ${releasePaths.appFileName}/Contents/Resources/hermes-agent-bundle, got ${expected.packagedBundlePath}`,
+  );
+  assert(
+    expected.bundleSource === bundleMetadata.source,
+    `Manifest Hermes source expected ${bundleMetadata.source}, got ${expected.bundleSource}`,
+  );
+  assert(
+    expected.bundleCommit === bundleMetadata.commit,
+    `Manifest Hermes commit expected ${bundleMetadata.commit}, got ${expected.bundleCommit}`,
+  );
+  assert(
+    expected.bundleShortCommit === bundleMetadata.shortCommit,
+    `Manifest Hermes short commit expected ${bundleMetadata.shortCommit}, got ${expected.bundleShortCommit}`,
+  );
+  assert(
+    expected.bundleRef === bundleMetadata.ref,
+    `Manifest Hermes ref expected ${bundleMetadata.ref}, got ${expected.bundleRef}`,
   );
 
   for (const [path, label] of [
