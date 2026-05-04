@@ -199,6 +199,16 @@ export function parseReleaseManifest(
   );
 
   return {
+    titleProductName: matchOne(
+      manifest,
+      /^(.+) [^\s]+ macOS release manifest$/m,
+      "manifest title product name",
+    ),
+    titleVersion: matchOne(
+      manifest,
+      /^.+ ([^\s]+) macOS release manifest$/m,
+      "manifest title version",
+    ),
     productName: matchOne(
       identitySection,
       /^ {2}Product name: (.+)$/m,
@@ -293,6 +303,14 @@ function main() {
 
   const expected = parseReleaseManifest(docsManifest, releasePaths);
   assert(
+    expected.titleProductName === releasePaths.productName,
+    `Manifest title product name expected ${releasePaths.productName}, got ${expected.titleProductName}`,
+  );
+  assert(
+    expected.titleVersion === releasePaths.version,
+    `Manifest title version expected ${releasePaths.version}, got ${expected.titleVersion}`,
+  );
+  assert(
     expected.productName === releasePaths.productName,
     `Manifest product name expected ${releasePaths.productName}, got ${expected.productName}`,
   );
@@ -302,8 +320,8 @@ function main() {
   );
 
   for (const [path, label] of [
-    [appPath, "Yat.app"],
-    [appInfoPath, "Yat Info.plist"],
+    [appPath, releasePaths.appFileName],
+    [appInfoPath, `${releasePaths.productName} Info.plist`],
     [dmgPath, "DMG"],
     [zipPath, "ZIP"],
     [bundleMetadataPath, "Hermes metadata"],

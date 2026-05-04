@@ -46,6 +46,8 @@ ZIP verification:
 describe("parseReleaseManifest", () => {
   it("parses release hashes and ZIP statistics", () => {
     expect(parseReleaseManifest(manifest, paths)).toEqual({
+      titleProductName: "Yat",
+      titleVersion: "0.4.0",
       productName: "Yat",
       bundleIdentifier: "dev.yat.desktop",
       dmgSha:
@@ -84,6 +86,16 @@ describe("parseReleaseManifest", () => {
     );
     expect(() => parseReleaseManifest(brokenManifest, paths)).toThrow(
       "Could not read manifest bundle identifier",
+    );
+  });
+
+  it("throws a targeted error when the manifest title is missing", () => {
+    const brokenManifest = manifest.replace(
+      "Yat 0.4.0 macOS release manifest",
+      "Yat release notes",
+    );
+    expect(() => parseReleaseManifest(brokenManifest, paths)).toThrow(
+      "Could not read manifest title product name",
     );
   });
 });
