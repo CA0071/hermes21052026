@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-const { parseReleaseManifest } =
+const { assertHermesMetadataMatches, parseReleaseManifest } =
   await import("../scripts/verify-yat-release.mjs");
 
 const paths = {
@@ -155,6 +155,58 @@ describe("parseReleaseManifest", () => {
     );
     expect(() => parseReleaseManifest(brokenManifest, paths)).toThrow(
       "Could not read ZIP required entries",
+    );
+  });
+});
+
+const hermesMetadata = {
+  name: "hermes-agent",
+  source: "/Users/yat/.hermes/hermes-agent",
+  commit: "5d3be898a8671eb9fb99cf18f43165502f54e7f4",
+  shortCommit: "5d3be898a867",
+  ref: "v2026.4.30-188-g5d3be898a-dirty",
+  bundledAt: "2026-05-04T01:35:24.257Z",
+  excludes: [".git", "venv", "node_modules"],
+};
+
+describe("assertHermesMetadataMatches", () => {
+  it("accepts matching Hermes metadata", () => {
+    expect(() =>
+      assertHermesMetadataMatches(
+        hermesMetadata,
+        hermesMetadata,
+        "Packaged Hermes metadata",
+      ),
+    ).not.toThrow();
+  });
+
+  it("throws a targeted error when a Hermes metadata field differs", () => {
+    expect(() =>
+      assertHermesMetadataMatches(
+        {
+          ...hermesMetadata,
+          commit: "bad-commit",
+        },
+        hermesMetadata,
+        "Packaged Hermes metadata",
+      ),
+    ).toThrow(
+      "Packaged Hermes metadata commit expected 5d3be898a8671eb9fb99cf18f43165502f54e7f4, got bad-commit",
+    );
+  });
+
+  it("throws a targeted error when Hermes metadata excludes differ", () => {
+    expect(() =>
+      assertHermesMetadataMatches(
+        {
+          ...hermesMetadata,
+          excludes: [".git", "venv"],
+        },
+        hermesMetadata,
+        "Packaged Hermes metadata",
+      ),
+    ).toThrow(
+      "Packaged Hermes metadata excludes expected .git, venv, node_modules, got .git, venv",
     );
   });
 });

@@ -78,6 +78,44 @@ function requirePath(path, label) {
   assert(existsSync(path), `${label} missing at ${path}`);
 }
 
+function formatMetadataValue(value) {
+  if (Array.isArray(value)) {
+    return value.join(", ");
+  }
+  return String(value);
+}
+
+const hermesMetadataFields = [
+  "name",
+  "source",
+  "commit",
+  "shortCommit",
+  "ref",
+  "bundledAt",
+];
+
+export function assertHermesMetadataMatches(actual, expected, label) {
+  for (const field of hermesMetadataFields) {
+    assert(
+      actual?.[field] === expected?.[field],
+      `${label} ${field} expected ${formatMetadataValue(expected?.[field])}, got ${formatMetadataValue(actual?.[field])}`,
+    );
+  }
+
+  assert(
+    Array.isArray(actual?.excludes),
+    `${label} excludes expected an array, got ${formatMetadataValue(actual?.excludes)}`,
+  );
+  assert(
+    Array.isArray(expected?.excludes),
+    `${label} expected excludes must be an array`,
+  );
+  assert(
+    actual.excludes.join("\n") === expected.excludes.join("\n"),
+    `${label} excludes expected ${expected.excludes.join(", ")}, got ${actual.excludes.join(", ")}`,
+  );
+}
+
 function verifyPlistValue(appInfoPath, key, expected) {
   const actual = run("plutil", [
     "-extract",
@@ -125,6 +163,13 @@ function verifyMountedDmg({ dmgPath, releasePaths }) {
     );
     requirePath(
       join(mountedBundlePath, "hermes-bundle.json"),
+      "Mounted Hermes metadata",
+    );
+    assertHermesMetadataMatches(
+      JSON.parse(
+        readFileSync(join(mountedBundlePath, "hermes-bundle.json"), "utf8"),
+      ),
+      releasePaths.bundleMetadata,
       "Mounted Hermes metadata",
     );
 
@@ -325,6 +370,11 @@ function main() {
   const appInfoPath = join(appPath, "Contents", "Info.plist");
   const dmgPath = join(root, releasePaths.dmgRelativePath);
   const zipPath = join(root, releasePaths.zipRelativePath);
+  const bundleMetadata = JSON.parse(readFileSync(bundleMetadataPath, "utf8"));
+  const releaseConfig = {
+    ...releasePaths,
+    bundleMetadata,
+  };
   const packagedBundleRoot = join(
     appPath,
     "Contents",
@@ -339,7 +389,6 @@ function main() {
   );
   const docsManifest = readFileSync(docsManifestPath, "utf8");
   const distManifest = readFileSync(distManifestPath, "utf8");
-  const bundleMetadata = JSON.parse(readFileSync(bundleMetadataPath, "utf8"));
 
   assert(
     docsManifest === distManifest,
@@ -404,6 +453,11 @@ function main() {
   ]) {
     requirePath(path, label);
   }
+  assertHermesMetadataMatches(
+    JSON.parse(readFileSync(packagedMetadataPath, "utf8")),
+    bundleMetadata,
+    "Packaged Hermes metadata",
+  );
 
   assert(
     sha256(dmgPath) === expected.dmgSha,
@@ -493,7 +547,7 @@ function main() {
       "Mounted DMG verification skipped because --skip-mount was set",
     );
   } else {
-    verifyMountedDmg({ dmgPath, releasePaths });
+    verifyMountedDmg({ dmgPath, releasePaths: releaseConfig });
   }
 
   console.log("Yat release verification passed");
