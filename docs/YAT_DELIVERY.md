@@ -101,6 +101,7 @@ Observed verification results:
 - DMG verification reported checksum `VALID`.
 - `Info.plist` reports `CFBundleDisplayName=Yat`, `CFBundleExecutable=Yat`, and `CFBundleIdentifier=dev.yat.desktop`.
 - Computer Use verified the packaged app opens with window title `Yat`, app id `dev.yat.desktop`, and sidebar brand `Yat / Hermes Agent inside`.
+- The DMG was mounted read-only at `/Volumes/YatVerify`; its `Yat.app` reported `CFBundleDisplayName=Yat`, `CFBundleIdentifier=dev.yat.desktop`, contained the `74M` Hermes bundle, and passed deep strict codesign verification from the mounted volume.
 
 ## Build Commands
 
