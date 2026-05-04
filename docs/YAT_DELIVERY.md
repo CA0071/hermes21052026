@@ -127,3 +127,15 @@ Build macOS distributables:
 ```sh
 npm run build:mac
 ```
+
+Verify release artifacts:
+
+```sh
+npm run verify:release
+```
+
+If macOS DiskManagement/DiskArbitration is temporarily unavailable and only DMG mounting fails, run the non-mounting checks with:
+
+```sh
+npm run verify:release:no-mount
+```
