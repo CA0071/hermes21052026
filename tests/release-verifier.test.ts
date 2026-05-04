@@ -3,17 +3,22 @@ import { describe, expect, it } from "vitest";
 const { parseReleaseManifest } =
   await import("../scripts/verify-yat-release.mjs");
 
-const manifest = `Yat 0.3.2 macOS release manifest
+const paths = {
+  dmgRelativePath: "dist/yat-0.4.0.dmg",
+  zipRelativePath: "dist/Yat-0.4.0-arm64-mac.zip",
+};
+
+const manifest = `Yat 0.4.0 macOS release manifest
 
 Artifacts:
   dist/mac-arm64/Yat.app
     size: 392M
 
-  dist/yat-0.3.2.dmg
+  dist/yat-0.4.0.dmg
     size: 155M
     sha256: f6096993966b59c8cf52d633e73988b44d7a45f4daab971db08fa85e0f03938c
 
-  dist/Yat-0.3.2-arm64-mac.zip
+  dist/Yat-0.4.0-arm64-mac.zip
     size: 151M
     sha256: 593cab28f5d43532b2beb9a71c0fe27820299a8d53127185cb3c1650d6d10dc4
 
@@ -21,7 +26,7 @@ Bundled Hermes Agent:
   metadata sha256: 9c2cdbcb9e08635b5c6564c680dee423341f02806318bc9b2fdcdf4d76dd86a0
 
 Verification already performed:
-  zipinfo -t dist/Yat-0.3.2-arm64-mac.zip
+  zipinfo -t dist/Yat-0.4.0-arm64-mac.zip
 
 ZIP verification:
   unzip test result: No errors detected in compressed data
@@ -34,7 +39,7 @@ ZIP verification:
 
 describe("parseReleaseManifest", () => {
   it("parses release hashes and ZIP statistics", () => {
-    expect(parseReleaseManifest(manifest)).toEqual({
+    expect(parseReleaseManifest(manifest, paths)).toEqual({
       dmgSha:
         "f6096993966b59c8cf52d633e73988b44d7a45f4daab971db08fa85e0f03938c",
       zipSha:
@@ -49,7 +54,7 @@ describe("parseReleaseManifest", () => {
   });
 
   it("does not read compressed total from the uncompressed total line", () => {
-    const parsed = parseReleaseManifest(manifest);
+    const parsed = parseReleaseManifest(manifest, paths);
     expect(parsed.zipUncompressed).not.toBe(parsed.zipCompressed);
     expect(parsed.zipCompressed).toBe(157688391);
   });
@@ -59,7 +64,7 @@ describe("parseReleaseManifest", () => {
       "  compressed total: 157688391 bytes\n",
       "",
     );
-    expect(() => parseReleaseManifest(brokenManifest)).toThrow(
+    expect(() => parseReleaseManifest(brokenManifest, paths)).toThrow(
       "Could not read ZIP compressed total",
     );
   });

@@ -3,13 +3,11 @@ import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { readPackageReleasePaths } from "./yat-release-paths.mjs";
 
 const root = resolve(new URL("..", import.meta.url).pathname);
 const docsManifestPath = join(root, "docs", "YAT_RELEASE_MANIFEST.txt");
 const distManifestPath = join(root, "dist", "YAT_RELEASE_MANIFEST.txt");
-const appPath = join(root, "dist", "mac-arm64", "Yat.app");
-const dmgPath = join(root, "dist", "yat-0.3.2.dmg");
-const zipPath = join(root, "dist", "Yat-0.3.2-arm64-mac.zip");
 const bundleRootPath = join(root, "resources", "hermes-agent-bundle");
 const bundleMetadataPath = join(bundleRootPath, "hermes-bundle.json");
 
@@ -61,24 +59,36 @@ function replaceOne(text, pattern, replacement, label) {
   return text.replace(pattern, replacement);
 }
 
-export function refreshManifestText(manifest, values) {
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+export function refreshManifestText(
+  manifest,
+  values,
+  paths = readPackageReleasePaths(root),
+) {
   let nextManifest = manifest;
   nextManifest = replaceOne(
     nextManifest,
-    /dist\/mac-arm64\/Yat\.app\n {4}size: .+/,
-    `dist/mac-arm64/Yat.app\n    size: ${values.appSize}`,
+    new RegExp(`${escapeRegExp(paths.appRelativePath)}\\n {4}size: .+`),
+    `${paths.appRelativePath}\n    size: ${values.appSize}`,
     "app size",
   );
   nextManifest = replaceOne(
     nextManifest,
-    /dist\/yat-0\.3\.2\.dmg\n {4}size: .+\n {4}sha256: [a-f0-9]{64}/,
-    `dist/yat-0.3.2.dmg\n    size: ${values.dmgSize}\n    sha256: ${values.dmgSha}`,
+    new RegExp(
+      `${escapeRegExp(paths.dmgRelativePath)}\\n {4}size: .+\\n {4}sha256: [a-f0-9]{64}`,
+    ),
+    `${paths.dmgRelativePath}\n    size: ${values.dmgSize}\n    sha256: ${values.dmgSha}`,
     "DMG size and SHA-256",
   );
   nextManifest = replaceOne(
     nextManifest,
-    /dist\/Yat-0\.3\.2-arm64-mac\.zip\n {4}size: .+\n {4}sha256: [a-f0-9]{64}/,
-    `dist/Yat-0.3.2-arm64-mac.zip\n    size: ${values.zipSize}\n    sha256: ${values.zipSha}`,
+    new RegExp(
+      `${escapeRegExp(paths.zipRelativePath)}\\n {4}size: .+\\n {4}sha256: [a-f0-9]{64}`,
+    ),
+    `${paths.zipRelativePath}\n    size: ${values.zipSize}\n    sha256: ${values.zipSha}`,
     "ZIP size and SHA-256",
   );
   nextManifest = replaceOne(
@@ -110,19 +120,27 @@ export function refreshManifestText(manifest, values) {
 }
 
 function main() {
+  const releasePaths = readPackageReleasePaths(root);
+  const appPath = join(root, releasePaths.appRelativePath);
+  const dmgPath = join(root, releasePaths.dmgRelativePath);
+  const zipPath = join(root, releasePaths.zipRelativePath);
   const metadata = JSON.parse(readFileSync(bundleMetadataPath, "utf8"));
-  const manifest = refreshManifestText(readFileSync(docsManifestPath, "utf8"), {
-    appSize: duSize(appPath),
-    dmgSize: duSize(dmgPath),
-    dmgSha: sha256(dmgPath),
-    zipSize: duSize(zipPath),
-    zipSha: sha256(zipPath),
-    bundleSize: duSize(bundleRootPath),
-    metadata,
-    metadataSha: sha256(bundleMetadataPath),
-    zipInfo: parseZipInfo(zipPath),
-    zipFileSize: statSize(zipPath),
-  });
+  const manifest = refreshManifestText(
+    readFileSync(docsManifestPath, "utf8"),
+    {
+      appSize: duSize(appPath),
+      dmgSize: duSize(dmgPath),
+      dmgSha: sha256(dmgPath),
+      zipSize: duSize(zipPath),
+      zipSha: sha256(zipPath),
+      bundleSize: duSize(bundleRootPath),
+      metadata,
+      metadataSha: sha256(bundleMetadataPath),
+      zipInfo: parseZipInfo(zipPath),
+      zipFileSize: statSize(zipPath),
+    },
+    releasePaths,
+  );
 
   writeFileSync(docsManifestPath, manifest);
   writeFileSync(distManifestPath, manifest);

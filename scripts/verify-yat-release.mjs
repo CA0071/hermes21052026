@@ -10,31 +10,16 @@ import {
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { readPackageReleasePaths } from "./yat-release-paths.mjs";
 
 const root = resolve(new URL("..", import.meta.url).pathname);
 const docsManifestPath = join(root, "docs", "YAT_RELEASE_MANIFEST.txt");
 const distManifestPath = join(root, "dist", "YAT_RELEASE_MANIFEST.txt");
-const appPath = join(root, "dist", "mac-arm64", "Yat.app");
-const appInfoPath = join(appPath, "Contents", "Info.plist");
-const dmgPath = join(root, "dist", "yat-0.3.2.dmg");
-const zipPath = join(root, "dist", "Yat-0.3.2-arm64-mac.zip");
 const bundleMetadataPath = join(
   root,
   "resources",
   "hermes-agent-bundle",
   "hermes-bundle.json",
-);
-const packagedBundleRoot = join(
-  appPath,
-  "Contents",
-  "Resources",
-  "hermes-agent-bundle",
-);
-const packagedMetadataPath = join(packagedBundleRoot, "hermes-bundle.json");
-const packagedHermesPyprojectPath = join(
-  packagedBundleRoot,
-  "hermes-agent",
-  "pyproject.toml",
 );
 const skipMount = process.argv.includes("--skip-mount");
 
@@ -93,7 +78,7 @@ function requirePath(path, label) {
   assert(existsSync(path), `${label} missing at ${path}`);
 }
 
-function verifyPlistValue(key, expected) {
+function verifyPlistValue(appInfoPath, key, expected) {
   const actual = run("plutil", [
     "-extract",
     key,
@@ -105,7 +90,7 @@ function verifyPlistValue(key, expected) {
   assert(actual === expected, `${key} expected ${expected}, got ${actual}`);
 }
 
-function verifyMountedDmg() {
+function verifyMountedDmg({ dmgPath, releasePaths }) {
   const mountPoint = mkdtempSync(join(tmpdir(), "yat-release-verify-"));
   let attached = false;
 
@@ -120,7 +105,7 @@ function verifyMountedDmg() {
     ]);
     attached = true;
 
-    const mountedAppPath = join(mountPoint, "Yat.app");
+    const mountedAppPath = join(mountPoint, releasePaths.appFileName);
     const mountedInfoPath = join(mountedAppPath, "Contents", "Info.plist");
     const mountedBundlePath = join(
       mountedAppPath,
@@ -129,7 +114,7 @@ function verifyMountedDmg() {
       "hermes-agent-bundle",
     );
 
-    requirePath(mountedAppPath, "Mounted Yat.app");
+    requirePath(mountedAppPath, `Mounted ${releasePaths.appFileName}`);
     requirePath(
       join(mountPoint, "Applications"),
       "Mounted Applications symlink",
@@ -161,8 +146,8 @@ function verifyMountedDmg() {
     ]);
 
     assert(
-      displayName === "Yat",
-      `Mounted CFBundleDisplayName expected Yat, got ${displayName}`,
+      displayName === releasePaths.productName,
+      `Mounted CFBundleDisplayName expected ${releasePaths.productName}, got ${displayName}`,
     );
     assert(
       bundleId === "dev.yat.desktop",
@@ -183,15 +168,18 @@ function verifyMountedDmg() {
   }
 }
 
-export function parseReleaseManifest(manifest) {
+export function parseReleaseManifest(
+  manifest,
+  paths = readPackageReleasePaths(root),
+) {
   const dmgSection = sectionBetween(
     manifest,
-    "dist/yat-0.3.2.dmg",
-    "dist/Yat-0.3.2-arm64-mac.zip",
+    paths.dmgRelativePath,
+    paths.zipRelativePath,
   );
   const zipSection = sectionBetween(
     manifest,
-    "dist/Yat-0.3.2-arm64-mac.zip",
+    paths.zipRelativePath,
     "Bundled Hermes Agent:",
   );
   const bundleSection = sectionBetween(
@@ -263,6 +251,23 @@ function printFailure(error) {
 }
 
 function main() {
+  const releasePaths = readPackageReleasePaths(root);
+  const appPath = join(root, releasePaths.appRelativePath);
+  const appInfoPath = join(appPath, "Contents", "Info.plist");
+  const dmgPath = join(root, releasePaths.dmgRelativePath);
+  const zipPath = join(root, releasePaths.zipRelativePath);
+  const packagedBundleRoot = join(
+    appPath,
+    "Contents",
+    "Resources",
+    "hermes-agent-bundle",
+  );
+  const packagedMetadataPath = join(packagedBundleRoot, "hermes-bundle.json");
+  const packagedHermesPyprojectPath = join(
+    packagedBundleRoot,
+    "hermes-agent",
+    "pyproject.toml",
+  );
   const docsManifest = readFileSync(docsManifestPath, "utf8");
   const distManifest = readFileSync(distManifestPath, "utf8");
 
@@ -271,7 +276,7 @@ function main() {
     "docs/YAT_RELEASE_MANIFEST.txt and dist/YAT_RELEASE_MANIFEST.txt differ",
   );
 
-  const expected = parseReleaseManifest(docsManifest);
+  const expected = parseReleaseManifest(docsManifest, releasePaths);
 
   for (const [path, label] of [
     [appPath, "Yat.app"],
@@ -302,14 +307,18 @@ function main() {
     "Packaged Hermes metadata SHA-256 does not match manifest",
   );
 
-  verifyPlistValue("CFBundleDisplayName", "Yat");
-  verifyPlistValue("CFBundleIdentifier", "dev.yat.desktop");
-  verifyPlistValue("CFBundleExecutable", "Yat");
-  verifyPlistValue("LSMinimumSystemVersion", "12.0");
+  verifyPlistValue(
+    appInfoPath,
+    "CFBundleDisplayName",
+    releasePaths.productName,
+  );
+  verifyPlistValue(appInfoPath, "CFBundleIdentifier", "dev.yat.desktop");
+  verifyPlistValue(appInfoPath, "CFBundleExecutable", releasePaths.productName);
+  verifyPlistValue(appInfoPath, "LSMinimumSystemVersion", "12.0");
 
   const archInfo = run("lipo", [
     "-info",
-    join(appPath, "Contents", "MacOS", "Yat"),
+    join(appPath, "Contents", "MacOS", releasePaths.productName),
   ]);
   assert(
     archInfo.includes("arm64"),
@@ -342,11 +351,12 @@ function main() {
   );
 
   const zipEntries = run("zipinfo", ["-1", zipPath]);
+  const zipAppPrefix = releasePaths.appFileName;
   for (const requiredEntry of [
-    "Yat.app/Contents/Info.plist",
-    "Yat.app/Contents/Resources/hermes-agent-bundle/hermes-agent/pyproject.toml",
-    "Yat.app/Contents/Resources/hermes-agent-bundle/hermes-bundle.json",
-    "Yat.app/Contents/_CodeSignature/CodeResources",
+    `${zipAppPrefix}/Contents/Info.plist`,
+    `${zipAppPrefix}/Contents/Resources/hermes-agent-bundle/hermes-agent/pyproject.toml`,
+    `${zipAppPrefix}/Contents/Resources/hermes-agent-bundle/hermes-bundle.json`,
+    `${zipAppPrefix}/Contents/_CodeSignature/CodeResources`,
   ]) {
     assert(
       zipEntries.split("\n").includes(requiredEntry),
@@ -359,7 +369,7 @@ function main() {
       "Mounted DMG verification skipped because --skip-mount was set",
     );
   } else {
-    verifyMountedDmg();
+    verifyMountedDmg({ dmgPath, releasePaths });
   }
 
   console.log("Yat release verification passed");

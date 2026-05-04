@@ -3,17 +3,23 @@ import { describe, expect, it } from "vitest";
 const { parseZipInfoOutput, refreshManifestText } =
   await import("../scripts/update-yat-release-manifest.mjs");
 
-const manifest = `Yat 0.3.2 macOS release manifest
+const paths = {
+  appRelativePath: "dist/mac-arm64/Yat.app",
+  dmgRelativePath: "dist/yat-0.4.0.dmg",
+  zipRelativePath: "dist/Yat-0.4.0-arm64-mac.zip",
+};
+
+const manifest = `Yat 0.4.0 macOS release manifest
 
 Artifacts:
   dist/mac-arm64/Yat.app
     size: old-app
 
-  dist/yat-0.3.2.dmg
+  dist/yat-0.4.0.dmg
     size: old-dmg
     sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 
-  dist/Yat-0.3.2-arm64-mac.zip
+  dist/Yat-0.4.0-arm64-mac.zip
     size: old-zip
     sha256: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 
@@ -82,13 +88,13 @@ describe("parseZipInfoOutput", () => {
 
 describe("refreshManifestText", () => {
   it("updates artifact, metadata, and ZIP statistics fields", () => {
-    const refreshed = refreshManifestText(manifest, values);
+    const refreshed = refreshManifestText(manifest, values, paths);
     expect(refreshed).toContain("dist/mac-arm64/Yat.app\n    size: 392M");
     expect(refreshed).toContain(
-      "dist/yat-0.3.2.dmg\n    size: 155M\n    sha256: f6096993966b59c8cf52d633e73988b44d7a45f4daab971db08fa85e0f03938c",
+      "dist/yat-0.4.0.dmg\n    size: 155M\n    sha256: f6096993966b59c8cf52d633e73988b44d7a45f4daab971db08fa85e0f03938c",
     );
     expect(refreshed).toContain(
-      "dist/Yat-0.3.2-arm64-mac.zip\n    size: 151M\n    sha256: 593cab28f5d43532b2beb9a71c0fe27820299a8d53127185cb3c1650d6d10dc4",
+      "dist/Yat-0.4.0-arm64-mac.zip\n    size: 151M\n    sha256: 593cab28f5d43532b2beb9a71c0fe27820299a8d53127185cb3c1650d6d10dc4",
     );
     expect(refreshed).toContain("  source: /Users/yat/.hermes/hermes-agent");
     expect(refreshed).toContain("  entries: 4182");
@@ -101,7 +107,7 @@ describe("refreshManifestText", () => {
       "dist/mac-arm64/Yat.app\n    size: old-app",
       "dist/mac-arm64/Yat.app",
     );
-    expect(() => refreshManifestText(brokenManifest, values)).toThrow(
+    expect(() => refreshManifestText(brokenManifest, values, paths)).toThrow(
       "Could not update manifest field: app size",
     );
   });
