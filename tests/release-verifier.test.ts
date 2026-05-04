@@ -13,6 +13,7 @@ const paths = {
 };
 
 const manifest = `Yat 0.4.0 macOS release manifest
+Generated: 2026-05-04
 
 Source repo:
   https://github.com/fathah/hermes-desktop.git
@@ -85,6 +86,7 @@ describe("parseReleaseManifest", () => {
     expect(parseReleaseManifest(manifest, paths)).toEqual({
       titleProductName: "Yat",
       titleVersion: "0.4.0",
+      generatedDate: "2026-05-04",
       sourceRepo: "https://github.com/fathah/hermes-desktop.git",
       localRepo: "/Users/yat/hermes-desktop-yat",
       productName: "Yat",
@@ -180,6 +182,13 @@ describe("parseReleaseManifest", () => {
     );
     expect(() => parseReleaseManifest(brokenManifest, paths)).toThrow(
       "Could not read manifest bundle identifier",
+    );
+  });
+
+  it("throws a targeted error when generated date is missing", () => {
+    const brokenManifest = manifest.replace("Generated: 2026-05-04\n", "");
+    expect(() => parseReleaseManifest(brokenManifest, paths)).toThrow(
+      "Could not read manifest generated date",
     );
   });
 

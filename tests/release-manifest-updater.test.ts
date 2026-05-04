@@ -14,6 +14,7 @@ const paths = {
 };
 
 const manifest = `Yat 0.3.2 macOS release manifest
+Generated: 2026-01-02
 
 Source repo:
   old-source-repo
@@ -67,6 +68,7 @@ ZIP verification:
 
 const values = {
   appSize: "392M",
+  generatedDate: "2026-05-04",
   sourceRepo: "https://github.com/fathah/hermes-desktop.git",
   localRepo: "/Users/yat/hermes-desktop-yat",
   dmgSize: "155M",
@@ -116,6 +118,7 @@ describe("refreshManifestText", () => {
   it("updates artifact, metadata, and ZIP statistics fields", () => {
     const refreshed = refreshManifestText(manifest, values, paths);
     expect(refreshed).toContain("Yat 0.4.0 macOS release manifest");
+    expect(refreshed).toContain("Generated: 2026-05-04");
     expect(refreshed).toContain(
       "Source repo:\n  https://github.com/fathah/hermes-desktop.git",
     );
@@ -160,5 +163,18 @@ describe("refreshManifestText", () => {
         paths,
       ),
     ).toThrow("Manifest source repo value is required");
+  });
+
+  it("throws a targeted error when generated date is missing", () => {
+    expect(() =>
+      refreshManifestText(
+        manifest,
+        {
+          ...values,
+          generatedDate: "",
+        },
+        paths,
+      ),
+    ).toThrow("Manifest generated date value is required");
   });
 });

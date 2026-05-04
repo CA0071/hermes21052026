@@ -29,6 +29,13 @@ function duSize(path) {
   return run("du", ["-sh", path]).split(/\s+/)[0];
 }
 
+function localDateStamp(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export function parseZipInfoOutput(output) {
   const match = output.match(
     /^(\d+) files, (\d+) bytes uncompressed, (\d+) bytes compressed:\s+([0-9.]+%)/,
@@ -77,6 +84,12 @@ function normalizeReleasePaths(manifest, paths, repositories) {
     /^[^\n]+ macOS release manifest$/m,
     `${paths.productName} ${paths.version} macOS release manifest`,
     "manifest title",
+  );
+  nextManifest = replaceOne(
+    nextManifest,
+    /^Generated: \d{4}-\d{2}-\d{2}$/m,
+    `Generated: ${requireValue(repositories.generatedDate, "generated date")}`,
+    "generated date",
   );
   nextManifest = replaceOne(
     nextManifest,
@@ -154,6 +167,7 @@ export function refreshManifestText(
   paths = readPackageReleasePaths(root),
 ) {
   let nextManifest = normalizeReleasePaths(manifest, paths, {
+    generatedDate: values.generatedDate,
     sourceRepo: values.sourceRepo,
     localRepo: values.localRepo,
   });
@@ -224,6 +238,7 @@ function main() {
       bundleSize: duSize(bundleRootPath),
       metadata,
       metadataSha: sha256(bundleMetadataPath),
+      generatedDate: localDateStamp(),
       sourceRepo: run("git", ["config", "--get", "remote.origin.url"]),
       localRepo: root,
       zipInfo: parseZipInfo(zipPath),

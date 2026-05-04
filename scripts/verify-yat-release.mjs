@@ -79,6 +79,13 @@ function duSize(path) {
   return run("du", ["-sh", path]).split(/\s+/)[0];
 }
 
+function localDateStamp(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function requirePath(path, label) {
   assert(existsSync(path), `${label} missing at ${path}`);
 }
@@ -296,6 +303,11 @@ export function parseReleaseManifest(
       /^.+ ([^\s]+) macOS release manifest$/m,
       "manifest title version",
     ),
+    generatedDate: matchOne(
+      manifest,
+      /^Generated: (\d{4}-\d{2}-\d{2})$/m,
+      "manifest generated date",
+    ),
     sourceRepo: matchOne(
       sourceRepoSection,
       /^ {2}(.+)$/m,
@@ -490,6 +502,7 @@ function main() {
   );
   const docsManifest = readFileSync(docsManifestPath, "utf8");
   const distManifest = readFileSync(distManifestPath, "utf8");
+  const today = localDateStamp();
   const sourceRepo = run("git", ["config", "--get", "remote.origin.url"]);
 
   assert(
@@ -505,6 +518,10 @@ function main() {
   assert(
     expected.titleVersion === releasePaths.version,
     `Manifest title version expected ${releasePaths.version}, got ${expected.titleVersion}`,
+  );
+  assert(
+    expected.generatedDate === today,
+    `Manifest generated date expected ${today}, got ${expected.generatedDate}`,
   );
   assert(
     expected.sourceRepo === sourceRepo,
