@@ -55,12 +55,25 @@ function matchOne(text, pattern, label) {
 }
 
 function run(command, args, options = {}) {
-  return execFileSync(command, args, {
-    cwd: root,
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-    ...options,
-  }).trim();
+  try {
+    return execFileSync(command, args, {
+      cwd: root,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      ...options,
+    }).trim();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const stderr =
+      typeof error === "object" &&
+      error !== null &&
+      "stderr" in error &&
+      Buffer.isBuffer(error.stderr)
+        ? error.stderr.toString("utf8").trim()
+        : "";
+    const detail = stderr ? `${message}\n${stderr}` : message;
+    throw new Error(`${command} ${args.join(" ")} failed\n${detail}`);
+  }
 }
 
 function assert(condition, message) {
@@ -169,163 +182,196 @@ function verifyMountedDmg() {
   }
 }
 
-const docsManifest = readFileSync(docsManifestPath, "utf8");
-const distManifest = readFileSync(distManifestPath, "utf8");
+function printFailure(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  console.error("Yat release verification failed");
+  console.error(message);
 
-assert(
-  docsManifest === distManifest,
-  "docs/YAT_RELEASE_MANIFEST.txt and dist/YAT_RELEASE_MANIFEST.txt differ",
-);
-
-const dmgSection = sectionBetween(
-  docsManifest,
-  "dist/yat-0.3.2.dmg",
-  "dist/Yat-0.3.2-arm64-mac.zip",
-);
-const zipSection = sectionBetween(
-  docsManifest,
-  "dist/Yat-0.3.2-arm64-mac.zip",
-  "Bundled Hermes Agent:",
-);
-const bundleSection = sectionBetween(
-  docsManifest,
-  "Bundled Hermes Agent:",
-  "Verification already performed:",
-);
-const zipVerificationSection = sectionBetween(
-  docsManifest,
-  "ZIP verification:",
-  undefined,
-);
-
-const expectedDmgSha = matchOne(
-  dmgSection,
-  /sha256: ([a-f0-9]{64})/,
-  "DMG sha256",
-);
-const expectedZipSha = matchOne(
-  zipSection,
-  /sha256: ([a-f0-9]{64})/,
-  "ZIP sha256",
-);
-const expectedMetadataSha = matchOne(
-  bundleSection,
-  /metadata sha256: ([a-f0-9]{64})/,
-  "Hermes metadata sha256",
-);
-const expectedZipEntries = Number(
-  matchOne(zipVerificationSection, /^ {2}entries: (\d+)$/m, "ZIP entry count"),
-);
-const expectedZipFileSize = Number(
-  matchOne(
-    zipVerificationSection,
-    /^ {2}zip file size: (\d+) bytes$/m,
-    "ZIP file size",
-  ),
-);
-const expectedZipUncompressed = Number(
-  matchOne(
-    zipVerificationSection,
-    /^ {2}uncompressed total: (\d+) bytes$/m,
-    "ZIP uncompressed total",
-  ),
-);
-const expectedZipCompressed = Number(
-  matchOne(
-    zipVerificationSection,
-    /^ {2}compressed total: (\d+) bytes$/m,
-    "ZIP compressed total",
-  ),
-);
-
-for (const [path, label] of [
-  [appPath, "Yat.app"],
-  [appInfoPath, "Yat Info.plist"],
-  [dmgPath, "DMG"],
-  [zipPath, "ZIP"],
-  [bundleMetadataPath, "Hermes metadata"],
-  [packagedMetadataPath, "Packaged Hermes metadata"],
-  [packagedHermesPyprojectPath, "Packaged Hermes pyproject"],
-]) {
-  requirePath(path, label);
+  if (message.includes("hdiutil attach")) {
+    console.error(
+      [
+        "",
+        "The failure happened while mounting the DMG.",
+        "If hdiutil/diskutil report DiskManagement or DiskArbitration as unavailable,",
+        "run the non-mounting checks with:",
+        "  npm run verify:release:no-mount",
+      ].join("\n"),
+    );
+  }
 }
 
-assert(
-  sha256(dmgPath) === expectedDmgSha,
-  "DMG SHA-256 does not match manifest",
-);
-assert(
-  sha256(zipPath) === expectedZipSha,
-  "ZIP SHA-256 does not match manifest",
-);
-assert(
-  sha256(bundleMetadataPath) === expectedMetadataSha,
-  "Hermes metadata SHA-256 does not match manifest",
-);
-assert(
-  sha256(packagedMetadataPath) === expectedMetadataSha,
-  "Packaged Hermes metadata SHA-256 does not match manifest",
-);
+function main() {
+  const docsManifest = readFileSync(docsManifestPath, "utf8");
+  const distManifest = readFileSync(distManifestPath, "utf8");
 
-verifyPlistValue("CFBundleDisplayName", "Yat");
-verifyPlistValue("CFBundleIdentifier", "dev.yat.desktop");
-verifyPlistValue("CFBundleExecutable", "Yat");
-verifyPlistValue("LSMinimumSystemVersion", "12.0");
-
-const archInfo = run("lipo", [
-  "-info",
-  join(appPath, "Contents", "MacOS", "Yat"),
-]);
-assert(
-  archInfo.includes("arm64"),
-  `Expected arm64 app executable, got: ${archInfo}`,
-);
-
-run("codesign", ["--verify", "--deep", "--strict", "--verbose=2", appPath]);
-run("hdiutil", ["verify", dmgPath]);
-
-const zipInfo = run("zipinfo", ["-t", zipPath]);
-const zipInfoMatch = zipInfo.match(
-  /^(\d+) files, (\d+) bytes uncompressed, (\d+) bytes compressed:/,
-);
-assert(zipInfoMatch, `Could not parse zipinfo output: ${zipInfo}`);
-assert(
-  Number(zipInfoMatch[1]) === expectedZipEntries,
-  "ZIP entry count does not match manifest",
-);
-assert(
-  Number(zipInfoMatch[2]) === expectedZipUncompressed,
-  "ZIP uncompressed total does not match manifest",
-);
-assert(
-  Number(zipInfoMatch[3]) === expectedZipCompressed,
-  "ZIP compressed total does not match manifest",
-);
-assert(
-  statSync(zipPath).size === expectedZipFileSize,
-  "ZIP file size does not match manifest",
-);
-
-const zipEntries = run("zipinfo", ["-1", zipPath]);
-for (const requiredEntry of [
-  "Yat.app/Contents/Info.plist",
-  "Yat.app/Contents/Resources/hermes-agent-bundle/hermes-agent/pyproject.toml",
-  "Yat.app/Contents/Resources/hermes-agent-bundle/hermes-bundle.json",
-  "Yat.app/Contents/_CodeSignature/CodeResources",
-]) {
   assert(
-    zipEntries.split("\n").includes(requiredEntry),
-    `ZIP required entry missing: ${requiredEntry}`,
+    docsManifest === distManifest,
+    "docs/YAT_RELEASE_MANIFEST.txt and dist/YAT_RELEASE_MANIFEST.txt differ",
   );
+
+  const dmgSection = sectionBetween(
+    docsManifest,
+    "dist/yat-0.3.2.dmg",
+    "dist/Yat-0.3.2-arm64-mac.zip",
+  );
+  const zipSection = sectionBetween(
+    docsManifest,
+    "dist/Yat-0.3.2-arm64-mac.zip",
+    "Bundled Hermes Agent:",
+  );
+  const bundleSection = sectionBetween(
+    docsManifest,
+    "Bundled Hermes Agent:",
+    "Verification already performed:",
+  );
+  const zipVerificationSection = sectionBetween(
+    docsManifest,
+    "ZIP verification:",
+    undefined,
+  );
+
+  const expectedDmgSha = matchOne(
+    dmgSection,
+    /sha256: ([a-f0-9]{64})/,
+    "DMG sha256",
+  );
+  const expectedZipSha = matchOne(
+    zipSection,
+    /sha256: ([a-f0-9]{64})/,
+    "ZIP sha256",
+  );
+  const expectedMetadataSha = matchOne(
+    bundleSection,
+    /metadata sha256: ([a-f0-9]{64})/,
+    "Hermes metadata sha256",
+  );
+  const expectedZipEntries = Number(
+    matchOne(
+      zipVerificationSection,
+      /^ {2}entries: (\d+)$/m,
+      "ZIP entry count",
+    ),
+  );
+  const expectedZipFileSize = Number(
+    matchOne(
+      zipVerificationSection,
+      /^ {2}zip file size: (\d+) bytes$/m,
+      "ZIP file size",
+    ),
+  );
+  const expectedZipUncompressed = Number(
+    matchOne(
+      zipVerificationSection,
+      /^ {2}uncompressed total: (\d+) bytes$/m,
+      "ZIP uncompressed total",
+    ),
+  );
+  const expectedZipCompressed = Number(
+    matchOne(
+      zipVerificationSection,
+      /^ {2}compressed total: (\d+) bytes$/m,
+      "ZIP compressed total",
+    ),
+  );
+
+  for (const [path, label] of [
+    [appPath, "Yat.app"],
+    [appInfoPath, "Yat Info.plist"],
+    [dmgPath, "DMG"],
+    [zipPath, "ZIP"],
+    [bundleMetadataPath, "Hermes metadata"],
+    [packagedMetadataPath, "Packaged Hermes metadata"],
+    [packagedHermesPyprojectPath, "Packaged Hermes pyproject"],
+  ]) {
+    requirePath(path, label);
+  }
+
+  assert(
+    sha256(dmgPath) === expectedDmgSha,
+    "DMG SHA-256 does not match manifest",
+  );
+  assert(
+    sha256(zipPath) === expectedZipSha,
+    "ZIP SHA-256 does not match manifest",
+  );
+  assert(
+    sha256(bundleMetadataPath) === expectedMetadataSha,
+    "Hermes metadata SHA-256 does not match manifest",
+  );
+  assert(
+    sha256(packagedMetadataPath) === expectedMetadataSha,
+    "Packaged Hermes metadata SHA-256 does not match manifest",
+  );
+
+  verifyPlistValue("CFBundleDisplayName", "Yat");
+  verifyPlistValue("CFBundleIdentifier", "dev.yat.desktop");
+  verifyPlistValue("CFBundleExecutable", "Yat");
+  verifyPlistValue("LSMinimumSystemVersion", "12.0");
+
+  const archInfo = run("lipo", [
+    "-info",
+    join(appPath, "Contents", "MacOS", "Yat"),
+  ]);
+  assert(
+    archInfo.includes("arm64"),
+    `Expected arm64 app executable, got: ${archInfo}`,
+  );
+
+  run("codesign", ["--verify", "--deep", "--strict", "--verbose=2", appPath]);
+  run("hdiutil", ["verify", dmgPath]);
+
+  const zipInfo = run("zipinfo", ["-t", zipPath]);
+  const zipInfoMatch = zipInfo.match(
+    /^(\d+) files, (\d+) bytes uncompressed, (\d+) bytes compressed:/,
+  );
+  assert(zipInfoMatch, `Could not parse zipinfo output: ${zipInfo}`);
+  assert(
+    Number(zipInfoMatch[1]) === expectedZipEntries,
+    "ZIP entry count does not match manifest",
+  );
+  assert(
+    Number(zipInfoMatch[2]) === expectedZipUncompressed,
+    "ZIP uncompressed total does not match manifest",
+  );
+  assert(
+    Number(zipInfoMatch[3]) === expectedZipCompressed,
+    "ZIP compressed total does not match manifest",
+  );
+  assert(
+    statSync(zipPath).size === expectedZipFileSize,
+    "ZIP file size does not match manifest",
+  );
+
+  const zipEntries = run("zipinfo", ["-1", zipPath]);
+  for (const requiredEntry of [
+    "Yat.app/Contents/Info.plist",
+    "Yat.app/Contents/Resources/hermes-agent-bundle/hermes-agent/pyproject.toml",
+    "Yat.app/Contents/Resources/hermes-agent-bundle/hermes-bundle.json",
+    "Yat.app/Contents/_CodeSignature/CodeResources",
+  ]) {
+    assert(
+      zipEntries.split("\n").includes(requiredEntry),
+      `ZIP required entry missing: ${requiredEntry}`,
+    );
+  }
+
+  if (skipMount) {
+    console.warn(
+      "Mounted DMG verification skipped because --skip-mount was set",
+    );
+  } else {
+    verifyMountedDmg();
+  }
+
+  console.log("Yat release verification passed");
+  console.log(`DMG SHA-256: ${expectedDmgSha}`);
+  console.log(`ZIP SHA-256: ${expectedZipSha}`);
+  console.log(`Hermes metadata SHA-256: ${expectedMetadataSha}`);
 }
 
-if (skipMount) {
-  console.warn("Mounted DMG verification skipped because --skip-mount was set");
-} else {
-  verifyMountedDmg();
+try {
+  main();
+} catch (error) {
+  printFailure(error);
+  process.exitCode = 1;
 }
-
-console.log("Yat release verification passed");
-console.log(`DMG SHA-256: ${expectedDmgSha}`);
-console.log(`ZIP SHA-256: ${expectedZipSha}`);
-console.log(`Hermes metadata SHA-256: ${expectedMetadataSha}`);
