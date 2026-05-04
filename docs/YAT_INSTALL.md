@@ -18,6 +18,12 @@ Use:
 /Users/yat/hermes-desktop-yat/dist/yat-0.3.2.dmg
 ```
 
+Expected SHA-256:
+
+```text
+f6096993966b59c8cf52d633e73988b44d7a45f4daab971db08fa85e0f03938c
+```
+
 Open the DMG, then drag `Yat.app` to `Applications`.
 
 The DMG was verified by mounting it read-only and checking:
@@ -37,6 +43,12 @@ Use:
 /Users/yat/hermes-desktop-yat/dist/Yat-0.3.2-arm64-mac.zip
 ```
 
+Expected SHA-256:
+
+```text
+593cab28f5d43532b2beb9a71c0fe27820299a8d53127185cb3c1650d6d10dc4
+```
+
 Extract the ZIP, then move `Yat.app` to `Applications`.
 
 The ZIP was verified with `unzip -t`; no compressed-data errors were detected. Required entries were found for:
@@ -45,6 +57,17 @@ The ZIP was verified with `unzip -t`; no compressed-data errors were detected. R
 - `Yat.app/Contents/Resources/hermes-agent-bundle/hermes-agent/pyproject.toml`
 - `Yat.app/Contents/Resources/hermes-agent-bundle/hermes-bundle.json`
 - `Yat.app/Contents/_CodeSignature/CodeResources`
+
+## Release Manifest
+
+The full artifact manifest is available at:
+
+```text
+/Users/yat/hermes-desktop-yat/docs/YAT_RELEASE_MANIFEST.txt
+/Users/yat/hermes-desktop-yat/dist/YAT_RELEASE_MANIFEST.txt
+```
+
+Both manifest files are expected to contain the same release hashes and ZIP statistics.
 
 ## First Launch
 
@@ -87,4 +110,3 @@ Expected identity:
 CFBundleDisplayName: Yat
 CFBundleIdentifier: dev.yat.desktop
 ```
-
