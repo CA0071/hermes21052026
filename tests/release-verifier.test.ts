@@ -90,12 +90,16 @@ describe("parseReleaseManifest", () => {
       productName: "Yat",
       bundleIdentifier: "dev.yat.desktop",
       appRelativePath: "dist/mac-arm64/Yat.app",
+      appSize: "392M",
+      dmgSize: "155M",
+      zipSize: "151M",
       bundlePath: "resources/hermes-agent-bundle",
       packagedBundlePath: "Yat.app/Contents/Resources/hermes-agent-bundle",
       bundleSource: "/Users/yat/.hermes/hermes-agent",
       bundleCommit: "5d3be898a8671eb9fb99cf18f43165502f54e7f4",
       bundleShortCommit: "5d3be898a867",
       bundleRef: "v2026.4.30-188-g5d3be898a-dirty",
+      bundleSize: "74M",
       verificationCommands: [
         "npm run typecheck",
         "npm run test",
@@ -111,6 +115,8 @@ describe("parseReleaseManifest", () => {
       mountedAppFileName: "Yat.app",
       mountedDisplayName: "Yat",
       mountedBundleIdentifier: "dev.yat.desktop",
+      mountedAppSize: "392M",
+      mountedBundleSize: "74M",
       dmgSha:
         "f6096993966b59c8cf52d633e73988b44d7a45f4daab971db08fa85e0f03938c",
       zipSha:
@@ -183,6 +189,13 @@ describe("parseReleaseManifest", () => {
     );
   });
 
+  it("throws a targeted error when the manifest app size is missing", () => {
+    const brokenManifest = manifest.replace("    size: 392M\n\n", "\n");
+    expect(() => parseReleaseManifest(brokenManifest, paths)).toThrow(
+      "Could not read manifest app size",
+    );
+  });
+
   it("throws a targeted error when Hermes bundle metadata is missing", () => {
     const brokenManifest = manifest.replace(
       "  commit: 5d3be898a8671eb9fb99cf18f43165502f54e7f4\n",
@@ -190,6 +203,13 @@ describe("parseReleaseManifest", () => {
     );
     expect(() => parseReleaseManifest(brokenManifest, paths)).toThrow(
       "Could not read Hermes commit",
+    );
+  });
+
+  it("throws a targeted error when mounted app size is missing", () => {
+    const brokenManifest = manifest.replace("  mounted app size: 392M\n", "");
+    expect(() => parseReleaseManifest(brokenManifest, paths)).toThrow(
+      "Could not read mounted app size",
     );
   });
 

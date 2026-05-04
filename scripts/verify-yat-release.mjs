@@ -15,6 +15,7 @@ import { readPackageReleasePaths } from "./yat-release-paths.mjs";
 const root = resolve(new URL("..", import.meta.url).pathname);
 const docsManifestPath = join(root, "docs", "YAT_RELEASE_MANIFEST.txt");
 const distManifestPath = join(root, "dist", "YAT_RELEASE_MANIFEST.txt");
+const bundleRootPath = join(root, "resources", "hermes-agent-bundle");
 const bundleMetadataPath = join(
   root,
   "resources",
@@ -74,8 +75,16 @@ function sha256(path) {
   return hash.digest("hex");
 }
 
+function duSize(path) {
+  return run("du", ["-sh", path]).split(/\s+/)[0];
+}
+
 function requirePath(path, label) {
   assert(existsSync(path), `${label} missing at ${path}`);
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function formatMetadataValue(value) {
@@ -164,6 +173,14 @@ function verifyMountedDmg({ dmgPath, releasePaths }) {
     requirePath(
       join(mountedBundlePath, "hermes-bundle.json"),
       "Mounted Hermes metadata",
+    );
+    assert(
+      duSize(mountedAppPath) === releasePaths.expectedMountedAppSize,
+      `Mounted app size expected ${releasePaths.expectedMountedAppSize}, got ${duSize(mountedAppPath)}`,
+    );
+    assert(
+      duSize(mountedBundlePath) === releasePaths.expectedMountedBundleSize,
+      `Mounted Hermes bundle size expected ${releasePaths.expectedMountedBundleSize}, got ${duSize(mountedBundlePath)}`,
     );
     assertHermesMetadataMatches(
       JSON.parse(
@@ -300,6 +317,16 @@ export function parseReleaseManifest(
       /^ {2}(dist\/mac-[^\s]+\/[^\s]+\.app)$/m,
       "manifest app path",
     ),
+    appSize: matchOne(
+      artifactsSection,
+      new RegExp(
+        `^ {2}${escapeRegExp(paths.appRelativePath)}\\n {4}size: (.+)$`,
+        "m",
+      ),
+      "manifest app size",
+    ),
+    dmgSize: matchOne(dmgSection, /^ {4}size: (.+)$/m, "manifest DMG size"),
+    zipSize: matchOne(zipSection, /^ {4}size: (.+)$/m, "manifest ZIP size"),
     bundlePath: matchOne(
       bundleSection,
       /^ {2}bundle path: (.+)$/m,
@@ -326,6 +353,11 @@ export function parseReleaseManifest(
       "Hermes short commit",
     ),
     bundleRef: matchOne(bundleSection, /^ {2}ref: (.+)$/m, "Hermes ref"),
+    bundleSize: matchOne(
+      bundleSection,
+      /^ {2}size: (.+)$/m,
+      "Hermes bundle size",
+    ),
     verificationCommands: [...performedSection.matchAll(/^ {2}(.+)$/gm)].map(
       (match) => match[1],
     ),
@@ -343,6 +375,16 @@ export function parseReleaseManifest(
       mountedDmgSection,
       /^ {2}mounted app CFBundleIdentifier: (.+)$/m,
       "mounted app bundle identifier",
+    ),
+    mountedAppSize: matchOne(
+      mountedDmgSection,
+      /^ {2}mounted app size: (.+)$/m,
+      "mounted app size",
+    ),
+    mountedBundleSize: matchOne(
+      mountedDmgSection,
+      /^ {2}mounted Hermes bundle size: (.+)$/m,
+      "mounted Hermes bundle size",
     ),
     dmgSha: matchOne(dmgSection, /sha256: ([a-f0-9]{64})/, "DMG sha256"),
     zipSha: matchOne(zipSection, /sha256: ([a-f0-9]{64})/, "ZIP sha256"),
@@ -529,12 +571,45 @@ function main() {
     [appInfoPath, `${releasePaths.productName} Info.plist`],
     [dmgPath, "DMG"],
     [zipPath, "ZIP"],
+    [bundleRootPath, "Hermes bundle"],
     [bundleMetadataPath, "Hermes metadata"],
     [packagedMetadataPath, "Packaged Hermes metadata"],
     [packagedHermesPyprojectPath, "Packaged Hermes pyproject"],
   ]) {
     requirePath(path, label);
   }
+
+  const appSize = duSize(appPath);
+  const dmgSize = duSize(dmgPath);
+  const zipSize = duSize(zipPath);
+  const bundleSize = duSize(bundleRootPath);
+  assert(
+    expected.appSize === appSize,
+    `Manifest app size expected ${appSize}, got ${expected.appSize}`,
+  );
+  assert(
+    expected.dmgSize === dmgSize,
+    `Manifest DMG size expected ${dmgSize}, got ${expected.dmgSize}`,
+  );
+  assert(
+    expected.zipSize === zipSize,
+    `Manifest ZIP size expected ${zipSize}, got ${expected.zipSize}`,
+  );
+  assert(
+    expected.bundleSize === bundleSize,
+    `Manifest Hermes bundle size expected ${bundleSize}, got ${expected.bundleSize}`,
+  );
+  assert(
+    expected.mountedAppSize === appSize,
+    `Manifest mounted app size expected ${appSize}, got ${expected.mountedAppSize}`,
+  );
+  assert(
+    expected.mountedBundleSize === bundleSize,
+    `Manifest mounted Hermes bundle size expected ${bundleSize}, got ${expected.mountedBundleSize}`,
+  );
+  releaseConfig.expectedMountedAppSize = expected.mountedAppSize;
+  releaseConfig.expectedMountedBundleSize = expected.mountedBundleSize;
+
   assertHermesMetadataMatches(
     JSON.parse(readFileSync(packagedMetadataPath, "utf8")),
     bundleMetadata,
