@@ -174,21 +174,29 @@ function normalizeReleasePaths(manifest, paths, repositories) {
     "  mounted app codesign verification: valid on disk, satisfies designated requirement",
     "mounted app codesign verification",
   );
-  nextManifest = nextManifest.replace(
+  nextManifest = replaceOne(
+    nextManifest,
     /^ {4}[^/\n]+\.app\/Contents\/Info\.plist$/m,
     `    ${paths.appFileName}/Contents/Info.plist`,
+    "ZIP required Info.plist entry",
   );
-  nextManifest = nextManifest.replace(
+  nextManifest = replaceOne(
+    nextManifest,
     /^ {4}[^/\n]+\.app\/Contents\/Resources\/hermes-agent-bundle\/hermes-agent\/pyproject\.toml$/m,
     `    ${paths.appFileName}/Contents/Resources/hermes-agent-bundle/hermes-agent/pyproject.toml`,
+    "ZIP required Hermes pyproject entry",
   );
-  nextManifest = nextManifest.replace(
+  nextManifest = replaceOne(
+    nextManifest,
     /^ {4}[^/\n]+\.app\/Contents\/Resources\/hermes-agent-bundle\/hermes-bundle\.json$/m,
     `    ${paths.appFileName}/Contents/Resources/hermes-agent-bundle/hermes-bundle.json`,
+    "ZIP required Hermes metadata entry",
   );
-  nextManifest = nextManifest.replace(
+  nextManifest = replaceOne(
+    nextManifest,
     /^ {4}[^/\n]+\.app\/Contents\/_CodeSignature\/CodeResources$/m,
     `    ${paths.appFileName}/Contents/_CodeSignature/CodeResources`,
+    "ZIP required CodeResources entry",
   );
   return nextManifest;
 }

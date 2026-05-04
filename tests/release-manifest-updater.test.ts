@@ -69,6 +69,11 @@ ZIP verification:
   uncompressed total: 3 bytes
   compressed total: 4 bytes
   compression ratio: 5.0%
+  required entries found:
+    OldYat.app/Contents/Info.plist
+    OldYat.app/Contents/Resources/hermes-agent-bundle/hermes-agent/pyproject.toml
+    OldYat.app/Contents/Resources/hermes-agent-bundle/hermes-bundle.json
+    OldYat.app/Contents/_CodeSignature/CodeResources
 `;
 
 const values = {
@@ -146,6 +151,9 @@ describe("refreshManifestText", () => {
     expect(refreshed).toContain(
       "Mounted DMG verification:\n  mountpoint contained Yat.app and Applications symlink\n  mounted app CFBundleDisplayName: Yat\n  mounted app CFBundleIdentifier: dev.yat.desktop\n  mounted app size: 392M\n  mounted Hermes bundle size: 74M\n  mounted app codesign verification: valid on disk, satisfies designated requirement",
     );
+    expect(refreshed).toContain(
+      "required entries found:\n    Yat.app/Contents/Info.plist\n    Yat.app/Contents/Resources/hermes-agent-bundle/hermes-agent/pyproject.toml\n    Yat.app/Contents/Resources/hermes-agent-bundle/hermes-bundle.json\n    Yat.app/Contents/_CodeSignature/CodeResources",
+    );
     expect(refreshed).not.toContain("dist/yat-0.3.2.dmg");
     expect(refreshed).not.toContain("dist/Yat-0.3.2-arm64-mac.zip");
     expect(refreshed).not.toContain("OldYat");
@@ -195,6 +203,16 @@ describe("refreshManifestText", () => {
     );
     expect(() => refreshManifestText(brokenManifest, values, paths)).toThrow(
       "Could not update manifest field: mounted app file name",
+    );
+  });
+
+  it("throws a targeted error when a ZIP required entry is missing", () => {
+    const brokenManifest = manifest.replace(
+      "    OldYat.app/Contents/Resources/hermes-agent-bundle/hermes-bundle.json\n",
+      "",
+    );
+    expect(() => refreshManifestText(brokenManifest, values, paths)).toThrow(
+      "Could not update manifest field: ZIP required Hermes metadata entry",
     );
   });
 });
