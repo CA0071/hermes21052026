@@ -78,11 +78,7 @@ npm run typecheck
 npm run test
 ```
 
-当前新增 release 验证覆盖后的预期测试数量：
-
-```text
-11 个测试文件 / 253 个测试
-```
+当前测试数量以命令输出为准。
 
 ## 构建
 
