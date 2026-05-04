@@ -6,6 +6,8 @@ const { parseReleaseManifest } =
 const paths = {
   productName: "Yat",
   appId: "dev.yat.desktop",
+  appRelativePath: "dist/mac-arm64/Yat.app",
+  appFileName: "Yat.app",
   dmgRelativePath: "dist/yat-0.4.0.dmg",
   zipRelativePath: "dist/Yat-0.4.0-arm64-mac.zip",
 };
@@ -41,6 +43,11 @@ ZIP verification:
   uncompressed total: 403784826 bytes
   compressed total: 157688391 bytes
   compression ratio: 60.9%
+  required entries found:
+    Yat.app/Contents/Info.plist
+    Yat.app/Contents/Resources/hermes-agent-bundle/hermes-agent/pyproject.toml
+    Yat.app/Contents/Resources/hermes-agent-bundle/hermes-bundle.json
+    Yat.app/Contents/_CodeSignature/CodeResources
 `;
 
 describe("parseReleaseManifest", () => {
@@ -50,6 +57,7 @@ describe("parseReleaseManifest", () => {
       titleVersion: "0.4.0",
       productName: "Yat",
       bundleIdentifier: "dev.yat.desktop",
+      appRelativePath: "dist/mac-arm64/Yat.app",
       dmgSha:
         "f6096993966b59c8cf52d633e73988b44d7a45f4daab971db08fa85e0f03938c",
       zipSha:
@@ -60,6 +68,12 @@ describe("parseReleaseManifest", () => {
       zipFileSize: 158837969,
       zipUncompressed: 403784826,
       zipCompressed: 157688391,
+      zipRequiredEntries: [
+        "Yat.app/Contents/Info.plist",
+        "Yat.app/Contents/Resources/hermes-agent-bundle/hermes-agent/pyproject.toml",
+        "Yat.app/Contents/Resources/hermes-agent-bundle/hermes-bundle.json",
+        "Yat.app/Contents/_CodeSignature/CodeResources",
+      ],
     });
   });
 
@@ -89,6 +103,13 @@ describe("parseReleaseManifest", () => {
     );
   });
 
+  it("throws a targeted error when the manifest app path is missing", () => {
+    const brokenManifest = manifest.replace("  dist/mac-arm64/Yat.app\n", "");
+    expect(() => parseReleaseManifest(brokenManifest, paths)).toThrow(
+      "Could not read manifest app path",
+    );
+  });
+
   it("throws a targeted error when the manifest title is missing", () => {
     const brokenManifest = manifest.replace(
       "Yat 0.4.0 macOS release manifest",
@@ -96,6 +117,21 @@ describe("parseReleaseManifest", () => {
     );
     expect(() => parseReleaseManifest(brokenManifest, paths)).toThrow(
       "Could not read manifest title product name",
+    );
+  });
+
+  it("throws a targeted error when ZIP required entries are missing", () => {
+    const brokenManifest = manifest.replace(
+      `  required entries found:
+    Yat.app/Contents/Info.plist
+    Yat.app/Contents/Resources/hermes-agent-bundle/hermes-agent/pyproject.toml
+    Yat.app/Contents/Resources/hermes-agent-bundle/hermes-bundle.json
+    Yat.app/Contents/_CodeSignature/CodeResources
+`,
+      "",
+    );
+    expect(() => parseReleaseManifest(brokenManifest, paths)).toThrow(
+      "Could not read ZIP required entries",
     );
   });
 });

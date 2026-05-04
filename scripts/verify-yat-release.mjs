@@ -187,6 +187,11 @@ export function parseReleaseManifest(
     "Application identity:",
     "Artifacts:",
   );
+  const artifactsSection = sectionBetween(
+    manifest,
+    "Artifacts:",
+    "Bundled Hermes Agent:",
+  );
   const bundleSection = sectionBetween(
     manifest,
     "Bundled Hermes Agent:",
@@ -218,6 +223,11 @@ export function parseReleaseManifest(
       identitySection,
       /^ {2}Bundle identifier: (.+)$/m,
       "manifest bundle identifier",
+    ),
+    appRelativePath: matchOne(
+      artifactsSection,
+      /^ {2}(dist\/mac-[^\s]+\/[^\s]+\.app)$/m,
+      "manifest app path",
     ),
     dmgSha: matchOne(dmgSection, /sha256: ([a-f0-9]{64})/, "DMG sha256"),
     zipSha: matchOne(zipSection, /sha256: ([a-f0-9]{64})/, "ZIP sha256"),
@@ -254,6 +264,14 @@ export function parseReleaseManifest(
         "ZIP compressed total",
       ),
     ),
+    zipRequiredEntries: matchOne(
+      zipVerificationSection,
+      /^ {2}required entries found:\n((?: {4}.+(?:\n|$))+)/m,
+      "ZIP required entries",
+    )
+      .split("\n")
+      .map((entry) => entry.trim())
+      .filter(Boolean),
   };
 }
 
@@ -317,6 +335,10 @@ function main() {
   assert(
     expected.bundleIdentifier === releasePaths.appId,
     `Manifest bundle identifier expected ${releasePaths.appId}, got ${expected.bundleIdentifier}`,
+  );
+  assert(
+    expected.appRelativePath === releasePaths.appRelativePath,
+    `Manifest app path expected ${releasePaths.appRelativePath}, got ${expected.appRelativePath}`,
   );
 
   for (const [path, label] of [
@@ -396,13 +418,18 @@ function main() {
   );
 
   const zipEntries = run("zipinfo", ["-1", zipPath]);
-  const zipAppPrefix = releasePaths.appFileName;
-  for (const requiredEntry of [
-    `${zipAppPrefix}/Contents/Info.plist`,
-    `${zipAppPrefix}/Contents/Resources/hermes-agent-bundle/hermes-agent/pyproject.toml`,
-    `${zipAppPrefix}/Contents/Resources/hermes-agent-bundle/hermes-bundle.json`,
-    `${zipAppPrefix}/Contents/_CodeSignature/CodeResources`,
-  ]) {
+  const expectedZipRequiredEntries = [
+    `${releasePaths.appFileName}/Contents/Info.plist`,
+    `${releasePaths.appFileName}/Contents/Resources/hermes-agent-bundle/hermes-agent/pyproject.toml`,
+    `${releasePaths.appFileName}/Contents/Resources/hermes-agent-bundle/hermes-bundle.json`,
+    `${releasePaths.appFileName}/Contents/_CodeSignature/CodeResources`,
+  ];
+  assert(
+    expected.zipRequiredEntries.join("\n") ===
+      expectedZipRequiredEntries.join("\n"),
+    `Manifest ZIP required entries expected ${expectedZipRequiredEntries.join(", ")}, got ${expected.zipRequiredEntries.join(", ")}`,
+  );
+  for (const requiredEntry of expectedZipRequiredEntries) {
     assert(
       zipEntries.split("\n").includes(requiredEntry),
       `ZIP required entry missing: ${requiredEntry}`,
