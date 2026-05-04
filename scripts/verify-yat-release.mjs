@@ -217,6 +217,16 @@ export function parseReleaseManifest(
   manifest,
   paths = readPackageReleasePaths(root),
 ) {
+  const sourceRepoSection = sectionBetween(
+    manifest,
+    "Source repo:",
+    "Local repo:",
+  );
+  const localRepoSection = sectionBetween(
+    manifest,
+    "Local repo:",
+    "Application identity:",
+  );
   const dmgSection = sectionBetween(
     manifest,
     paths.dmgRelativePath,
@@ -269,6 +279,12 @@ export function parseReleaseManifest(
       /^.+ ([^\s]+) macOS release manifest$/m,
       "manifest title version",
     ),
+    sourceRepo: matchOne(
+      sourceRepoSection,
+      /^ {2}(.+)$/m,
+      "manifest source repo",
+    ),
+    localRepo: matchOne(localRepoSection, /^ {2}(.+)$/m, "manifest local repo"),
     productName: matchOne(
       identitySection,
       /^ {2}Product name: (.+)$/m,
@@ -417,6 +433,7 @@ function main() {
   );
   const docsManifest = readFileSync(docsManifestPath, "utf8");
   const distManifest = readFileSync(distManifestPath, "utf8");
+  const sourceRepo = run("git", ["config", "--get", "remote.origin.url"]);
 
   assert(
     docsManifest === distManifest,
@@ -431,6 +448,14 @@ function main() {
   assert(
     expected.titleVersion === releasePaths.version,
     `Manifest title version expected ${releasePaths.version}, got ${expected.titleVersion}`,
+  );
+  assert(
+    expected.sourceRepo === sourceRepo,
+    `Manifest source repo expected ${sourceRepo}, got ${expected.sourceRepo}`,
+  );
+  assert(
+    expected.localRepo === root,
+    `Manifest local repo expected ${root}, got ${expected.localRepo}`,
   );
   assert(
     expected.productName === releasePaths.productName,

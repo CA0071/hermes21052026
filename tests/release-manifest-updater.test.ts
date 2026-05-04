@@ -15,6 +15,12 @@ const paths = {
 
 const manifest = `Yat 0.3.2 macOS release manifest
 
+Source repo:
+  old-source-repo
+
+Local repo:
+  /old/local/repo
+
 Application identity:
   Product name: OldYat
   Bundle identifier: dev.old.desktop
@@ -61,6 +67,8 @@ ZIP verification:
 
 const values = {
   appSize: "392M",
+  sourceRepo: "https://github.com/fathah/hermes-desktop.git",
+  localRepo: "/Users/yat/hermes-desktop-yat",
   dmgSize: "155M",
   dmgSha: "f6096993966b59c8cf52d633e73988b44d7a45f4daab971db08fa85e0f03938c",
   zipSize: "151M",
@@ -108,6 +116,10 @@ describe("refreshManifestText", () => {
   it("updates artifact, metadata, and ZIP statistics fields", () => {
     const refreshed = refreshManifestText(manifest, values, paths);
     expect(refreshed).toContain("Yat 0.4.0 macOS release manifest");
+    expect(refreshed).toContain(
+      "Source repo:\n  https://github.com/fathah/hermes-desktop.git",
+    );
+    expect(refreshed).toContain("Local repo:\n  /Users/yat/hermes-desktop-yat");
     expect(refreshed).toContain("  Product name: Yat");
     expect(refreshed).toContain("  Bundle identifier: dev.yat.desktop");
     expect(refreshed).toContain("dist/mac-arm64/Yat.app\n    size: 392M");
@@ -135,5 +147,18 @@ describe("refreshManifestText", () => {
     expect(() => refreshManifestText(brokenManifest, values, paths)).toThrow(
       "Could not update manifest field: app size",
     );
+  });
+
+  it("throws a targeted error when repository values are missing", () => {
+    expect(() =>
+      refreshManifestText(
+        manifest,
+        {
+          ...values,
+          sourceRepo: "",
+        },
+        paths,
+      ),
+    ).toThrow("Manifest source repo value is required");
   });
 });

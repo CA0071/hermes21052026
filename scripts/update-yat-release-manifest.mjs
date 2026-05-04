@@ -59,17 +59,36 @@ function replaceOne(text, pattern, replacement, label) {
   return text.replace(pattern, replacement);
 }
 
+function requireValue(value, label) {
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error(`Manifest ${label} value is required`);
+  }
+  return value;
+}
+
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function normalizeReleasePaths(manifest, paths) {
+function normalizeReleasePaths(manifest, paths, repositories) {
   let nextManifest = manifest;
   nextManifest = replaceOne(
     nextManifest,
     /^[^\n]+ macOS release manifest$/m,
     `${paths.productName} ${paths.version} macOS release manifest`,
     "manifest title",
+  );
+  nextManifest = replaceOne(
+    nextManifest,
+    /Source repo:\n {2}.+/,
+    `Source repo:\n  ${requireValue(repositories.sourceRepo, "source repo")}`,
+    "source repo",
+  );
+  nextManifest = replaceOne(
+    nextManifest,
+    /Local repo:\n {2}.+/,
+    `Local repo:\n  ${requireValue(repositories.localRepo, "local repo")}`,
+    "local repo",
   );
   nextManifest = replaceOne(
     nextManifest,
@@ -134,7 +153,10 @@ export function refreshManifestText(
   values,
   paths = readPackageReleasePaths(root),
 ) {
-  let nextManifest = normalizeReleasePaths(manifest, paths);
+  let nextManifest = normalizeReleasePaths(manifest, paths, {
+    sourceRepo: values.sourceRepo,
+    localRepo: values.localRepo,
+  });
   nextManifest = replaceOne(
     nextManifest,
     new RegExp(`${escapeRegExp(paths.appRelativePath)}\\n {4}size: .+`),
@@ -202,6 +224,8 @@ function main() {
       bundleSize: duSize(bundleRootPath),
       metadata,
       metadataSha: sha256(bundleMetadataPath),
+      sourceRepo: run("git", ["config", "--get", "remote.origin.url"]),
+      localRepo: root,
       zipInfo: parseZipInfo(zipPath),
       zipFileSize: statSize(zipPath),
     },

@@ -14,6 +14,12 @@ const paths = {
 
 const manifest = `Yat 0.4.0 macOS release manifest
 
+Source repo:
+  https://github.com/fathah/hermes-desktop.git
+
+Local repo:
+  /Users/yat/hermes-desktop-yat
+
 Application identity:
   Product name: Yat
   Bundle identifier: dev.yat.desktop
@@ -79,6 +85,8 @@ describe("parseReleaseManifest", () => {
     expect(parseReleaseManifest(manifest, paths)).toEqual({
       titleProductName: "Yat",
       titleVersion: "0.4.0",
+      sourceRepo: "https://github.com/fathah/hermes-desktop.git",
+      localRepo: "/Users/yat/hermes-desktop-yat",
       productName: "Yat",
       bundleIdentifier: "dev.yat.desktop",
       appRelativePath: "dist/mac-arm64/Yat.app",
@@ -145,6 +153,26 @@ describe("parseReleaseManifest", () => {
     );
     expect(() => parseReleaseManifest(brokenManifest, paths)).toThrow(
       "Could not read manifest bundle identifier",
+    );
+  });
+
+  it("throws a targeted error when source repo is missing", () => {
+    const brokenManifest = manifest.replace(
+      "  https://github.com/fathah/hermes-desktop.git\n",
+      "",
+    );
+    expect(() => parseReleaseManifest(brokenManifest, paths)).toThrow(
+      "Could not read manifest source repo",
+    );
+  });
+
+  it("throws a targeted error when local repo is missing", () => {
+    const brokenManifest = manifest.replace(
+      "  /Users/yat/hermes-desktop-yat\n",
+      "",
+    );
+    expect(() => parseReleaseManifest(brokenManifest, paths)).toThrow(
+      "Could not read manifest local repo",
     );
   });
 
