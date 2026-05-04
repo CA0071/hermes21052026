@@ -56,7 +56,12 @@ Verification already performed:
   zipinfo -t dist/Yat-0.3.2-arm64-mac.zip
 
 Mounted DMG verification:
-  mountpoint contained Yat.app and Applications symlink
+  mountpoint contained OldYat.app and Applications symlink
+  mounted app CFBundleDisplayName: OldYat
+  mounted app CFBundleIdentifier: dev.old.desktop
+  mounted app size: old-mounted-app
+  mounted Hermes bundle size: old-mounted-bundle
+  mounted app codesign verification: old-codesign-result
 
 ZIP verification:
   entries: 1
@@ -138,8 +143,13 @@ describe("refreshManifestText", () => {
     expect(refreshed).toContain("  compressed total: 157688391 bytes");
     expect(refreshed).toContain("hdiutil verify dist/yat-0.4.0.dmg");
     expect(refreshed).toContain("zipinfo -t dist/Yat-0.4.0-arm64-mac.zip");
+    expect(refreshed).toContain(
+      "Mounted DMG verification:\n  mountpoint contained Yat.app and Applications symlink\n  mounted app CFBundleDisplayName: Yat\n  mounted app CFBundleIdentifier: dev.yat.desktop\n  mounted app size: 392M\n  mounted Hermes bundle size: 74M\n  mounted app codesign verification: valid on disk, satisfies designated requirement",
+    );
     expect(refreshed).not.toContain("dist/yat-0.3.2.dmg");
     expect(refreshed).not.toContain("dist/Yat-0.3.2-arm64-mac.zip");
+    expect(refreshed).not.toContain("OldYat");
+    expect(refreshed).not.toContain("dev.old.desktop");
   });
 
   it("throws a targeted error when a manifest field is missing", () => {

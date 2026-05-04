@@ -142,6 +142,36 @@ function normalizeReleasePaths(manifest, paths, repositories) {
     /mountpoint contained [^/\n]+\.app and Applications symlink/,
     `mountpoint contained ${paths.appFileName} and Applications symlink`,
   );
+  nextManifest = replaceOne(
+    nextManifest,
+    /^ {2}mounted app CFBundleDisplayName: .+$/m,
+    `  mounted app CFBundleDisplayName: ${paths.productName}`,
+    "mounted app display name",
+  );
+  nextManifest = replaceOne(
+    nextManifest,
+    /^ {2}mounted app CFBundleIdentifier: .+$/m,
+    `  mounted app CFBundleIdentifier: ${paths.appId}`,
+    "mounted app bundle identifier",
+  );
+  nextManifest = replaceOne(
+    nextManifest,
+    /^ {2}mounted app size: .+$/m,
+    `  mounted app size: ${requireValue(repositories.mountedAppSize, "mounted app size")}`,
+    "mounted app size",
+  );
+  nextManifest = replaceOne(
+    nextManifest,
+    /^ {2}mounted Hermes bundle size: .+$/m,
+    `  mounted Hermes bundle size: ${requireValue(repositories.mountedBundleSize, "mounted Hermes bundle size")}`,
+    "mounted Hermes bundle size",
+  );
+  nextManifest = replaceOne(
+    nextManifest,
+    /^ {2}mounted app codesign verification: .+$/m,
+    "  mounted app codesign verification: valid on disk, satisfies designated requirement",
+    "mounted app codesign verification",
+  );
   nextManifest = nextManifest.replace(
     /^ {4}[^/\n]+\.app\/Contents\/Info\.plist$/m,
     `    ${paths.appFileName}/Contents/Info.plist`,
@@ -168,6 +198,8 @@ export function refreshManifestText(
 ) {
   let nextManifest = normalizeReleasePaths(manifest, paths, {
     generatedDate: values.generatedDate,
+    mountedAppSize: values.appSize,
+    mountedBundleSize: values.bundleSize,
     sourceRepo: values.sourceRepo,
     localRepo: values.localRepo,
   });
