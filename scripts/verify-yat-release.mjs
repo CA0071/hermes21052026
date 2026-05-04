@@ -9,6 +9,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 const root = resolve(new URL("..", import.meta.url).pathname);
 const docsManifestPath = join(root, "docs", "YAT_RELEASE_MANIFEST.txt");
@@ -182,6 +183,67 @@ function verifyMountedDmg() {
   }
 }
 
+export function parseReleaseManifest(manifest) {
+  const dmgSection = sectionBetween(
+    manifest,
+    "dist/yat-0.3.2.dmg",
+    "dist/Yat-0.3.2-arm64-mac.zip",
+  );
+  const zipSection = sectionBetween(
+    manifest,
+    "dist/Yat-0.3.2-arm64-mac.zip",
+    "Bundled Hermes Agent:",
+  );
+  const bundleSection = sectionBetween(
+    manifest,
+    "Bundled Hermes Agent:",
+    "Verification already performed:",
+  );
+  const zipVerificationSection = sectionBetween(
+    manifest,
+    "ZIP verification:",
+    undefined,
+  );
+
+  return {
+    dmgSha: matchOne(dmgSection, /sha256: ([a-f0-9]{64})/, "DMG sha256"),
+    zipSha: matchOne(zipSection, /sha256: ([a-f0-9]{64})/, "ZIP sha256"),
+    metadataSha: matchOne(
+      bundleSection,
+      /metadata sha256: ([a-f0-9]{64})/,
+      "Hermes metadata sha256",
+    ),
+    zipEntries: Number(
+      matchOne(
+        zipVerificationSection,
+        /^ {2}entries: (\d+)$/m,
+        "ZIP entry count",
+      ),
+    ),
+    zipFileSize: Number(
+      matchOne(
+        zipVerificationSection,
+        /^ {2}zip file size: (\d+) bytes$/m,
+        "ZIP file size",
+      ),
+    ),
+    zipUncompressed: Number(
+      matchOne(
+        zipVerificationSection,
+        /^ {2}uncompressed total: (\d+) bytes$/m,
+        "ZIP uncompressed total",
+      ),
+    ),
+    zipCompressed: Number(
+      matchOne(
+        zipVerificationSection,
+        /^ {2}compressed total: (\d+) bytes$/m,
+        "ZIP compressed total",
+      ),
+    ),
+  };
+}
+
 function printFailure(error) {
   const message = error instanceof Error ? error.message : String(error);
   console.error("Yat release verification failed");
@@ -209,70 +271,7 @@ function main() {
     "docs/YAT_RELEASE_MANIFEST.txt and dist/YAT_RELEASE_MANIFEST.txt differ",
   );
 
-  const dmgSection = sectionBetween(
-    docsManifest,
-    "dist/yat-0.3.2.dmg",
-    "dist/Yat-0.3.2-arm64-mac.zip",
-  );
-  const zipSection = sectionBetween(
-    docsManifest,
-    "dist/Yat-0.3.2-arm64-mac.zip",
-    "Bundled Hermes Agent:",
-  );
-  const bundleSection = sectionBetween(
-    docsManifest,
-    "Bundled Hermes Agent:",
-    "Verification already performed:",
-  );
-  const zipVerificationSection = sectionBetween(
-    docsManifest,
-    "ZIP verification:",
-    undefined,
-  );
-
-  const expectedDmgSha = matchOne(
-    dmgSection,
-    /sha256: ([a-f0-9]{64})/,
-    "DMG sha256",
-  );
-  const expectedZipSha = matchOne(
-    zipSection,
-    /sha256: ([a-f0-9]{64})/,
-    "ZIP sha256",
-  );
-  const expectedMetadataSha = matchOne(
-    bundleSection,
-    /metadata sha256: ([a-f0-9]{64})/,
-    "Hermes metadata sha256",
-  );
-  const expectedZipEntries = Number(
-    matchOne(
-      zipVerificationSection,
-      /^ {2}entries: (\d+)$/m,
-      "ZIP entry count",
-    ),
-  );
-  const expectedZipFileSize = Number(
-    matchOne(
-      zipVerificationSection,
-      /^ {2}zip file size: (\d+) bytes$/m,
-      "ZIP file size",
-    ),
-  );
-  const expectedZipUncompressed = Number(
-    matchOne(
-      zipVerificationSection,
-      /^ {2}uncompressed total: (\d+) bytes$/m,
-      "ZIP uncompressed total",
-    ),
-  );
-  const expectedZipCompressed = Number(
-    matchOne(
-      zipVerificationSection,
-      /^ {2}compressed total: (\d+) bytes$/m,
-      "ZIP compressed total",
-    ),
-  );
+  const expected = parseReleaseManifest(docsManifest);
 
   for (const [path, label] of [
     [appPath, "Yat.app"],
@@ -287,19 +286,19 @@ function main() {
   }
 
   assert(
-    sha256(dmgPath) === expectedDmgSha,
+    sha256(dmgPath) === expected.dmgSha,
     "DMG SHA-256 does not match manifest",
   );
   assert(
-    sha256(zipPath) === expectedZipSha,
+    sha256(zipPath) === expected.zipSha,
     "ZIP SHA-256 does not match manifest",
   );
   assert(
-    sha256(bundleMetadataPath) === expectedMetadataSha,
+    sha256(bundleMetadataPath) === expected.metadataSha,
     "Hermes metadata SHA-256 does not match manifest",
   );
   assert(
-    sha256(packagedMetadataPath) === expectedMetadataSha,
+    sha256(packagedMetadataPath) === expected.metadataSha,
     "Packaged Hermes metadata SHA-256 does not match manifest",
   );
 
@@ -326,19 +325,19 @@ function main() {
   );
   assert(zipInfoMatch, `Could not parse zipinfo output: ${zipInfo}`);
   assert(
-    Number(zipInfoMatch[1]) === expectedZipEntries,
+    Number(zipInfoMatch[1]) === expected.zipEntries,
     "ZIP entry count does not match manifest",
   );
   assert(
-    Number(zipInfoMatch[2]) === expectedZipUncompressed,
+    Number(zipInfoMatch[2]) === expected.zipUncompressed,
     "ZIP uncompressed total does not match manifest",
   );
   assert(
-    Number(zipInfoMatch[3]) === expectedZipCompressed,
+    Number(zipInfoMatch[3]) === expected.zipCompressed,
     "ZIP compressed total does not match manifest",
   );
   assert(
-    statSync(zipPath).size === expectedZipFileSize,
+    statSync(zipPath).size === expected.zipFileSize,
     "ZIP file size does not match manifest",
   );
 
@@ -364,14 +363,20 @@ function main() {
   }
 
   console.log("Yat release verification passed");
-  console.log(`DMG SHA-256: ${expectedDmgSha}`);
-  console.log(`ZIP SHA-256: ${expectedZipSha}`);
-  console.log(`Hermes metadata SHA-256: ${expectedMetadataSha}`);
+  console.log(`DMG SHA-256: ${expected.dmgSha}`);
+  console.log(`ZIP SHA-256: ${expected.zipSha}`);
+  console.log(`Hermes metadata SHA-256: ${expected.metadataSha}`);
 }
 
-try {
-  main();
-} catch (error) {
-  printFailure(error);
-  process.exitCode = 1;
+const isCli =
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(resolve(process.argv[1])).href;
+
+if (isCli) {
+  try {
+    main();
+  } catch (error) {
+    printFailure(error);
+    process.exitCode = 1;
+  }
 }
