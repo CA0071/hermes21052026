@@ -150,8 +150,8 @@ function verifyMountedDmg({ dmgPath, releasePaths }) {
       `Mounted CFBundleDisplayName expected ${releasePaths.productName}, got ${displayName}`,
     );
     assert(
-      bundleId === "dev.yat.desktop",
-      `Mounted CFBundleIdentifier expected dev.yat.desktop, got ${bundleId}`,
+      bundleId === releasePaths.appId,
+      `Mounted CFBundleIdentifier expected ${releasePaths.appId}, got ${bundleId}`,
     );
     run("codesign", [
       "--verify",
@@ -312,9 +312,13 @@ function main() {
     "CFBundleDisplayName",
     releasePaths.productName,
   );
-  verifyPlistValue(appInfoPath, "CFBundleIdentifier", "dev.yat.desktop");
+  verifyPlistValue(appInfoPath, "CFBundleIdentifier", releasePaths.appId);
   verifyPlistValue(appInfoPath, "CFBundleExecutable", releasePaths.productName);
-  verifyPlistValue(appInfoPath, "LSMinimumSystemVersion", "12.0");
+  verifyPlistValue(
+    appInfoPath,
+    "LSMinimumSystemVersion",
+    releasePaths.minimumMacos,
+  );
 
   const archInfo = run("lipo", [
     "-info",

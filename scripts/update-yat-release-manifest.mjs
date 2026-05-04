@@ -79,6 +79,12 @@ function normalizeReleasePaths(manifest, paths) {
   );
   nextManifest = replaceOne(
     nextManifest,
+    / {2}Bundle identifier: .+/,
+    `  Bundle identifier: ${paths.appId}`,
+    "bundle identifier",
+  );
+  nextManifest = replaceOne(
+    nextManifest,
     / {2}packaged path: .+\/Contents\/Resources\/hermes-agent-bundle/,
     `  packaged path: ${paths.appFileName}/Contents/Resources/hermes-agent-bundle`,
     "packaged Hermes path",

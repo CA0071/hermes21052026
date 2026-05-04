@@ -4,6 +4,7 @@ const { parseZipInfoOutput, refreshManifestText } =
   await import("../scripts/update-yat-release-manifest.mjs");
 
 const paths = {
+  appId: "dev.yat.desktop",
   productName: "Yat",
   version: "0.4.0",
   appFileName: "Yat.app",
@@ -16,7 +17,7 @@ const manifest = `Yat 0.3.2 macOS release manifest
 
 Application identity:
   Product name: OldYat
-  Bundle identifier: dev.yat.desktop
+  Bundle identifier: dev.old.desktop
 
 Artifacts:
   dist/mac-arm64/Yat.app
@@ -108,6 +109,7 @@ describe("refreshManifestText", () => {
     const refreshed = refreshManifestText(manifest, values, paths);
     expect(refreshed).toContain("Yat 0.4.0 macOS release manifest");
     expect(refreshed).toContain("  Product name: Yat");
+    expect(refreshed).toContain("  Bundle identifier: dev.yat.desktop");
     expect(refreshed).toContain("dist/mac-arm64/Yat.app\n    size: 392M");
     expect(refreshed).toContain(
       "dist/yat-0.4.0.dmg\n    size: 155M\n    sha256: f6096993966b59c8cf52d633e73988b44d7a45f4daab971db08fa85e0f03938c",
