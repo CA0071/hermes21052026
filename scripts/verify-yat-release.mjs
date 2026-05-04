@@ -386,6 +386,11 @@ export function parseReleaseManifest(
       /^ {2}mounted Hermes bundle size: (.+)$/m,
       "mounted Hermes bundle size",
     ),
+    mountedCodesignVerification: matchOne(
+      mountedDmgSection,
+      /^ {2}mounted app codesign verification: (.+)$/m,
+      "mounted app codesign verification",
+    ),
     dmgSha: matchOne(dmgSection, /sha256: ([a-f0-9]{64})/, "DMG sha256"),
     zipSha: matchOne(zipSection, /sha256: ([a-f0-9]{64})/, "ZIP sha256"),
     metadataSha: matchOne(
@@ -557,6 +562,11 @@ function main() {
   assert(
     expected.mountedBundleIdentifier === releasePaths.appId,
     `Manifest mounted app bundle identifier expected ${releasePaths.appId}, got ${expected.mountedBundleIdentifier}`,
+  );
+  assert(
+    expected.mountedCodesignVerification ===
+      "valid on disk, satisfies designated requirement",
+    `Manifest mounted app codesign verification expected valid on disk, satisfies designated requirement, got ${expected.mountedCodesignVerification}`,
   );
   const expectedVerificationCommands = [
     "npm run typecheck",

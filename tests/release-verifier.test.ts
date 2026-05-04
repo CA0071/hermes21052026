@@ -117,6 +117,8 @@ describe("parseReleaseManifest", () => {
       mountedBundleIdentifier: "dev.yat.desktop",
       mountedAppSize: "392M",
       mountedBundleSize: "74M",
+      mountedCodesignVerification:
+        "valid on disk, satisfies designated requirement",
       dmgSha:
         "f6096993966b59c8cf52d633e73988b44d7a45f4daab971db08fa85e0f03938c",
       zipSha:
@@ -229,6 +231,16 @@ describe("parseReleaseManifest", () => {
     const brokenManifest = manifest.replace("  mounted app size: 392M\n", "");
     expect(() => parseReleaseManifest(brokenManifest, paths)).toThrow(
       "Could not read mounted app size",
+    );
+  });
+
+  it("throws a targeted error when mounted codesign verification is missing", () => {
+    const brokenManifest = manifest.replace(
+      "  mounted app codesign verification: valid on disk, satisfies designated requirement\n",
+      "",
+    );
+    expect(() => parseReleaseManifest(brokenManifest, paths)).toThrow(
+      "Could not read mounted app codesign verification",
     );
   });
 
