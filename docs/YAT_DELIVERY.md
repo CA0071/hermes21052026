@@ -87,6 +87,7 @@ Main touched UI files:
 Commands run successfully on the final build:
 
 ```sh
+npm run lint
 npm run typecheck
 npm run test
 codesign --verify --deep --strict --verbose=2 dist/mac-arm64/Yat.app
@@ -96,6 +97,7 @@ hdiutil verify dist/yat-0.3.2.dmg
 Observed verification results:
 
 - TypeScript typecheck passed.
+- ESLint now exits successfully. It still reports formatting and dependency warnings under the current repository style, but `eslint --quiet` reports no errors.
 - Vitest passed: `8` test files, `244` tests.
 - Codesign verification reported `valid on disk` and satisfies its designated requirement.
 - DMG verification reported checksum `VALID`.

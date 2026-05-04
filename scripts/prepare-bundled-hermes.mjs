@@ -5,8 +5,7 @@ import { homedir } from "node:os";
 
 const root = resolve(new URL("..", import.meta.url).pathname);
 const source =
-  process.env.HERMES_AGENT_SOURCE ||
-  join(homedir(), ".hermes", "hermes-agent");
+  process.env.HERMES_AGENT_SOURCE || join(homedir(), ".hermes", "hermes-agent");
 const bundleRoot = join(root, "resources", "hermes-agent-bundle");
 const bundledAgentDir = join(bundleRoot, "hermes-agent");
 const metadataPath = join(bundleRoot, "hermes-bundle.json");
@@ -17,6 +16,7 @@ if (!existsSync(join(source, "pyproject.toml"))) {
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 function git(args) {
   try {
     return execFileSync("git", ["-C", source, ...args], {

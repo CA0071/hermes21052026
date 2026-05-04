@@ -33,7 +33,7 @@ function generateTitle(message: string): string {
   let text = message.trim();
 
   // Remove markdown formatting
-  text = text.replace(/[#*_`~\[\]()]/g, "");
+  text = text.replace(/[#*_`~[\]()]/g, "");
   // Remove URLs
   text = text.replace(/https?:\/\/\S+/g, "");
   // Remove extra whitespace
@@ -102,7 +102,7 @@ export function syncSessionCache(): CachedSession[] {
     }>;
 
     const existingIds = new Set(cache.sessions.map((s) => s.id));
-    let newSessions: CachedSession[] = [];
+    const newSessions: CachedSession[] = [];
 
     for (const row of rows) {
       if (existingIds.has(row.id)) {
