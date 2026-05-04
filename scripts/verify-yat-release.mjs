@@ -242,6 +242,11 @@ export function parseReleaseManifest(
     "Bundled Hermes Agent:",
     "Verification already performed:",
   );
+  const performedSection = sectionBetween(
+    manifest,
+    "Verification already performed:",
+    "Mounted DMG verification:",
+  );
   const mountedDmgSection = sectionBetween(
     manifest,
     "Mounted DMG verification:",
@@ -305,6 +310,9 @@ export function parseReleaseManifest(
       "Hermes short commit",
     ),
     bundleRef: matchOne(bundleSection, /^ {2}ref: (.+)$/m, "Hermes ref"),
+    verificationCommands: [...performedSection.matchAll(/^ {2}(.+)$/gm)].map(
+      (match) => match[1],
+    ),
     mountedAppFileName: matchOne(
       mountedDmgSection,
       /^ {2}mountpoint contained ([^/\n]+\.app) and Applications symlink$/m,
@@ -472,6 +480,23 @@ function main() {
   assert(
     expected.mountedBundleIdentifier === releasePaths.appId,
     `Manifest mounted app bundle identifier expected ${releasePaths.appId}, got ${expected.mountedBundleIdentifier}`,
+  );
+  const expectedVerificationCommands = [
+    "npm run typecheck",
+    "npm run test",
+    `codesign --verify --deep --strict --verbose=2 ${releasePaths.appRelativePath}`,
+    `hdiutil verify ${releasePaths.dmgRelativePath}`,
+    `Computer Use smoke check on packaged ${releasePaths.appFileName}`,
+    `hdiutil attach ${releasePaths.dmgRelativePath} -readonly -nobrowse -mountpoint /Volumes/YatVerify`,
+    `codesign --verify --deep --strict --verbose=2 /Volumes/YatVerify/${releasePaths.appFileName}`,
+    "hdiutil detach /Volumes/YatVerify",
+    `unzip -t ${releasePaths.zipRelativePath}`,
+    `zipinfo -t ${releasePaths.zipRelativePath}`,
+  ];
+  assert(
+    expected.verificationCommands.join("\n") ===
+      expectedVerificationCommands.join("\n"),
+    `Manifest verification commands expected ${expectedVerificationCommands.join(" | ")}, got ${expected.verificationCommands.join(" | ")}`,
   );
 
   for (const [path, label] of [

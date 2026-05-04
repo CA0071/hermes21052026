@@ -41,6 +41,15 @@ Bundled Hermes Agent:
   metadata sha256: 9c2cdbcb9e08635b5c6564c680dee423341f02806318bc9b2fdcdf4d76dd86a0
 
 Verification already performed:
+  npm run typecheck
+  npm run test
+  codesign --verify --deep --strict --verbose=2 dist/mac-arm64/Yat.app
+  hdiutil verify dist/yat-0.4.0.dmg
+  Computer Use smoke check on packaged Yat.app
+  hdiutil attach dist/yat-0.4.0.dmg -readonly -nobrowse -mountpoint /Volumes/YatVerify
+  codesign --verify --deep --strict --verbose=2 /Volumes/YatVerify/Yat.app
+  hdiutil detach /Volumes/YatVerify
+  unzip -t dist/Yat-0.4.0-arm64-mac.zip
   zipinfo -t dist/Yat-0.4.0-arm64-mac.zip
 
 Mounted DMG verification:
@@ -79,6 +88,18 @@ describe("parseReleaseManifest", () => {
       bundleCommit: "5d3be898a8671eb9fb99cf18f43165502f54e7f4",
       bundleShortCommit: "5d3be898a867",
       bundleRef: "v2026.4.30-188-g5d3be898a-dirty",
+      verificationCommands: [
+        "npm run typecheck",
+        "npm run test",
+        "codesign --verify --deep --strict --verbose=2 dist/mac-arm64/Yat.app",
+        "hdiutil verify dist/yat-0.4.0.dmg",
+        "Computer Use smoke check on packaged Yat.app",
+        "hdiutil attach dist/yat-0.4.0.dmg -readonly -nobrowse -mountpoint /Volumes/YatVerify",
+        "codesign --verify --deep --strict --verbose=2 /Volumes/YatVerify/Yat.app",
+        "hdiutil detach /Volumes/YatVerify",
+        "unzip -t dist/Yat-0.4.0-arm64-mac.zip",
+        "zipinfo -t dist/Yat-0.4.0-arm64-mac.zip",
+      ],
       mountedAppFileName: "Yat.app",
       mountedDisplayName: "Yat",
       mountedBundleIdentifier: "dev.yat.desktop",
@@ -152,6 +173,26 @@ describe("parseReleaseManifest", () => {
     expect(() => parseReleaseManifest(brokenManifest, paths)).toThrow(
       "Could not read mounted app bundle identifier",
     );
+  });
+
+  it("returns an empty command list when performed verification commands are missing", () => {
+    const brokenManifest = manifest.replace(
+      `  npm run typecheck
+  npm run test
+  codesign --verify --deep --strict --verbose=2 dist/mac-arm64/Yat.app
+  hdiutil verify dist/yat-0.4.0.dmg
+  Computer Use smoke check on packaged Yat.app
+  hdiutil attach dist/yat-0.4.0.dmg -readonly -nobrowse -mountpoint /Volumes/YatVerify
+  codesign --verify --deep --strict --verbose=2 /Volumes/YatVerify/Yat.app
+  hdiutil detach /Volumes/YatVerify
+  unzip -t dist/Yat-0.4.0-arm64-mac.zip
+  zipinfo -t dist/Yat-0.4.0-arm64-mac.zip
+`,
+      "",
+    );
+    expect(parseReleaseManifest(brokenManifest, paths)).toMatchObject({
+      verificationCommands: [],
+    });
   });
 
   it("throws a targeted error when the manifest title is missing", () => {
