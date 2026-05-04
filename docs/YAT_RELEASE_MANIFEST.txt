@@ -1,0 +1,67 @@
+Yat 0.3.2 macOS release manifest
+Generated: 2026-05-04
+
+Source repo:
+  https://github.com/fathah/hermes-desktop.git
+
+Local repo:
+  /Users/yat/hermes-desktop-yat
+
+Application identity:
+  Product name: Yat
+  Bundle identifier: dev.yat.desktop
+
+Artifacts:
+  dist/mac-arm64/Yat.app
+    size: 392M
+
+  dist/yat-0.3.2.dmg
+    size: 155M
+    sha256: cb55b813021ca103e3f30f9bea6b1ddb85797580f4e69ebeccd6a93f7676b2ef
+
+  dist/Yat-0.3.2-arm64-mac.zip
+    size: 151M
+    sha256: a8ca1be7569c19383ff516163e17f87e5dc317654a6285c52038e0a898a69b25
+
+Bundled Hermes Agent:
+  bundle path: resources/hermes-agent-bundle
+  packaged path: Yat.app/Contents/Resources/hermes-agent-bundle
+  size: 74M
+  source: /Users/yat/.hermes/hermes-agent
+  commit: 5d3be898a8671eb9fb99cf18f43165502f54e7f4
+  short commit: 5d3be898a867
+  ref: v2026.4.30-188-g5d3be898a-dirty
+  metadata sha256: 70aba8b8e5651b7ed565be66072ca05b463ae23ed63330b2aa33c68b05fd5118
+
+Verification already performed:
+  npm run typecheck
+  npm run test
+  codesign --verify --deep --strict --verbose=2 dist/mac-arm64/Yat.app
+  hdiutil verify dist/yat-0.3.2.dmg
+  Computer Use smoke check on packaged Yat.app
+  hdiutil attach dist/yat-0.3.2.dmg -readonly -nobrowse -mountpoint /Volumes/YatVerify
+  codesign --verify --deep --strict --verbose=2 /Volumes/YatVerify/Yat.app
+  hdiutil detach /Volumes/YatVerify
+  unzip -t dist/Yat-0.3.2-arm64-mac.zip
+  zipinfo -t dist/Yat-0.3.2-arm64-mac.zip
+
+Mounted DMG verification:
+  mountpoint contained Yat.app and Applications symlink
+  mounted app CFBundleDisplayName: Yat
+  mounted app CFBundleIdentifier: dev.yat.desktop
+  mounted app size: 392M
+  mounted Hermes bundle size: 74M
+  mounted app codesign verification: valid on disk, satisfies designated requirement
+
+ZIP verification:
+  unzip test result: No errors detected in compressed data
+  entries: 4182
+  zip file size: 158835543 bytes
+  uncompressed total: 403775192 bytes
+  compressed total: 157685965 bytes
+  compression ratio: 60.9%
+  required entries found:
+    Yat.app/Contents/Info.plist
+    Yat.app/Contents/Resources/hermes-agent-bundle/hermes-agent/pyproject.toml
+    Yat.app/Contents/Resources/hermes-agent-bundle/hermes-bundle.json
+    Yat.app/Contents/_CodeSignature/CodeResources

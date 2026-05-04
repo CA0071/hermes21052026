@@ -102,6 +102,7 @@ Observed verification results:
 - `Info.plist` reports `CFBundleDisplayName=Yat`, `CFBundleExecutable=Yat`, and `CFBundleIdentifier=dev.yat.desktop`.
 - Computer Use verified the packaged app opens with window title `Yat`, app id `dev.yat.desktop`, and sidebar brand `Yat / Hermes Agent inside`.
 - The DMG was mounted read-only at `/Volumes/YatVerify`; its `Yat.app` reported `CFBundleDisplayName=Yat`, `CFBundleIdentifier=dev.yat.desktop`, contained the `74M` Hermes bundle, and passed deep strict codesign verification from the mounted volume.
+- The ZIP was tested with `unzip -t` and reported no compressed-data errors; `zipinfo` reports `4182` entries and required entries for `Info.plist`, `hermes-bundle.json`, Hermes `pyproject.toml`, and `_CodeSignature/CodeResources`.
 
 ## Build Commands
 
