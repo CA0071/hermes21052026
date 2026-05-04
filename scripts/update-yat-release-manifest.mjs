@@ -66,6 +66,14 @@ function replaceOne(text, pattern, replacement, label) {
   return text.replace(pattern, replacement);
 }
 
+function replaceAllRequired(text, pattern, replacement, label) {
+  const probe = new RegExp(pattern.source, pattern.flags);
+  if (!probe.test(text)) {
+    throw new Error(`Could not update manifest field: ${label}`);
+  }
+  return text.replace(pattern, replacement);
+}
+
 function requireValue(value, label) {
   if (typeof value !== "string" || value.length === 0) {
     throw new Error(`Manifest ${label} value is required`);
@@ -122,21 +130,29 @@ function normalizeReleasePaths(manifest, paths, repositories) {
     "packaged Hermes path",
   );
 
-  nextManifest = nextManifest.replace(
+  nextManifest = replaceAllRequired(
+    nextManifest,
     /dist\/mac-[^/\s]+\/[^/\s]+\.app/g,
     paths.appRelativePath,
+    "app path references",
   );
-  nextManifest = nextManifest.replace(
+  nextManifest = replaceAllRequired(
+    nextManifest,
     /dist\/[^\s]+\.dmg/g,
     paths.dmgRelativePath,
+    "DMG path references",
   );
-  nextManifest = nextManifest.replace(
+  nextManifest = replaceAllRequired(
+    nextManifest,
     /dist\/[^\s]+\.zip/g,
     paths.zipRelativePath,
+    "ZIP path references",
   );
-  nextManifest = nextManifest.replace(
+  nextManifest = replaceAllRequired(
+    nextManifest,
     /\/Volumes\/YatVerify\/[^/\s]+\.app/g,
     `/Volumes/YatVerify/${paths.appFileName}`,
+    "mounted app path references",
   );
   nextManifest = replaceOne(
     nextManifest,

@@ -215,4 +215,23 @@ describe("refreshManifestText", () => {
       "Could not update manifest field: ZIP required Hermes metadata entry",
     );
   });
+
+  it("throws a targeted error when global path references are missing", () => {
+    const brokenManifest = manifest
+      .replace(
+        [
+          "  dist/Yat-0.3.2-arm64-mac.zip",
+          "    size: old-zip",
+          "    sha256: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n",
+        ].join("\n"),
+        "",
+      )
+      .replace(
+        / {2}(?:unzip -t|zipinfo -t) dist\/Yat-0\.3\.2-arm64-mac\.zip\n/g,
+        "",
+      );
+    expect(() => refreshManifestText(brokenManifest, values, paths)).toThrow(
+      "Could not update manifest field: ZIP path references",
+    );
+  });
 });
