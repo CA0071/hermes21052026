@@ -94,6 +94,8 @@ codesign --verify --deep --strict --verbose=2 dist/mac-arm64/Yat.app
 hdiutil verify dist/yat-0.3.2.dmg
 ```
 
+The final distributables were rebuilt after the lint gate was fixed, so the release manifest records the post-lint artifact hashes.
+
 Observed verification results:
 
 - TypeScript typecheck passed.
