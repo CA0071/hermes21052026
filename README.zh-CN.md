@@ -78,10 +78,10 @@ npm run typecheck
 npm run test
 ```
 
-当前新增 release verifier 测试后的预期测试数量：
+当前新增 release 验证覆盖后的预期测试数量：
 
 ```text
-9 个测试文件 / 247 个测试
+11 个测试文件 / 253 个测试
 ```
 
 ## 构建

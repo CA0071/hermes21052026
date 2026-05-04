@@ -78,10 +78,10 @@ npm run typecheck
 npm run test
 ```
 
-Current expected test count after the release verifier coverage was added:
+Current expected test count after the release verification coverage was added:
 
 ```text
-9 test files / 247 tests
+11 test files / 253 tests
 ```
 
 ## Build

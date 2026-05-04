@@ -100,7 +100,9 @@ Observed verification results:
 
 - TypeScript typecheck passed.
 - ESLint now exits successfully. It still reports formatting and dependency warnings under the current repository style, but `eslint --quiet` reports no errors.
-- Vitest passed: `8` test files, `244` tests.
+- Vitest passed: `11` test files, `253` tests.
+- `npm run manifest:release` refreshes the docs and dist release manifests from the current package version and artifact paths.
+- `npm run verify:release:no-mount` passes on the current system; full `npm run verify:release` still requires macOS DiskManagement/DiskArbitration to be available for DMG mounting.
 - Codesign verification reported `valid on disk` and satisfies its designated requirement.
 - DMG verification reported checksum `VALID`.
 - `Info.plist` reports `CFBundleDisplayName=Yat`, `CFBundleExecutable=Yat`, and `CFBundleIdentifier=dev.yat.desktop`.
