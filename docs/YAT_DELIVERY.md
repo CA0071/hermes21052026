@@ -128,6 +128,12 @@ Build macOS distributables:
 npm run build:mac
 ```
 
+Refresh release manifest after a rebuild:
+
+```sh
+npm run manifest:release
+```
+
 Verify release artifacts:
 
 ```sh

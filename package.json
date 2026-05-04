@@ -23,6 +23,7 @@
     "build:mac": "npm run prepare:hermes && electron-vite build && electron-builder --mac",
     "build:linux": "electron-vite build && electron-builder --linux",
     "build:rpm": "npm run build && electron-builder --linux rpm",
+    "manifest:release": "node scripts/update-yat-release-manifest.mjs",
     "verify:release": "node scripts/verify-yat-release.mjs",
     "verify:release:no-mount": "node scripts/verify-yat-release.mjs --skip-mount",
     "test:watch": "vitest"
