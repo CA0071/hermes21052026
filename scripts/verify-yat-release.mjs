@@ -10,7 +10,10 @@ import {
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { readPackageReleasePaths } from "./yat-release-paths.mjs";
+import {
+  readPackageReleasePaths,
+  releaseVerificationCommands,
+} from "./yat-release-paths.mjs";
 
 const root = resolve(new URL("..", import.meta.url).pathname);
 const docsManifestPath = join(root, "docs", "YAT_RELEASE_MANIFEST.txt");
@@ -585,18 +588,8 @@ function main() {
       "valid on disk, satisfies designated requirement",
     `Manifest mounted app codesign verification expected valid on disk, satisfies designated requirement, got ${expected.mountedCodesignVerification}`,
   );
-  const expectedVerificationCommands = [
-    "npm run typecheck",
-    "npm run test",
-    `codesign --verify --deep --strict --verbose=2 ${releasePaths.appRelativePath}`,
-    `hdiutil verify ${releasePaths.dmgRelativePath}`,
-    `Computer Use smoke check on packaged ${releasePaths.appFileName}`,
-    `hdiutil attach ${releasePaths.dmgRelativePath} -readonly -nobrowse -mountpoint /Volumes/YatVerify`,
-    `codesign --verify --deep --strict --verbose=2 /Volumes/YatVerify/${releasePaths.appFileName}`,
-    "hdiutil detach /Volumes/YatVerify",
-    `unzip -t ${releasePaths.zipRelativePath}`,
-    `zipinfo -t ${releasePaths.zipRelativePath}`,
-  ];
+  const expectedVerificationCommands =
+    releaseVerificationCommands(releasePaths);
   assert(
     expected.verificationCommands.join("\n") ===
       expectedVerificationCommands.join("\n"),

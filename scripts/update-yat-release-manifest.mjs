@@ -3,7 +3,10 @@ import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { readPackageReleasePaths } from "./yat-release-paths.mjs";
+import {
+  readPackageReleasePaths,
+  releaseVerificationCommands,
+} from "./yat-release-paths.mjs";
 
 const root = resolve(new URL("..", import.meta.url).pathname);
 const docsManifestPath = join(root, "docs", "YAT_RELEASE_MANIFEST.txt");
@@ -153,6 +156,17 @@ function normalizeReleasePaths(manifest, paths, repositories) {
     /\/Volumes\/YatVerify\/[^/\s]+\.app/g,
     `/Volumes/YatVerify/${paths.appFileName}`,
     "mounted app path references",
+  );
+  nextManifest = replaceOne(
+    nextManifest,
+    /Verification already performed:\n(?: {2}.+\n)+\nMounted DMG verification:/,
+    [
+      "Verification already performed:",
+      ...releaseVerificationCommands(paths).map((command) => `  ${command}`),
+      "",
+      "Mounted DMG verification:",
+    ].join("\n"),
+    "verification commands",
   );
   nextManifest = replaceOne(
     nextManifest,

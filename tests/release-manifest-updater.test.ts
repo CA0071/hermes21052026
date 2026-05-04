@@ -149,6 +149,9 @@ describe("refreshManifestText", () => {
     expect(refreshed).toContain("hdiutil verify dist/yat-0.4.0.dmg");
     expect(refreshed).toContain("zipinfo -t dist/Yat-0.4.0-arm64-mac.zip");
     expect(refreshed).toContain(
+      "Verification already performed:\n  npm run typecheck\n  npm run test\n  codesign --verify --deep --strict --verbose=2 dist/mac-arm64/Yat.app\n  hdiutil verify dist/yat-0.4.0.dmg\n  Computer Use smoke check on packaged Yat.app\n  hdiutil attach dist/yat-0.4.0.dmg -readonly -nobrowse -mountpoint /Volumes/YatVerify\n  codesign --verify --deep --strict --verbose=2 /Volumes/YatVerify/Yat.app\n  hdiutil detach /Volumes/YatVerify\n  unzip -t dist/Yat-0.4.0-arm64-mac.zip\n  zipinfo -t dist/Yat-0.4.0-arm64-mac.zip\n\nMounted DMG verification:",
+    );
+    expect(refreshed).toContain(
       "Mounted DMG verification:\n  mountpoint contained Yat.app and Applications symlink\n  mounted app CFBundleDisplayName: Yat\n  mounted app CFBundleIdentifier: dev.yat.desktop\n  mounted app size: 392M\n  mounted Hermes bundle size: 74M\n  mounted app codesign verification: valid on disk, satisfies designated requirement",
     );
     expect(refreshed).toContain(
@@ -213,6 +216,36 @@ describe("refreshManifestText", () => {
     );
     expect(() => refreshManifestText(brokenManifest, values, paths)).toThrow(
       "Could not update manifest field: ZIP required Hermes metadata entry",
+    );
+  });
+
+  it("rewrites verification commands to the canonical release list", () => {
+    const staleManifest = manifest.replace(
+      /Verification already performed:\n(?: {2}.+\n)+\nMounted DMG verification:/,
+      [
+        "Verification already performed:",
+        "  codesign --verify --deep --strict --verbose=2 /Volumes/YatVerify/OldYat.app",
+        "  zipinfo -t dist/OldYat-0.1.0-arm64-mac.zip",
+        "  hdiutil verify dist/old-yat-0.1.0.dmg",
+        "",
+        "Mounted DMG verification:",
+      ].join("\n"),
+    );
+    const refreshed = refreshManifestText(staleManifest, values, paths);
+    expect(refreshed).toContain(
+      "Verification already performed:\n  npm run typecheck\n  npm run test\n  codesign --verify --deep --strict --verbose=2 dist/mac-arm64/Yat.app\n  hdiutil verify dist/yat-0.4.0.dmg\n  Computer Use smoke check on packaged Yat.app\n  hdiutil attach dist/yat-0.4.0.dmg -readonly -nobrowse -mountpoint /Volumes/YatVerify\n  codesign --verify --deep --strict --verbose=2 /Volumes/YatVerify/Yat.app\n  hdiutil detach /Volumes/YatVerify\n  unzip -t dist/Yat-0.4.0-arm64-mac.zip\n  zipinfo -t dist/Yat-0.4.0-arm64-mac.zip\n\nMounted DMG verification:",
+    );
+    expect(refreshed).not.toContain("dist/old-yat-0.1.0.dmg");
+    expect(refreshed).not.toContain("dist/OldYat-0.1.0-arm64-mac.zip");
+  });
+
+  it("throws a targeted error when verification commands are missing", () => {
+    const brokenManifest = manifest.replace(
+      "Verification already performed:\n",
+      "",
+    );
+    expect(() => refreshManifestText(brokenManifest, values, paths)).toThrow(
+      "Could not update manifest field: verification commands",
     );
   });
 

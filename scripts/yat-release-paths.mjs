@@ -62,6 +62,21 @@ export function releasePathsForPackage(packageJson, options = {}) {
   };
 }
 
+export function releaseVerificationCommands(paths) {
+  return [
+    "npm run typecheck",
+    "npm run test",
+    `codesign --verify --deep --strict --verbose=2 ${paths.appRelativePath}`,
+    `hdiutil verify ${paths.dmgRelativePath}`,
+    `Computer Use smoke check on packaged ${paths.appFileName}`,
+    `hdiutil attach ${paths.dmgRelativePath} -readonly -nobrowse -mountpoint /Volumes/YatVerify`,
+    `codesign --verify --deep --strict --verbose=2 /Volumes/YatVerify/${paths.appFileName}`,
+    "hdiutil detach /Volumes/YatVerify",
+    `unzip -t ${paths.zipRelativePath}`,
+    `zipinfo -t ${paths.zipRelativePath}`,
+  ];
+}
+
 export function readPackageReleasePaths(root, options = {}) {
   const builderIdentity = parseElectronBuilderIdentity(
     readFileSync(join(root, "electron-builder.yml"), "utf8"),
