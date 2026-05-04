@@ -4,11 +4,17 @@ const { parseReleaseManifest } =
   await import("../scripts/verify-yat-release.mjs");
 
 const paths = {
+  productName: "Yat",
+  appId: "dev.yat.desktop",
   dmgRelativePath: "dist/yat-0.4.0.dmg",
   zipRelativePath: "dist/Yat-0.4.0-arm64-mac.zip",
 };
 
 const manifest = `Yat 0.4.0 macOS release manifest
+
+Application identity:
+  Product name: Yat
+  Bundle identifier: dev.yat.desktop
 
 Artifacts:
   dist/mac-arm64/Yat.app
@@ -40,6 +46,8 @@ ZIP verification:
 describe("parseReleaseManifest", () => {
   it("parses release hashes and ZIP statistics", () => {
     expect(parseReleaseManifest(manifest, paths)).toEqual({
+      productName: "Yat",
+      bundleIdentifier: "dev.yat.desktop",
       dmgSha:
         "f6096993966b59c8cf52d633e73988b44d7a45f4daab971db08fa85e0f03938c",
       zipSha:
@@ -66,6 +74,16 @@ describe("parseReleaseManifest", () => {
     );
     expect(() => parseReleaseManifest(brokenManifest, paths)).toThrow(
       "Could not read ZIP compressed total",
+    );
+  });
+
+  it("throws a targeted error when release identity is missing", () => {
+    const brokenManifest = manifest.replace(
+      "  Bundle identifier: dev.yat.desktop\n",
+      "",
+    );
+    expect(() => parseReleaseManifest(brokenManifest, paths)).toThrow(
+      "Could not read manifest bundle identifier",
     );
   });
 });

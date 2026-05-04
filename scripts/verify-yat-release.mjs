@@ -182,6 +182,11 @@ export function parseReleaseManifest(
     paths.zipRelativePath,
     "Bundled Hermes Agent:",
   );
+  const identitySection = sectionBetween(
+    manifest,
+    "Application identity:",
+    "Artifacts:",
+  );
   const bundleSection = sectionBetween(
     manifest,
     "Bundled Hermes Agent:",
@@ -194,6 +199,16 @@ export function parseReleaseManifest(
   );
 
   return {
+    productName: matchOne(
+      identitySection,
+      /^ {2}Product name: (.+)$/m,
+      "manifest product name",
+    ),
+    bundleIdentifier: matchOne(
+      identitySection,
+      /^ {2}Bundle identifier: (.+)$/m,
+      "manifest bundle identifier",
+    ),
     dmgSha: matchOne(dmgSection, /sha256: ([a-f0-9]{64})/, "DMG sha256"),
     zipSha: matchOne(zipSection, /sha256: ([a-f0-9]{64})/, "ZIP sha256"),
     metadataSha: matchOne(
@@ -277,6 +292,14 @@ function main() {
   );
 
   const expected = parseReleaseManifest(docsManifest, releasePaths);
+  assert(
+    expected.productName === releasePaths.productName,
+    `Manifest product name expected ${releasePaths.productName}, got ${expected.productName}`,
+  );
+  assert(
+    expected.bundleIdentifier === releasePaths.appId,
+    `Manifest bundle identifier expected ${releasePaths.appId}, got ${expected.bundleIdentifier}`,
+  );
 
   for (const [path, label] of [
     [appPath, "Yat.app"],
