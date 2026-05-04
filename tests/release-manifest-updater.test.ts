@@ -216,7 +216,36 @@ describe("refreshManifestText", () => {
     );
   });
 
-  it("throws a targeted error when global path references are missing", () => {
+  it("throws a targeted error when app path references are missing", () => {
+    const brokenManifest = manifest.replace(
+      ["  dist/mac-arm64/Yat.app", "    size: old-app\n"].join("\n"),
+      "",
+    );
+    expect(() => refreshManifestText(brokenManifest, values, paths)).toThrow(
+      "Could not update manifest field: app path references",
+    );
+  });
+
+  it("throws a targeted error when DMG path references are missing", () => {
+    const brokenManifest = manifest
+      .replace(
+        [
+          "  dist/yat-0.3.2.dmg",
+          "    size: old-dmg",
+          "    sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+        ].join("\n"),
+        "",
+      )
+      .replace(
+        / {2}hdiutil (?:verify dist\/yat-0\.3\.2\.dmg|attach dist\/yat-0\.3\.2\.dmg .+)\n/g,
+        "",
+      );
+    expect(() => refreshManifestText(brokenManifest, values, paths)).toThrow(
+      "Could not update manifest field: DMG path references",
+    );
+  });
+
+  it("throws a targeted error when ZIP path references are missing", () => {
     const brokenManifest = manifest
       .replace(
         [
@@ -232,6 +261,16 @@ describe("refreshManifestText", () => {
       );
     expect(() => refreshManifestText(brokenManifest, values, paths)).toThrow(
       "Could not update manifest field: ZIP path references",
+    );
+  });
+
+  it("throws a targeted error when mounted app path references are missing", () => {
+    const brokenManifest = manifest.replace(
+      "  codesign --verify --deep --strict --verbose=2 /Volumes/YatVerify/Yat.app\n",
+      "",
+    );
+    expect(() => refreshManifestText(brokenManifest, values, paths)).toThrow(
+      "Could not update manifest field: mounted app path references",
     );
   });
 });
