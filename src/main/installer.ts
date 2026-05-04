@@ -1,8 +1,15 @@
-import { spawn, execSync, execFile } from "child_process";
-import { existsSync, readFileSync, readdirSync } from "fs";
+import { spawn, execSync, execFile, execFileSync } from "child_process";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+} from "fs";
 import { join } from "path";
 import { homedir } from "os";
-import type { BrowserWindow } from "electron";
+import { app, type BrowserWindow } from "electron";
 import { getModelConfig, getConnectionConfig } from "./config";
 import { stripAnsi } from "./utils";
 import { setupAskpass, AskpassHandle } from "./askpass";
@@ -430,6 +437,149 @@ const STAGE_MARKERS: { pattern: RegExp; step: number; title: string }[] = [
   },
 ];
 
+function bundledHermesAgentDir(): string | null {
+  const candidates = [
+    join(process.resourcesPath, "hermes-agent-bundle", "hermes-agent"),
+    join(app.getAppPath(), "resources", "hermes-agent-bundle", "hermes-agent"),
+    join(process.cwd(), "resources", "hermes-agent-bundle", "hermes-agent"),
+  ];
+  return candidates.find((dir) => existsSync(join(dir, "pyproject.toml"))) ?? null;
+}
+
+function bundledHermesMetadataPath(): string | null {
+  const candidates = [
+    join(process.resourcesPath, "hermes-agent-bundle", "hermes-bundle.json"),
+    join(app.getAppPath(), "resources", "hermes-agent-bundle", "hermes-bundle.json"),
+    join(process.cwd(), "resources", "hermes-agent-bundle", "hermes-bundle.json"),
+  ];
+  return candidates.find((file) => existsSync(file)) ?? null;
+}
+
+function findUvCommand(home: string): string | null {
+  const candidates = [
+    "uv",
+    join(home, ".local", "bin", "uv"),
+    join(home, ".cargo", "bin", "uv"),
+    "/opt/homebrew/bin/uv",
+    "/usr/local/bin/uv",
+  ];
+  for (const candidate of candidates) {
+    try {
+      execFileSync(candidate, ["--version"], {
+        env: { ...process.env, PATH: getEnhancedPath(), HOME: home },
+        stdio: ["ignore", "ignore", "ignore"],
+        timeout: 10000,
+      });
+      return candidate;
+    } catch {
+      /* try next candidate */
+    }
+  }
+  return null;
+}
+
+async function runBundledInstall(
+  sourceDir: string,
+  onProgress: (progress: InstallProgress) => void,
+): Promise<void> {
+  const totalSteps = 7;
+  let log = "";
+  const home = homedir();
+
+  function emit(step: number, title: string, text: string): void {
+    log += text;
+    onProgress({
+      step,
+      totalSteps,
+      title,
+      detail: text.trim().slice(0, 120),
+      log,
+    });
+  }
+
+  emit(1, "Checking bundled Hermes Agent", "Using bundled Hermes Agent source.\n");
+  const metadataPath = bundledHermesMetadataPath();
+  if (metadataPath) {
+    try {
+      const metadata = JSON.parse(readFileSync(metadataPath, "utf-8")) as {
+        ref?: string;
+        shortCommit?: string;
+      };
+      emit(
+        1,
+        "Checking bundled Hermes Agent",
+        `Bundle: ${metadata.ref ?? metadata.shortCommit ?? "unknown"}\n`,
+      );
+    } catch {
+      /* metadata is informational only */
+    }
+  }
+
+  emit(2, "Preparing Hermes home", `Creating ${HERMES_HOME}\n`);
+  mkdirSync(HERMES_HOME, { recursive: true, mode: 0o700 });
+
+  emit(3, "Copying bundled agent", `Copying bundled source to ${HERMES_REPO}\n`);
+  rmSync(HERMES_REPO, { recursive: true, force: true });
+  cpSync(sourceDir, HERMES_REPO, { recursive: true, verbatimSymlinks: true });
+
+  emit(4, "Setting up package manager", "Checking uv package manager...\n");
+  const uv = findUvCommand(home);
+  if (!uv) {
+    throw new Error(
+      "Bundled Hermes Agent source is available, but uv is not installed. Install uv or use the online installer.",
+    );
+  }
+  emit(4, "Setting up package manager", `uv found: ${uv}\n`);
+
+  await new Promise<void>((resolve, reject) => {
+    emit(5, "Creating Python environment", "Creating Hermes venv with Python 3.11...\n");
+    const proc = spawn(uv, ["venv", "venv", "--python", "3.11"], {
+      cwd: HERMES_REPO,
+      env: { ...process.env, PATH: getEnhancedPath(), HOME: home, TERM: "dumb" },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    proc.stdout?.on("data", (data: Buffer) =>
+      emit(5, "Creating Python environment", stripAnsi(data.toString())),
+    );
+    proc.stderr?.on("data", (data: Buffer) =>
+      emit(5, "Creating Python environment", stripAnsi(data.toString())),
+    );
+    proc.on("close", (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(`uv venv failed (exit code ${code}).`));
+    });
+    proc.on("error", (err) => reject(err));
+  });
+
+  await new Promise<void>((resolve, reject) => {
+    emit(6, "Installing dependencies", "Installing Hermes Python dependencies...\n");
+    const proc = spawn(uv, ["pip", "install", "-e", ".[all]"], {
+      cwd: HERMES_REPO,
+      env: {
+        ...process.env,
+        PATH: getEnhancedPath(),
+        HOME: home,
+        TERM: "dumb",
+        VIRTUAL_ENV: HERMES_VENV,
+      },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    proc.stdout?.on("data", (data: Buffer) =>
+      emit(6, "Installing dependencies", stripAnsi(data.toString())),
+    );
+    proc.stderr?.on("data", (data: Buffer) =>
+      emit(6, "Installing dependencies", stripAnsi(data.toString())),
+    );
+    proc.on("close", (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(`Hermes dependency install failed (exit code ${code}).`));
+    });
+    proc.on("error", (err) => reject(err));
+  });
+
+  emit(7, "Finishing setup", "Bundled Hermes Agent installation complete.\n");
+}
+
 export async function runInstall(
   onProgress: (progress: InstallProgress) => void,
   parentWindow?: BrowserWindow | null,
@@ -460,7 +610,19 @@ export async function runInstall(
     });
   }
 
-  emit("Running official Hermes install script...\n");
+  const bundledDir = bundledHermesAgentDir();
+  if (bundledDir) {
+    try {
+      await runBundledInstall(bundledDir, onProgress);
+      return;
+    } catch (err) {
+      emit(
+        `Bundled install failed: ${(err as Error).message}\nFalling back to official Hermes install script...\n`,
+      );
+    }
+  } else {
+    emit("No bundled Hermes Agent source found. Running official Hermes install script...\n");
+  }
 
   // Bridge any sudo prompts from install.sh to a GUI password dialog.
   // Windows has no sudo, so skip the bridge there.

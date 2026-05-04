@@ -14,7 +14,7 @@ function SplashScreen({ onFinished }: SplashScreenProps): React.JSX.Element {
   return (
     <div className="splash-screen">
       <img className="splash-bg" src={splashBg} alt="" />
-      <img className="splash-logo" src={splashLogo} alt="Hermes Agent" />
+      <img className="splash-logo" src={splashLogo} alt="Yat" />
     </div>
   );
 }

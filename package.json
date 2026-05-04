@@ -1,11 +1,12 @@
 {
-  "name": "hermes-desktop",
+  "name": "yat",
   "version": "0.3.2",
-  "description": "Hermes Agent Desktop — self-improving AI assistant",
+  "description": "Yat — desktop AI workspace powered by Hermes Agent",
   "main": "./out/main/index.js",
-  "author": "fathah",
+  "author": "Yat",
   "homepage": "https://github.com/fathah/hermes-desktop",
   "scripts": {
+    "prepare:hermes": "node scripts/prepare-bundled-hermes.mjs",
     "format": "prettier --write .",
     "lint": "eslint --cache .",
     "test": "vitest run",
@@ -19,7 +20,7 @@
     "postinstall": "electron-builder install-app-deps",
     "build:unpack": "npm run build && electron-builder --dir",
     "build:win": "npm run build && electron-builder --win",
-    "build:mac": "electron-vite build && electron-builder --mac",
+    "build:mac": "npm run prepare:hermes && electron-vite build && electron-builder --mac",
     "build:linux": "electron-vite build && electron-builder --linux",
     "build:rpm": "npm run build && electron-builder --linux rpm",
     "test:watch": "vitest"

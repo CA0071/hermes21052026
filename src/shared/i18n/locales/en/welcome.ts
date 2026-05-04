@@ -1,13 +1,13 @@
 export default {
-  title: "Welcome to Hermes",
+  title: "Welcome to Yat",
   subtitle:
-    "Your self-improving AI assistant that runs locally on your machine. Private, powerful, and always learning.",
+    "A Codex-style desktop workspace powered by a bundled Hermes Agent. Private, local-first, and built for real work.",
   installIssueTitle: "Installation Issue",
   getStarted: "Get Started",
   retryInstall: "Retry Installation",
   terminalInstallHint: "Install via terminal, then come back:",
   recheck: "I've installed it — check again",
-  installSizeHint: "This will install required components (~2 GB)",
+  installSizeHint: "Yat includes Hermes Agent source and will prepare the local runtime on first launch.",
   copyInstallCommand: "Copy install command",
   dividerOr: "or",
   connectRemote: "Connect to Remote Hermes",

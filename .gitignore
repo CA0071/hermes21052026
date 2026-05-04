@@ -7,6 +7,7 @@ node_modules/
 # Build output
 dist/
 out/
+resources/hermes-agent-bundle/
 
 # TypeScript incremental build info
 *.tsbuildinfo

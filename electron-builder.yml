@@ -1,5 +1,5 @@
-appId: com.nousresearch.hermes
-productName: Hermes Agent
+appId: dev.yat.desktop
+productName: Yat
 directories:
   buildResources: build
 files:
@@ -11,8 +11,13 @@ files:
   - "!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}"
 asarUnpack:
   - resources/**
+extraResources:
+  - from: resources/hermes-agent-bundle
+    to: hermes-agent-bundle
+    filter:
+      - "**/*"
 win:
-  executableName: hermes-agent
+  executableName: yat
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
@@ -39,13 +44,12 @@ linux:
     - deb
     - rpm
   maintainer: electronjs.org
-  vendor: Nous Research
+  vendor: Yat
   category: Utility
-  synopsis: Self-improving AI assistant desktop app
+  synopsis: Yat desktop AI workspace
   description: >-
-    Hermes Desktop is a native desktop app for installing, configuring, and chatting
-    with Hermes Agent — a self-improving AI assistant with tool use, multi-platform
-    messaging, and a closed learning loop.
+    Yat is a native desktop AI workspace powered by bundled Hermes Agent source,
+    tool use, multi-platform messaging, and a closed learning loop.
 appImage:
   artifactName: ${name}-${version}.${ext}
 rpm:

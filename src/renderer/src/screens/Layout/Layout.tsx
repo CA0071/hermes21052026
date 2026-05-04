@@ -160,7 +160,13 @@ function Layout(): React.JSX.Element {
     <div className="layout">
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <img src={hermeslogo} height={30} alt="" />
+          <div className="sidebar-brand-mark">
+            <img src={hermeslogo} height={28} alt="" />
+          </div>
+          <div className="sidebar-brand-copy">
+            <div className="sidebar-brand-name">Yat</div>
+            <div className="sidebar-brand-subtitle">Hermes Agent inside</div>
+          </div>
         </div>
 
         <nav className="sidebar-nav">

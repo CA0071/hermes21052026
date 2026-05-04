@@ -15,6 +15,6 @@ describe("I18nProvider", () => {
       </I18nProvider>,
     );
 
-    expect(screen.getByText("Welcome to Hermes")).toBeInTheDocument();
+    expect(screen.getByText("Welcome to Yat")).toBeInTheDocument();
   });
 });
