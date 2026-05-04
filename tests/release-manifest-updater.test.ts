@@ -187,4 +187,14 @@ describe("refreshManifestText", () => {
       ),
     ).toThrow("Manifest generated date value is required");
   });
+
+  it("throws a targeted error when mounted app file name is missing", () => {
+    const brokenManifest = manifest.replace(
+      "  mountpoint contained OldYat.app and Applications symlink\n",
+      "",
+    );
+    expect(() => refreshManifestText(brokenManifest, values, paths)).toThrow(
+      "Could not update manifest field: mounted app file name",
+    );
+  });
 });

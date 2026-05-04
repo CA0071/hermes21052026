@@ -138,9 +138,11 @@ function normalizeReleasePaths(manifest, paths, repositories) {
     /\/Volumes\/YatVerify\/[^/\s]+\.app/g,
     `/Volumes/YatVerify/${paths.appFileName}`,
   );
-  nextManifest = nextManifest.replace(
-    /mountpoint contained [^/\n]+\.app and Applications symlink/,
-    `mountpoint contained ${paths.appFileName} and Applications symlink`,
+  nextManifest = replaceOne(
+    nextManifest,
+    /^ {2}mountpoint contained [^/\n]+\.app and Applications symlink$/m,
+    `  mountpoint contained ${paths.appFileName} and Applications symlink`,
+    "mounted app file name",
   );
   nextManifest = replaceOne(
     nextManifest,
