@@ -13,15 +13,15 @@ Application identity:
 
 Artifacts:
   dist/mac-arm64/Yat.app
-    size: 402M
+    size: 442M
 
   dist/yat-0.3.2.dmg
-    size: 160M
-    sha256: 5bda69634f99242ebf7fa96a29a876b10a0b0684ffcd34a5ad7a090b982daa7b
+    size: 176M
+    sha256: e993eeec32d70152fbb152c7f15366a0bb2c563be8de078d8fb0b92533f2a527
 
   dist/Yat-0.3.2-arm64-mac.zip
-    size: 161M
-    sha256: ab9c67f83795354fb33b4ad85ce22f012ce0aa932604d205abc768981c4dac93
+    size: 177M
+    sha256: 86ac279e4c9a4b88dfe8d6face91c0c13b99ea9ef7adbdc688cace03797f3649
 
 Bundled Hermes Agent:
   bundle path: resources/hermes-agent-bundle
@@ -31,7 +31,7 @@ Bundled Hermes Agent:
   commit: 54e78cadb2e6d16a4f82185b2dc81c9dc176a813
   short commit: 54e78cadb2e6
   ref: v2026.4.30-393-g54e78cadb-dirty
-  metadata sha256: 1e3677b86ad0cdaa1bc716431c5cffb5a11312a9c4e6c9aa830e781279c7bf3e
+  metadata sha256: 1f8675315c31d920ad2638d626d997bb4ba004213c7826516926e36b145e7e8b
 
 Verification already performed:
   npm run typecheck
@@ -49,19 +49,20 @@ Mounted DMG verification:
   mountpoint contained Yat.app and Applications symlink
   mounted app CFBundleDisplayName: Yat
   mounted app CFBundleIdentifier: dev.yat.desktop
-  mounted app size: 402M
+  mounted app size: 442M
   mounted Hermes bundle size: 83M
   mounted app codesign verification: valid on disk, satisfies designated requirement
 
 ZIP verification:
   unzip test result: No errors detected in compressed data
-  entries: 4211
-  zip file size: 159030778 bytes
-  uncompressed total: 404547193 bytes
-  compressed total: 157872232 bytes
-  compression ratio: 61.0%
+  entries: 4214
+  zip file size: 177029527 bytes
+  uncompressed total: 447646031 bytes
+  compressed total: 175870521 bytes
+  compression ratio: 60.7%
   required entries found:
     Yat.app/Contents/Info.plist
     Yat.app/Contents/Resources/hermes-agent-bundle/hermes-agent/pyproject.toml
     Yat.app/Contents/Resources/hermes-agent-bundle/hermes-bundle.json
+    Yat.app/Contents/Resources/uv/macos-arm64/uv
     Yat.app/Contents/_CodeSignature/CodeResources

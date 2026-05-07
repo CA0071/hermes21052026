@@ -16,6 +16,10 @@ extraResources:
     to: hermes-agent-bundle
     filter:
       - "**/*"
+  - from: resources/uv
+    to: uv
+    filter:
+      - "**/*"
 win:
   executableName: yat
 nsis:

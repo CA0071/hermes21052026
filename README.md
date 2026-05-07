@@ -32,7 +32,7 @@ Current bundled metadata:
 - Bundle path: `resources/hermes-agent-bundle`
 - Packaged path: `Yat.app/Contents/Resources/hermes-agent-bundle`
 
-On first-run setup, Yat looks for the packaged Hermes source first, copies it to `~/.hermes/hermes-agent`, ensures `uv` is installed if missing, creates a Python 3.11 environment with `uv`, and installs Hermes dependencies with `uv pip install -e .[all]`. It falls back to the official online installer only if the bundled setup is unavailable or fails.
+On first-run setup, Yat looks for the packaged Hermes source first, copies it to `~/.hermes/hermes-agent`, uses the bundled macOS arm64 `uv` binary if available, creates a Python 3.11 environment with `uv`, and installs Hermes dependencies with `uv pip install -e .[all]`. It falls back to installing `uv` online only if the bundled binary is missing or unusable, then falls back to the official online installer only if the bundled Hermes setup is unavailable or fails.
 
 ## Install
 

@@ -61,7 +61,7 @@ Excluded from the bundle:
 
 1. Find `hermes-agent-bundle/hermes-agent`.
 2. Copy it into `~/.hermes/hermes-agent`.
-3. Ensure `uv` is installed; if missing, install it automatically.
+3. Use the bundled `resources/uv/macos-arm64/uv` binary first; fall back to system `uv` or online `uv` bootstrap only if needed.
 4. Create a Hermes virtual environment with `uv venv venv --python 3.11`.
 5. Install dependencies with `uv pip install -e .[all]`.
 6. Fall back to the official online Hermes install script only if bundled setup is unavailable or fails.

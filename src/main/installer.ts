@@ -457,6 +457,9 @@ function bundledHermesMetadataPath(): string | null {
 
 function findUvCommand(home: string): string | null {
   const candidates = [
+    join(process.resourcesPath, "uv", "macos-arm64", "uv"),
+    join(app.getAppPath(), "resources", "uv", "macos-arm64", "uv"),
+    join(process.cwd(), "resources", "uv", "macos-arm64", "uv"),
     "uv",
     join(home, ".local", "bin", "uv"),
     join(home, ".cargo", "bin", "uv"),
@@ -488,7 +491,7 @@ async function installUvIfMissing(
   emit(
     4,
     "Setting up package manager",
-    "uv is the Python package/environment manager used by Hermes. uv was not found, installing it automatically...\n",
+    "uv is the Python package/environment manager used by Hermes. uv was not found in the app bundle or on this Mac, installing it automatically...\n",
   );
 
   await new Promise<void>((resolve, reject) => {

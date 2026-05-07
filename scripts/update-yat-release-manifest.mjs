@@ -224,6 +224,12 @@ function normalizeReleasePaths(manifest, paths, repositories) {
   );
   nextManifest = replaceOne(
     nextManifest,
+    /^ {4}[^/\n]+\.app\/Contents\/Resources\/uv\/macos-arm64\/uv$/m,
+    `    ${paths.appFileName}/Contents/Resources/uv/macos-arm64/uv`,
+    "ZIP required bundled uv entry",
+  );
+  nextManifest = replaceOne(
+    nextManifest,
     /^ {4}[^/\n]+\.app\/Contents\/_CodeSignature\/CodeResources$/m,
     `    ${paths.appFileName}/Contents/_CodeSignature/CodeResources`,
     "ZIP required CodeResources entry",

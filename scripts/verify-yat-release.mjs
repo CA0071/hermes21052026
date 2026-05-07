@@ -498,11 +498,7 @@ function main() {
     "hermes-agent-bundle",
   );
   const packagedMetadataPath = join(packagedBundleRoot, "hermes-bundle.json");
-  const packagedHermesPyprojectPath = join(
-    packagedBundleRoot,
-    "hermes-agent",
-    "pyproject.toml",
-  );
+  const packagedUvPath = join(appPath, "Contents", "Resources", "uv", "macos-arm64", "uv");
   const docsManifest = readFileSync(docsManifestPath, "utf8");
   const distManifest = readFileSync(distManifestPath, "utf8");
   const today = localDateStamp();
@@ -555,6 +551,15 @@ function main() {
       `${releasePaths.appFileName}/Contents/Resources/hermes-agent-bundle`,
     `Manifest packaged Hermes bundle path expected ${releasePaths.appFileName}/Contents/Resources/hermes-agent-bundle, got ${expected.packagedBundlePath}`,
   );
+  requirePath(join(root, "resources", "uv", "macos-arm64", "uv"), "Bundled uv binary");
+  assert(
+    run(join(root, "resources", "uv", "macos-arm64", "uv"), ["--version"]).startsWith("uv "),
+    "Bundled uv binary did not report a uv version",
+  );
+  assert(
+    run("file", [join(root, "resources", "uv", "macos-arm64", "uv")]).includes("arm64"),
+    "Bundled uv binary is expected to be macOS arm64",
+  );
   assert(
     expected.bundleSource === bundleMetadata.source,
     `Manifest Hermes source expected ${bundleMetadata.source}, got ${expected.bundleSource}`,
@@ -604,7 +609,7 @@ function main() {
     [bundleRootPath, "Hermes bundle"],
     [bundleMetadataPath, "Hermes metadata"],
     [packagedMetadataPath, "Packaged Hermes metadata"],
-    [packagedHermesPyprojectPath, "Packaged Hermes pyproject"],
+    [packagedUvPath, "Packaged uv binary"],
   ]) {
     requirePath(path, label);
   }
@@ -726,6 +731,7 @@ function main() {
     `${releasePaths.appFileName}/Contents/Info.plist`,
     `${releasePaths.appFileName}/Contents/Resources/hermes-agent-bundle/hermes-agent/pyproject.toml`,
     `${releasePaths.appFileName}/Contents/Resources/hermes-agent-bundle/hermes-bundle.json`,
+    `${releasePaths.appFileName}/Contents/Resources/uv/macos-arm64/uv`,
     `${releasePaths.appFileName}/Contents/_CodeSignature/CodeResources`,
   ];
   assert(
