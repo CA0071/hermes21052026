@@ -61,9 +61,10 @@ Excluded from the bundle:
 
 1. Find `hermes-agent-bundle/hermes-agent`.
 2. Copy it into `~/.hermes/hermes-agent`.
-3. Create a Hermes virtual environment with `uv venv venv --python 3.11`.
-4. Install dependencies with `uv pip install -e .[all]`.
-5. Fall back to the official online Hermes install script only if bundled setup is unavailable or fails.
+3. Ensure `uv` is installed; if missing, install it automatically.
+4. Create a Hermes virtual environment with `uv venv venv --python 3.11`.
+5. Install dependencies with `uv pip install -e .[all]`.
+6. Fall back to the official online Hermes install script only if bundled setup is unavailable or fails.
 
 ## UI Direction
 

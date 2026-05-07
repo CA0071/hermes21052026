@@ -1,5 +1,5 @@
 Yat 0.3.2 macOS release manifest
-Generated: 2026-05-04
+Generated: 2026-05-07
 
 Source repo:
   https://github.com/fathah/hermes-desktop.git
@@ -13,25 +13,25 @@ Application identity:
 
 Artifacts:
   dist/mac-arm64/Yat.app
-    size: 392M
+    size: 402M
 
   dist/yat-0.3.2.dmg
-    size: 155M
-    sha256: f6096993966b59c8cf52d633e73988b44d7a45f4daab971db08fa85e0f03938c
+    size: 160M
+    sha256: 5bda69634f99242ebf7fa96a29a876b10a0b0684ffcd34a5ad7a090b982daa7b
 
   dist/Yat-0.3.2-arm64-mac.zip
-    size: 151M
-    sha256: 593cab28f5d43532b2beb9a71c0fe27820299a8d53127185cb3c1650d6d10dc4
+    size: 161M
+    sha256: ab9c67f83795354fb33b4ad85ce22f012ce0aa932604d205abc768981c4dac93
 
 Bundled Hermes Agent:
   bundle path: resources/hermes-agent-bundle
   packaged path: Yat.app/Contents/Resources/hermes-agent-bundle
-  size: 74M
+  size: 83M
   source: /Users/yat/.hermes/hermes-agent
-  commit: 5d3be898a8671eb9fb99cf18f43165502f54e7f4
-  short commit: 5d3be898a867
-  ref: v2026.4.30-188-g5d3be898a-dirty
-  metadata sha256: 9c2cdbcb9e08635b5c6564c680dee423341f02806318bc9b2fdcdf4d76dd86a0
+  commit: 54e78cadb2e6d16a4f82185b2dc81c9dc176a813
+  short commit: 54e78cadb2e6
+  ref: v2026.4.30-393-g54e78cadb-dirty
+  metadata sha256: 1e3677b86ad0cdaa1bc716431c5cffb5a11312a9c4e6c9aa830e781279c7bf3e
 
 Verification already performed:
   npm run typecheck
@@ -49,17 +49,17 @@ Mounted DMG verification:
   mountpoint contained Yat.app and Applications symlink
   mounted app CFBundleDisplayName: Yat
   mounted app CFBundleIdentifier: dev.yat.desktop
-  mounted app size: 392M
-  mounted Hermes bundle size: 74M
+  mounted app size: 402M
+  mounted Hermes bundle size: 83M
   mounted app codesign verification: valid on disk, satisfies designated requirement
 
 ZIP verification:
   unzip test result: No errors detected in compressed data
-  entries: 4182
-  zip file size: 158837969 bytes
-  uncompressed total: 403784826 bytes
-  compressed total: 157688391 bytes
-  compression ratio: 60.9%
+  entries: 4211
+  zip file size: 159030778 bytes
+  uncompressed total: 404547193 bytes
+  compressed total: 157872232 bytes
+  compression ratio: 61.0%
   required entries found:
     Yat.app/Contents/Info.plist
     Yat.app/Contents/Resources/hermes-agent-bundle/hermes-agent/pyproject.toml

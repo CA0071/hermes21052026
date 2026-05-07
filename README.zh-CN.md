@@ -32,7 +32,7 @@ Yat 是基于 [`fathah/hermes-desktop`](https://github.com/fathah/hermes-desktop
 - Bundle 路径：`resources/hermes-agent-bundle`
 - App 内路径：`Yat.app/Contents/Resources/hermes-agent-bundle`
 
-首次设置时，Yat 会优先使用 App 包内的 Hermes 源码，复制到 `~/.hermes/hermes-agent`，通过 `uv` 创建 Python 3.11 环境，并执行 `uv pip install -e .[all]` 安装依赖。只有当包内 Hermes 不可用或安装失败时，才回退到官方在线安装脚本。
+首次设置时，Yat 会优先使用 App 包内的 Hermes 源码，复制到 `~/.hermes/hermes-agent`，如果缺少 `uv` 会自动安装，然后通过 `uv` 创建 Python 3.11 环境，并执行 `uv pip install -e .[all]` 安装依赖。只有当包内 Hermes 不可用或安装失败时，才回退到官方在线安装脚本。
 
 ## 安装
 

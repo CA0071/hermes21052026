@@ -75,13 +75,14 @@ Yat includes Hermes Agent source inside the app bundle. On first-run setup, it:
 
 1. Looks for `Yat.app/Contents/Resources/hermes-agent-bundle/hermes-agent`.
 2. Copies that source into `~/.hermes/hermes-agent`.
-3. Creates a Python 3.11 virtual environment with `uv`.
-4. Installs Hermes dependencies with `uv pip install -e .[all]`.
-5. Falls back to the official online Hermes installer only if the bundled setup is not available or fails.
+3. Ensures `uv` is installed. `uv` is Astral's fast Python package/environment manager; Yat uses it to create the Hermes Python environment. If it is missing, Yat installs it automatically from `https://astral.sh/uv/install.sh`.
+4. Creates a Python 3.11 virtual environment with `uv`.
+5. Installs Hermes dependencies with `uv pip install -e .[all]`.
+6. Falls back to the official online Hermes installer only if the bundled setup is not available or fails.
 
 Practical requirements:
 
-- `uv` must be available on `PATH` or at a common install path such as `/opt/homebrew/bin/uv`.
+- `uv` will be installed automatically if missing, but the target Mac needs network access for that first-time bootstrap.
 - Python 3.11 must be installable or available to `uv`.
 - Internet access may still be needed on first launch for dependency resolution unless the package cache is already warm.
 

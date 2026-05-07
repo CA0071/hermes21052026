@@ -478,6 +478,46 @@ function findUvCommand(home: string): string | null {
   return null;
 }
 
+async function installUvIfMissing(
+  home: string,
+  emit: (step: number, title: string, text: string) => void,
+): Promise<string> {
+  const existing = findUvCommand(home);
+  if (existing) return existing;
+
+  emit(
+    4,
+    "Setting up package manager",
+    "uv is the Python package/environment manager used by Hermes. uv was not found, installing it automatically...\n",
+  );
+
+  await new Promise<void>((resolve, reject) => {
+    const proc = spawn("/bin/bash", ["-lc", "curl -LsSf https://astral.sh/uv/install.sh | sh"], {
+      env: { ...process.env, PATH: getEnhancedPath(), HOME: home, TERM: "dumb" },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    proc.stdout?.on("data", (data: Buffer) =>
+      emit(4, "Setting up package manager", stripAnsi(data.toString())),
+    );
+    proc.stderr?.on("data", (data: Buffer) =>
+      emit(4, "Setting up package manager", stripAnsi(data.toString())),
+    );
+    proc.on("close", (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(`uv installer failed (exit code ${code}).`));
+    });
+    proc.on("error", (err) => reject(err));
+  });
+
+  const installed = findUvCommand(home);
+  if (!installed) {
+    throw new Error(
+      "uv was installed but could not be found on PATH. Please restart Yat or install uv manually from https://docs.astral.sh/uv/.",
+    );
+  }
+  return installed;
+}
+
 async function runBundledInstall(
   sourceDir: string,
   onProgress: (progress: InstallProgress) => void,
@@ -523,12 +563,7 @@ async function runBundledInstall(
   cpSync(sourceDir, HERMES_REPO, { recursive: true, verbatimSymlinks: true });
 
   emit(4, "Setting up package manager", "Checking uv package manager...\n");
-  const uv = findUvCommand(home);
-  if (!uv) {
-    throw new Error(
-      "Bundled Hermes Agent source is available, but uv is not installed. Install uv or use the online installer.",
-    );
-  }
+  const uv = await installUvIfMissing(home, emit);
   emit(4, "Setting up package manager", `uv found: ${uv}\n`);
 
   await new Promise<void>((resolve, reject) => {
