@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ArrowRight, ExternalLink } from "../../assets/icons";
-import { PROVIDERS, LOCAL_PRESETS } from "../../constants";
+import { PROVIDERS, LOCAL_PRESETS, OPENAI_COMPATIBLE_MODEL_PRESETS } from "../../constants";
 import { useI18n } from "../../components/useI18n";
 
 function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
@@ -8,7 +8,8 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
   const [selectedProvider, setSelectedProvider] = useState("customApi");
   const [apiKey, setApiKey] = useState("");
   const [baseUrl, setBaseUrl] = useState("https://api.deepseek.com/v1");
-  const [modelName, setModelName] = useState("");
+  const [modelName, setModelName] = useState("deepseek-chat");
+  const [selectedModelPreset, setSelectedModelPreset] = useState("deepseek-chat");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [showKey, setShowKey] = useState(false);
@@ -19,7 +20,26 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
   const usesOpenAiCompatibleEndpoint = isCustomApi || isLocal;
 
   function applyLocalPreset(presetBaseUrl: string): void {
+    const preset = LOCAL_PRESETS.find((p) => p.baseUrl === presetBaseUrl);
     setBaseUrl(presetBaseUrl);
+    if (preset?.defaultModel) {
+      setModelName(preset.defaultModel);
+      const matched = OPENAI_COMPATIBLE_MODEL_PRESETS.find(
+        (p) => p.model === preset.defaultModel && p.baseUrl === presetBaseUrl,
+      );
+      setSelectedModelPreset(matched?.id ?? "custom-model");
+    }
+  }
+
+  function applyModelPreset(presetId: string): void {
+    const preset = OPENAI_COMPATIBLE_MODEL_PRESETS.find((p) => p.id === presetId);
+    if (!preset) return;
+    setSelectedModelPreset(preset.id);
+    setModelName(preset.model);
+    if (preset.baseUrl) {
+      setBaseUrl(preset.baseUrl);
+    }
+    setError("");
   }
 
   function resolveCustomEnvKey(url: string): string {
@@ -59,9 +79,13 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
     try {
       if (provider.needsKey && provider.envKey) {
         await window.hermesAPI.setEnv(provider.envKey, apiKey.trim());
+        await window.hermesAPI.setYatSetupSkipped(false);
       } else if (usesOpenAiCompatibleEndpoint && apiKey.trim()) {
         const envKey = resolveCustomEnvKey(baseUrl.trim());
         await window.hermesAPI.setEnv(envKey, apiKey.trim());
+        await window.hermesAPI.setYatSetupSkipped(false);
+      } else if (usesOpenAiCompatibleEndpoint && modelName.trim()) {
+        await window.hermesAPI.setYatSetupSkipped(false);
       }
 
       const configProvider = usesOpenAiCompatibleEndpoint ? "custom" : provider.configProvider;
@@ -85,6 +109,7 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
     setError("");
     try {
       await window.hermesAPI.setModelConfig("custom", "", "http://localhost:1234/v1");
+      await window.hermesAPI.setYatSetupSkipped(true);
       onComplete();
     } catch {
       setError(t("setup.skipFailed"));
@@ -163,6 +188,7 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
               value={baseUrl}
               onChange={(e) => {
                 setBaseUrl(e.target.value);
+                setSelectedModelPreset("custom-model");
                 setError("");
               }}
               autoFocus
@@ -201,6 +227,23 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
             </div>
 
             <label className="setup-label" style={{ marginTop: 16 }}>
+              {t("setup.openAiCompatibleModel")}
+            </label>
+            <div className="setup-model-presets">
+              {OPENAI_COMPATIBLE_MODEL_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  className={`setup-model-preset ${selectedModelPreset === preset.id ? "active" : ""}`}
+                  onClick={() => applyModelPreset(preset.id)}
+                  type="button"
+                >
+                  <span>{preset.label}</span>
+                  {preset.model && <code>{preset.model}</code>}
+                </button>
+              ))}
+            </div>
+
+            <label className="setup-label" style={{ marginTop: 16 }}>
               {t("setup.modelName")}{" "}
               <span className="setup-label-optional">
                 {t("common.optional")}
@@ -211,7 +254,10 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
               type="text"
               placeholder={t("setup.modelNamePlaceholder")}
               value={modelName}
-              onChange={(e) => setModelName(e.target.value)}
+              onChange={(e) => {
+                setModelName(e.target.value);
+                setSelectedModelPreset("custom-model");
+              }}
             />
             <div className="setup-field-hint">
               {t("setup.defaultModelHint")}

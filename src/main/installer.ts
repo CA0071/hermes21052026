@@ -6,6 +6,7 @@ import {
   readFileSync,
   readdirSync,
   rmSync,
+  writeFileSync,
 } from "fs";
 import { join } from "path";
 import { homedir } from "os";
@@ -22,6 +23,8 @@ export const HERMES_PYTHON = join(HERMES_VENV, "bin", "python");
 export const HERMES_SCRIPT = join(HERMES_REPO, "hermes");
 export const HERMES_ENV_FILE = join(HERMES_HOME, ".env");
 export const HERMES_CONFIG_FILE = join(HERMES_HOME, "config.yaml");
+export const YAT_STATE_FILE = join(HERMES_HOME, "yat-desktop-state.json");
+const BUNDLE_MARKER_FILE = join(HERMES_REPO, ".yat-bundle-ref");
 
 export interface InstallStatus {
   installed: boolean;
@@ -87,6 +90,83 @@ function resolveNvmBin(home: string): string[] {
   return [];
 }
 
+interface BundleMetadata {
+  ref?: string;
+  shortCommit?: string;
+}
+
+function readCurrentBundleMetadata(): BundleMetadata | null {
+  const metadataPath = bundledHermesMetadataPath();
+  if (!metadataPath) return null;
+  try {
+    return JSON.parse(readFileSync(metadataPath, "utf-8")) as BundleMetadata;
+  } catch {
+    return null;
+  }
+}
+
+function currentBundleRef(): string | null {
+  const metadata = readCurrentBundleMetadata();
+  return metadata?.ref ?? metadata?.shortCommit ?? null;
+}
+
+function installedBundleRef(): string | null {
+  try {
+    if (!existsSync(BUNDLE_MARKER_FILE)) return null;
+    return readFileSync(BUNDLE_MARKER_FILE, "utf-8").trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+function markInstalledBundle(ref: string | null): void {
+  try {
+    writeFileSync(BUNDLE_MARKER_FILE, `${ref ?? "unknown"}\n`, { mode: 0o644 });
+  } catch {
+    /* non-fatal marker */
+  }
+}
+
+function isBundledRuntimeStale(): boolean {
+  const current = currentBundleRef();
+  if (!current) return false;
+  const installed = installedBundleRef();
+  return installed !== current;
+}
+
+function readYatSetupSkipped(): boolean {
+  try {
+    if (!existsSync(YAT_STATE_FILE)) return false;
+    const state = JSON.parse(readFileSync(YAT_STATE_FILE, "utf-8")) as {
+      setupSkipped?: boolean;
+    };
+    return state.setupSkipped === true;
+  } catch {
+    return false;
+  }
+}
+
+export function setYatSetupSkipped(skipped: boolean): void {
+  try {
+    mkdirSync(HERMES_HOME, { recursive: true, mode: 0o700 });
+    writeFileSync(
+      YAT_STATE_FILE,
+      JSON.stringify({ setupSkipped: skipped, updatedAt: new Date().toISOString() }, null, 2),
+      { mode: 0o600 },
+    );
+  } catch {
+    /* non-fatal */
+  }
+}
+
+export function resetYatInstallState(): void {
+  rmSync(HERMES_HOME, { recursive: true, force: true });
+}
+
+export function getInstallPaths(): { hermesHome: string; hermesRepo: string } {
+  return { hermesHome: HERMES_HOME, hermesRepo: HERMES_REPO };
+}
+
 export function checkInstallStatus(): InstallStatus {
   // Remote mode: skip local checks entirely
   const conn = getConnectionConfig();
@@ -103,17 +183,20 @@ export function checkInstallStatus(): InstallStatus {
   // `python --version` check used to run here adds 1–10s of cold-start
   // latency, so it now lives in `verifyInstall()` and is invoked lazily
   // by the renderer after the main UI is mounted.
-  const installed = existsSync(HERMES_PYTHON) && existsSync(HERMES_SCRIPT);
+  const installed =
+    existsSync(HERMES_PYTHON) && existsSync(HERMES_SCRIPT) && !isBundledRuntimeStale();
   const configured = existsSync(HERMES_ENV_FILE);
   let hasApiKey = false;
   const verified = installed;
 
-  // Local/custom providers don't need an API key
+  // Custom providers still need either a completed model setup or an explicit skip.
   try {
     const mc = getModelConfig();
-    const localProviders = ["custom", "lmstudio", "ollama", "vllm", "llamacpp"];
-    if (localProviders.includes(mc.provider) || mc.provider.startsWith("custom:")) {
+    const localProviders = ["lmstudio", "ollama", "vllm", "llamacpp"];
+    if (localProviders.includes(mc.provider)) {
       hasApiKey = true;
+    } else if (mc.provider === "custom" || mc.provider.startsWith("custom:")) {
+      hasApiKey = Boolean(mc.model.trim()) || readYatSetupSkipped();
     }
   } catch {
     /* ignore */
@@ -603,20 +686,15 @@ async function runBundledInstall(
 
   emit(1, "Checking bundled Hermes Agent", "Using bundled Hermes Agent source.\n");
   const metadataPath = bundledHermesMetadataPath();
-  if (metadataPath) {
-    try {
-      const metadata = JSON.parse(readFileSync(metadataPath, "utf-8")) as {
-        ref?: string;
-        shortCommit?: string;
-      };
-      emit(
-        1,
-        "Checking bundled Hermes Agent",
-        `Bundle: ${metadata.ref ?? metadata.shortCommit ?? "unknown"}\n`,
-      );
-    } catch {
-      /* metadata is informational only */
-    }
+  const metadata = readCurrentBundleMetadata();
+  if (metadata) {
+    emit(
+      1,
+      "Checking bundled Hermes Agent",
+      `Bundle: ${metadata.ref ?? metadata.shortCommit ?? "unknown"}\n`,
+    );
+  } else if (metadataPath) {
+    emit(1, "Checking bundled Hermes Agent", "Bundle metadata unreadable\n");
   }
 
   emit(2, "Preparing Hermes home", `Creating ${HERMES_HOME}\n`);
@@ -706,6 +784,7 @@ async function runBundledInstall(
   });
 
   emit(7, "Finishing setup", "Bundled Hermes Agent installation complete.\n");
+  markInstalledBundle(metadata?.ref ?? metadata?.shortCommit ?? null);
 }
 
 export async function runInstall(

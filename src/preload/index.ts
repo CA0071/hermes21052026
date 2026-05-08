@@ -76,6 +76,15 @@ const hermesAPI = {
   getHermesHome: (profile?: string): Promise<string> =>
     ipcRenderer.invoke("get-hermes-home", profile),
 
+  getInstallPaths: (): Promise<{ hermesHome: string; hermesRepo: string }> =>
+    ipcRenderer.invoke("get-install-paths"),
+
+  resetYatInstallState: (): Promise<boolean> =>
+    ipcRenderer.invoke("reset-yat-install-state"),
+
+  setYatSetupSkipped: (skipped: boolean): Promise<boolean> =>
+    ipcRenderer.invoke("set-yat-setup-skipped", skipped),
+
   getModelConfig: (
     profile?: string,
   ): Promise<{ provider: string; model: string; baseUrl: string }> =>

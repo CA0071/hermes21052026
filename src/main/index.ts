@@ -27,6 +27,9 @@ import {
   discoverMemoryProviders,
   readLogs,
   InstallProgress,
+  resetYatInstallState,
+  setYatSetupSkipped,
+  getInstallPaths,
 } from "./installer";
 import {
   sendMessage,
@@ -268,6 +271,20 @@ function setupIPC(): void {
   ipcMain.handle("get-hermes-home", (_event, profile?: string) =>
     getHermesHome(profile),
   );
+
+  ipcMain.handle("get-install-paths", () => getInstallPaths());
+
+  ipcMain.handle("reset-yat-install-state", () => {
+    stopGateway();
+    resetYatInstallState();
+    clearVersionCache();
+    return true;
+  });
+
+  ipcMain.handle("set-yat-setup-skipped", (_event, skipped: boolean) => {
+    setYatSetupSkipped(skipped);
+    return true;
+  });
 
   ipcMain.handle("get-model-config", (_event, profile?: string) =>
     getModelConfig(profile),

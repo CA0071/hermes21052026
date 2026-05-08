@@ -146,6 +146,15 @@ export interface LocalPreset {
   baseUrl: string;
   group: "local" | "remote";
   envKey?: string;
+  defaultModel?: string;
+}
+
+export interface OpenAICompatibleModelPreset {
+  id: string;
+  label: string;
+  model: string;
+  baseUrl: string;
+  envKey?: string;
 }
 
 export const LOCAL_PRESETS: LocalPreset[] = [
@@ -179,6 +188,7 @@ export const LOCAL_PRESETS: LocalPreset[] = [
     baseUrl: "https://api.groq.com/openai/v1",
     group: "remote",
     envKey: "GROQ_API_KEY",
+    defaultModel: "llama-3.3-70b-versatile",
   },
   {
     id: "deepseek",
@@ -186,6 +196,7 @@ export const LOCAL_PRESETS: LocalPreset[] = [
     baseUrl: "https://api.deepseek.com/v1",
     group: "remote",
     envKey: "DEEPSEEK_API_KEY",
+    defaultModel: "deepseek-chat",
   },
   {
     id: "dashscope",
@@ -193,6 +204,7 @@ export const LOCAL_PRESETS: LocalPreset[] = [
     baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
     group: "remote",
     envKey: "DASHSCOPE_API_KEY",
+    defaultModel: "qwen-plus",
   },
   {
     id: "kimi",
@@ -200,6 +212,7 @@ export const LOCAL_PRESETS: LocalPreset[] = [
     baseUrl: "https://api.moonshot.cn/v1",
     group: "remote",
     envKey: "KIMI_API_KEY",
+    defaultModel: "kimi-k2-0711-preview",
   },
   {
     id: "glm",
@@ -207,6 +220,7 @@ export const LOCAL_PRESETS: LocalPreset[] = [
     baseUrl: "https://open.bigmodel.cn/api/paas/v4",
     group: "remote",
     envKey: "GLM_API_KEY",
+    defaultModel: "glm-4.5",
   },
   {
     id: "minimaxCn",
@@ -214,6 +228,7 @@ export const LOCAL_PRESETS: LocalPreset[] = [
     baseUrl: "https://api.minimax.chat/v1",
     group: "remote",
     envKey: "MINIMAX_CN_API_KEY",
+    defaultModel: "MiniMax-M1",
   },
   {
     id: "together",
@@ -242,6 +257,72 @@ export const LOCAL_PRESETS: LocalPreset[] = [
     baseUrl: "https://api.mistral.ai/v1",
     group: "remote",
     envKey: "MISTRAL_API_KEY",
+    defaultModel: "mistral-large-latest",
+  },
+];
+
+export const OPENAI_COMPATIBLE_MODEL_PRESETS: OpenAICompatibleModelPreset[] = [
+  {
+    id: "deepseek-chat",
+    label: "DeepSeek Chat",
+    model: "deepseek-chat",
+    baseUrl: "https://api.deepseek.com/v1",
+    envKey: "DEEPSEEK_API_KEY",
+  },
+  {
+    id: "deepseek-reasoner",
+    label: "DeepSeek Reasoner",
+    model: "deepseek-reasoner",
+    baseUrl: "https://api.deepseek.com/v1",
+    envKey: "DEEPSEEK_API_KEY",
+  },
+  {
+    id: "qwen-plus",
+    label: "Qwen Plus / 通义千问",
+    model: "qwen-plus",
+    baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    envKey: "DASHSCOPE_API_KEY",
+  },
+  {
+    id: "qwen-turbo",
+    label: "Qwen Turbo / 通义千问",
+    model: "qwen-turbo",
+    baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    envKey: "DASHSCOPE_API_KEY",
+  },
+  {
+    id: "kimi-k2",
+    label: "Kimi K2 / Moonshot",
+    model: "kimi-k2-0711-preview",
+    baseUrl: "https://api.moonshot.cn/v1",
+    envKey: "KIMI_API_KEY",
+  },
+  {
+    id: "glm-4.5",
+    label: "GLM 4.5 / 智谱",
+    model: "glm-4.5",
+    baseUrl: "https://open.bigmodel.cn/api/paas/v4",
+    envKey: "GLM_API_KEY",
+  },
+  {
+    id: "minimax-m1",
+    label: "MiniMax M1",
+    model: "MiniMax-M1",
+    baseUrl: "https://api.minimax.chat/v1",
+    envKey: "MINIMAX_CN_API_KEY",
+  },
+  {
+    id: "groq-llama",
+    label: "Groq Llama 3.3 70B",
+    model: "llama-3.3-70b-versatile",
+    baseUrl: "https://api.groq.com/openai/v1",
+    envKey: "GROQ_API_KEY",
+  },
+  {
+    id: "custom-model",
+    label: "Custom model id / 手动输入",
+    model: "",
+    baseUrl: "",
   },
 ];
 

@@ -83,6 +83,8 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
   const [forceIpv4, setForceIpv4] = useState(false);
   const [httpProxy, setHttpProxy] = useState("");
   const [networkSaved, setNetworkSaved] = useState(false);
+  const [resettingInstall, setResettingInstall] = useState(false);
+  const [resetInstallResult, setResetInstallResult] = useState<string | null>(null);
 
   // Debug dump
   const [dumpOutput, setDumpOutput] = useState<string | null>(null);
@@ -254,6 +256,31 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
     const output = await window.hermesAPI.runHermesDoctor();
     setDoctorOutput(output);
     setDoctorRunning(false);
+  }
+
+  function handleResetYatInstall(): void {
+    if (resettingInstall) return;
+    const ok = window.confirm(t("settings.resetInstallConfirm"));
+    if (!ok) return;
+    setResettingInstall(true);
+    setResetInstallResult(null);
+    window.hermesAPI
+      .resetYatInstallState()
+      .then(() => {
+        try {
+          localStorage.removeItem("hermes-version-cache");
+          localStorage.removeItem("hermes-openclaw-cache");
+          localStorage.removeItem("hermes-openclaw-dismissed");
+        } catch {
+          /* ignore */
+        }
+        setResetInstallResult(t("settings.resetInstallDone"));
+        setTimeout(() => window.location.reload(), 900);
+      })
+      .catch((err) => {
+        setResetInstallResult((err as Error).message || t("settings.resetInstallFailed"));
+        setResettingInstall(false);
+      });
   }
 
   // Helper to fetch fresh version, clear backend cache, and update localStorage
@@ -751,6 +778,27 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
               style={{ marginTop: 8 }}
             >
               {importResult}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="settings-section settings-danger-section">
+        <div className="settings-section-title">{t("settings.resetInstallSection")}</div>
+        <div className="settings-field">
+          <div className="settings-field-hint" style={{ marginBottom: 10 }}>
+            {t("settings.resetInstallHint", { path: hermesHome || "~/.hermes" })}
+          </div>
+          <button
+            className="btn btn-secondary"
+            onClick={handleResetYatInstall}
+            disabled={resettingInstall}
+          >
+            {resettingInstall ? t("settings.resettingInstall") : t("settings.resetInstall")}
+          </button>
+          {resetInstallResult && (
+            <div className="settings-hermes-result success" style={{ marginTop: 8 }}>
+              {resetInstallResult}
             </div>
           )}
         </div>

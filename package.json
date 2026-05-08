@@ -16,6 +16,7 @@
     "start": "electron-vite preview",
     "dev": "electron-vite dev",
     "dev:fresh": "HERMES_HOME=$(mktemp -d -t hermes-fresh) electron-vite dev",
+    "clean:yat-install": "node scripts/clean-yat-install-state.mjs",
     "build": "npm run typecheck && electron-vite build",
     "postinstall": "electron-builder install-app-deps",
     "build:unpack": "npm run build && electron-builder --dir",

@@ -43,6 +43,9 @@ interface HermesAPI {
   getConfig: (key: string, profile?: string) => Promise<string | null>;
   setConfig: (key: string, value: string, profile?: string) => Promise<boolean>;
   getHermesHome: (profile?: string) => Promise<string>;
+  getInstallPaths: () => Promise<{ hermesHome: string; hermesRepo: string }>;
+  resetYatInstallState: () => Promise<boolean>;
+  setYatSetupSkipped: (skipped: boolean) => Promise<boolean>;
   getModelConfig: (
     profile?: string,
   ) => Promise<{ provider: string; model: string; baseUrl: string }>;
