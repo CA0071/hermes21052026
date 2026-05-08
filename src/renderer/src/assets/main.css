@@ -191,7 +191,7 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: var(--yat-logo-size);
+  min-width: calc(var(--yat-logo-size) * 2.7);
   height: var(--yat-logo-size);
   overflow: hidden;
   border-radius: max(10px, calc(var(--yat-logo-size) * 0.24));
@@ -230,11 +230,12 @@ body {
   position: relative;
   z-index: 1;
   color: #f7f8f8;
-  font-size: calc(var(--yat-logo-size) * 0.34);
-  font-weight: 760;
-  letter-spacing: -0.08em;
+  font-size: calc(var(--yat-logo-size) * 0.23);
+  font-weight: 780;
+  letter-spacing: -0.055em;
   line-height: 1;
-  text-transform: lowercase;
+  white-space: nowrap;
+  text-transform: none;
   text-shadow: 0 1px 10px rgba(0, 0, 0, 0.28);
 }
 
@@ -908,12 +909,13 @@ body {
 
 .setup-actions {
   display: grid;
-  grid-template-columns: minmax(120px, 0.7fr) minmax(180px, 1.3fr);
+  grid-template-columns: minmax(110px, 0.6fr) minmax(150px, 1fr) minmax(180px, 1.25fr);
   gap: 10px;
   margin-top: 20px;
 }
 
 .setup-skip,
+.setup-test,
 .setup-continue {
   width: 100%;
   padding: 12px;
@@ -960,7 +962,7 @@ body {
 }
 
 .sidebar-brand-mark {
-  width: 38px;
+  width: 102px;
   height: 38px;
   display: flex;
   align-items: center;
@@ -4925,6 +4927,12 @@ body {
 
 .splash-mark {
   margin-bottom: 22px;
+  min-width: min(620px, 86vw);
+}
+
+.splash-mark .yat-logo-word {
+  font-size: clamp(38px, 8vw, 82px);
+  letter-spacing: -0.08em;
 }
 
 .splash-wordmark {

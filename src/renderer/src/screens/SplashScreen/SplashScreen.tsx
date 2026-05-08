@@ -7,7 +7,8 @@ interface SplashScreenProps {
 
 function SplashScreen({ onFinished }: SplashScreenProps): React.JSX.Element {
   useEffect(() => {
-    onFinished();
+    const timer = window.setTimeout(onFinished, 2200);
+    return () => window.clearTimeout(timer);
   }, [onFinished]);
 
   return (
@@ -16,8 +17,7 @@ function SplashScreen({ onFinished }: SplashScreenProps): React.JSX.Element {
       <div className="splash-orb splash-orb-two" />
       <div className="splash-grid" />
       <div className="splash-card" aria-label="Yat Studio is starting">
-        <HermesLogo size={92} className="splash-mark" />
-        <div className="splash-wordmark">Yat Studio</div>
+        <HermesLogo size={118} className="splash-mark" />
         <div className="splash-tagline">desktop AI workspace</div>
         <div className="splash-loader" aria-hidden="true">
           <span />

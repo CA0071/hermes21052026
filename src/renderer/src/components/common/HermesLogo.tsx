@@ -17,7 +17,7 @@ function HermesLogo({ size = 32, className = "" }: HermesLogoProps): React.JSX.E
       aria-label="Yat Studio"
       role="img"
     >
-      <span className="yat-logo-word">YS</span>
+      <span className="yat-logo-word">Yat Studio</span>
     </div>
   );
 }

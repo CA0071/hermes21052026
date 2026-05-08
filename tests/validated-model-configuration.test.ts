@@ -11,29 +11,39 @@ interface ModelValidationResult {
   error?: string;
 }
 
-async function configureValidatedDefaultModel(
-  input: ModelConfig & { name: string; apiKey?: string },
+type TestState = "idle" | "testing" | "ok" | "failed";
+
+async function testModelOnly(
+  input: ModelConfig & { apiKey?: string },
   deps: {
     validateModel: (config: ModelConfig & { apiKey?: string }) => Promise<ModelValidationResult>;
+  },
+): Promise<{ state: TestState; error?: string }> {
+  const result = await deps.validateModel(input);
+  if (!result.ok) return { state: "failed", error: result.error || "Model validation failed" };
+  return { state: "ok" };
+}
+
+async function commitValidatedDefaultModel(
+  input: ModelConfig & { name: string; apiKey?: string; envKey?: string; testState: TestState },
+  deps: {
+    setEnv: (key: string, value: string, profile?: string) => Promise<void>;
     addModel: (name: string, provider: string, model: string, baseUrl: string) => Promise<void>;
     setModelConfig: (provider: string, model: string, baseUrl: string, profile?: string) => Promise<void>;
   },
 ): Promise<void> {
-  const result = await deps.validateModel(input);
-  if (!result.ok) {
-    throw new Error(result.error || "Model validation failed");
-  }
+  if (input.testState !== "ok") throw new Error("Test model before continuing");
+  if (input.apiKey && input.envKey) await deps.setEnv(input.envKey, input.apiKey, "default");
   await deps.addModel(input.name, input.provider, input.model, input.baseUrl);
   await deps.setModelConfig(input.provider, input.model, input.baseUrl, "default");
 }
 
 describe("validated model configuration", () => {
-  it("validates before adding to model library and default profile", async () => {
+  it("test model only validates and does not persist anything", async () => {
     const calls: string[] = [];
 
-    await configureValidatedDefaultModel(
+    const result = await testModelOnly(
       {
-        name: "Relay GPT-4o mini",
         provider: "custom",
         model: "gpt-4o-mini",
         baseUrl: "https://relay.example/v1",
@@ -43,6 +53,30 @@ describe("validated model configuration", () => {
         validateModel: async (config) => {
           calls.push(`validate:${config.model}`);
           return { ok: true };
+        },
+      },
+    );
+
+    expect(result.state).toBe("ok");
+    expect(calls).toEqual(["validate:gpt-4o-mini"]);
+  });
+
+  it("continue writes env, model library, and default profile only after Test OK", async () => {
+    const calls: string[] = [];
+
+    await commitValidatedDefaultModel(
+      {
+        name: "Relay GPT-4o mini",
+        provider: "custom",
+        model: "gpt-4o-mini",
+        baseUrl: "https://relay.example/v1",
+        apiKey: "sk-test",
+        envKey: "OPENAI_API_KEY",
+        testState: "ok",
+      },
+      {
+        setEnv: async (key, _value, profile) => {
+          calls.push(`env:${profile}:${key}`);
         },
         addModel: async (_name, _provider, model) => {
           calls.push(`add:${model}`);
@@ -54,38 +88,32 @@ describe("validated model configuration", () => {
     );
 
     expect(calls).toEqual([
-      "validate:gpt-4o-mini",
+      "env:default:OPENAI_API_KEY",
       "add:gpt-4o-mini",
       "default:default:gpt-4o-mini",
     ]);
   });
 
-  it("does not add or write default profile when validation fails", async () => {
+  it("continue is blocked until Test OK", async () => {
     const calls: string[] = [];
 
     await expect(
-      configureValidatedDefaultModel(
+      commitValidatedDefaultModel(
         {
           name: "Broken model",
           provider: "custom",
           model: "wrong-model",
           baseUrl: "https://relay.example/v1",
+          testState: "idle",
         },
         {
-          validateModel: async () => {
-            calls.push("validate");
-            return { ok: false, error: "model_not_found" };
-          },
-          addModel: async () => {
-            calls.push("add");
-          },
-          setModelConfig: async () => {
-            calls.push("default");
-          },
+          setEnv: async () => calls.push("env"),
+          addModel: async () => calls.push("add"),
+          setModelConfig: async () => calls.push("default"),
         },
       ),
-    ).rejects.toThrow("model_not_found");
+    ).rejects.toThrow("Test model before continuing");
 
-    expect(calls).toEqual(["validate"]);
+    expect(calls).toEqual([]);
   });
 });

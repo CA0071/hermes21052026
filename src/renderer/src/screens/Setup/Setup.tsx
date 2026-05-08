@@ -11,6 +11,8 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
   const [modelName, setModelName] = useState("deepseek-chat");
   const [selectedModelPreset, setSelectedModelPreset] = useState("deepseek-chat");
   const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testOk, setTestOk] = useState(false);
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
   const [showKey, setShowKey] = useState(false);
@@ -23,6 +25,7 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
   function applyProvider(providerId: string): void {
     setSelectedProvider(providerId);
     setError("");
+    resetTestState();
     if (providerId === "customApi") {
       setBaseUrl("https://api.deepseek.com/v1");
       setModelName("deepseek-chat");
@@ -43,6 +46,7 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
   function applyLocalPreset(presetBaseUrl: string): void {
     const preset = LOCAL_PRESETS.find((p) => p.baseUrl === presetBaseUrl);
     setBaseUrl(presetBaseUrl);
+    resetTestState();
     if (preset?.defaultModel) {
       setModelName(preset.defaultModel);
       const matched = OPENAI_COMPATIBLE_MODEL_PRESETS.find(
@@ -56,6 +60,7 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
     const preset = OPENAI_COMPATIBLE_MODEL_PRESETS.find((p) => p.id === presetId);
     if (!preset) return;
     setSelectedModelPreset(preset.id);
+    resetTestState();
     setModelName(preset.model);
     if (preset.baseUrl) {
       setBaseUrl(preset.baseUrl);
@@ -84,21 +89,78 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
     return "CUSTOM_API_KEY";
   }
 
-  async function handleContinue(): Promise<void> {
+  function resetTestState(): void {
+    setTestOk(false);
+    setSuccess("");
+  }
+
+  function validateInputs(): boolean {
     if (provider.needsKey && !apiKey.trim()) {
       setError(t("setup.missingApiKey"));
-      return;
+      return false;
     }
     if (usesOpenAiCompatibleEndpoint && !baseUrl.trim()) {
       setError(t("setup.missingServerUrl"));
-      return;
+      return false;
     }
     if (isCustomApi && !modelName.trim()) {
       setError(t("setup.missingModelName"));
-      return;
+      return false;
     }
     if (isCustomApi && !isLocalUrl(baseUrl) && !apiKey.trim()) {
       setError(t("setup.missingApiKey"));
+      return false;
+    }
+    return true;
+  }
+
+  function currentModelConfig(): { provider: string; baseUrl: string; model: string; label: string } {
+    const configProvider = usesOpenAiCompatibleEndpoint ? "custom" : provider.configProvider;
+    const configBaseUrl = usesOpenAiCompatibleEndpoint ? baseUrl.trim() : provider.baseUrl;
+    const configModel = modelName.trim() || "";
+    const modelLabel =
+      selectedProvider === "customApi" || selectedProvider === "local"
+        ? `${configModel} @ ${configBaseUrl}`
+        : `${selectedProvider} ${configModel}`.trim();
+    return { provider: configProvider, baseUrl: configBaseUrl, model: configModel, label: modelLabel };
+  }
+
+  async function handleTestModel(): Promise<void> {
+    if (!validateInputs()) return;
+    const config = currentModelConfig();
+    setTesting(true);
+    setError("");
+    setSuccess("");
+    setTestOk(false);
+    try {
+      const result = await window.hermesAPI.validateModelConnection(
+        config.provider,
+        config.model,
+        config.baseUrl,
+        apiKey.trim() || undefined,
+        "default",
+      );
+      if (!result.ok) {
+        setError(
+          t("setup.validationFailed", {
+            error: result.error || `HTTP ${result.status || "error"}`,
+          }),
+        );
+        return;
+      }
+      setTestOk(true);
+      setSuccess(t("setup.testSucceeded"));
+    } catch {
+      setError(t("setup.saveFailed"));
+    } finally {
+      setTesting(false);
+    }
+  }
+
+  async function handleContinue(): Promise<void> {
+    if (!validateInputs()) return;
+    if (!testOk) {
+      setError(t("setup.testRequired"));
       return;
     }
 
@@ -107,6 +169,7 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
     setSuccess("");
 
     try {
+      const config = currentModelConfig();
       if (provider.needsKey && provider.envKey) {
         await window.hermesAPI.setEnv(provider.envKey, apiKey.trim());
         await window.hermesAPI.setYatSetupSkipped(false);
@@ -118,18 +181,11 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
         await window.hermesAPI.setYatSetupSkipped(false);
       }
 
-      const configProvider = usesOpenAiCompatibleEndpoint ? "custom" : provider.configProvider;
-      const configBaseUrl = usesOpenAiCompatibleEndpoint ? baseUrl.trim() : provider.baseUrl;
-      const configModel = modelName.trim() || "";
-      const modelLabel =
-        PROVIDERS.setup.find((p) => p.id === selectedProvider)?.id === "customApi"
-          ? `${configModel} @ ${configBaseUrl}`
-          : `${selectedProvider} ${configModel}`.trim();
       const result = await window.hermesAPI.configureValidatedDefaultModel(
-        modelLabel,
-        configProvider,
-        configModel,
-        configBaseUrl,
+        config.label,
+        config.provider,
+        config.model,
+        config.baseUrl,
         apiKey.trim() || undefined,
         "default",
       );
@@ -234,7 +290,7 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
                 setBaseUrl(e.target.value);
                 setSelectedModelPreset("custom-model");
                 setError("");
-                setSuccess("");
+                resetTestState();
               }}
               autoFocus
             />
@@ -257,7 +313,7 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
                 onChange={(e) => {
                   setApiKey(e.target.value);
                   setError("");
-                setSuccess("");
+                resetTestState();
                 }}
               />
               <button
@@ -303,6 +359,7 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
               onChange={(e) => {
                 setModelName(e.target.value);
                 setSelectedModelPreset("custom-model");
+                resetTestState();
               }}
             />
             <div className="setup-field-hint">
@@ -323,7 +380,7 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
                 onChange={(e) => {
                   setApiKey(e.target.value);
                   setError("");
-                setSuccess("");
+                resetTestState();
                 }}
                 onKeyDown={(e) => e.key === "Enter" && handleContinue()}
                 autoFocus
@@ -354,16 +411,33 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
           <button
             className="btn btn-secondary setup-skip"
             onClick={handleSkip}
-            disabled={saving}
+            disabled={saving || testing}
             type="button"
           >
             {t("setup.skipForNow")}
+          </button>
+          <button
+            className="btn btn-secondary setup-test"
+            onClick={handleTestModel}
+            disabled={
+              saving ||
+              testing ||
+              (provider.needsKey && !apiKey.trim()) ||
+              (usesOpenAiCompatibleEndpoint && !baseUrl.trim()) ||
+              (isCustomApi && !modelName.trim()) ||
+              (isCustomApi && !isLocalUrl(baseUrl) && !apiKey.trim())
+            }
+            type="button"
+          >
+            {testing ? t("setup.testingModel") : testOk ? t("setup.testOk") : t("setup.testModel")}
           </button>
           <button
             className="btn btn-primary setup-continue"
             onClick={handleContinue}
             disabled={
               saving ||
+              testing ||
+              !testOk ||
               (provider.needsKey && !apiKey.trim()) ||
               (usesOpenAiCompatibleEndpoint && !baseUrl.trim()) ||
               (isCustomApi && !modelName.trim()) ||
