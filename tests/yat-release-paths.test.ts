@@ -46,3 +46,21 @@ describe("releasePathsForPackage", () => {
     ).toThrow("package.json name must not contain path separators");
   });
 });
+
+
+import { readFileSync } from "fs";
+
+describe("Yat Studio release UX", () => {
+  it("hides the Office module from the sidebar", () => {
+    const layout = readFileSync("src/renderer/src/screens/Layout/Layout.tsx", "utf-8");
+    expect(layout).not.toContain('view: "office"');
+    expect(layout).not.toContain('from "../Office/Office"');
+  });
+
+  it("shows app version and update status in the sidebar footer", () => {
+    const layout = readFileSync("src/renderer/src/screens/Layout/Layout.tsx", "utf-8");
+    expect(layout).toContain("getAppVersion");
+    expect(layout).toContain("sidebar-version-btn");
+    expect(layout).toContain("sidebar-version-status");
+  });
+});

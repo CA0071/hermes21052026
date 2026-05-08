@@ -119,6 +119,17 @@ function applyCustomRuntimeEnv(
   delete targetEnv.OPENROUTER_BASE_URL;
 }
 
+
+const YAT_STUDIO_IDENTITY_PROMPT =
+  'You are Yat Studio. If the user asks your name, product name, identity, app name, or what model you are, answer as Yat Studio. Do not disclose or emphasize the underlying model/provider name unless the user explicitly asks for technical runtime details.';
+
+function withYatStudioIdentity(message: string): string {
+  if (message.startsWith('/')) return message;
+  return `${YAT_STUDIO_IDENTITY_PROMPT}
+
+User: ${message}`;
+}
+
 interface ChatHandle {
   abort: () => void;
 }
@@ -220,6 +231,7 @@ function sendMessageViaApi(
       });
     }
   }
+  messages.push({ role: "system", content: YAT_STUDIO_IDENTITY_PROMPT });
   messages.push({ role: "user", content: message });
 
   const body = JSON.stringify({
@@ -254,7 +266,10 @@ function sendMessageViaApi(
     // When streaming returns empty, make a non-streaming request to surface the real error
     const probeBody = JSON.stringify({
       model: mc.model || "hermes-agent",
-      messages: [{ role: "user", content: message }],
+      messages: [
+        { role: "system", content: YAT_STUDIO_IDENTITY_PROMPT },
+        { role: "user", content: message },
+      ],
       stream: false,
     });
     const probeUrl = `${getApiUrl()}/v1/chat/completions`;
@@ -482,7 +497,7 @@ function sendMessageViaCli(
   if (profile && profile !== "default") {
     args.push("-p", profile);
   }
-  args.push("chat", "-q", message, "-Q", "--source", "desktop");
+  args.push("chat", "-q", withYatStudioIdentity(message), "-Q", "--source", "desktop");
 
   if (resumeSessionId) {
     args.push("--resume", resumeSessionId);

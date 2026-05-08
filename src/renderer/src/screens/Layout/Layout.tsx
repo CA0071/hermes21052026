@@ -8,7 +8,6 @@ import Soul from "../Soul/Soul";
 import Memory from "../Memory/Memory";
 import Tools from "../Tools/Tools";
 import Gateway from "../Gateway/Gateway";
-import Office from "../Office/Office";
 import Models from "../Models/Models";
 import Providers from "../Providers/Providers";
 import Schedules from "../Schedules/Schedules";
@@ -24,11 +23,11 @@ import {
   Brain,
   Wrench,
   Signal,
-  Building,
   Layers,
   KeyRound,
   Timer,
   Download,
+  Refresh,
 } from "../../assets/icons";
 import type { LucideIcon } from "lucide-react";
 import { useI18n } from "../../components/useI18n";
@@ -37,7 +36,6 @@ type View =
   | "chat"
   | "sessions"
   | "agents"
-  | "office"
   | "models"
   | "providers"
   | "skills"
@@ -52,7 +50,6 @@ const NAV_ITEMS: { view: View; icon: LucideIcon; labelKey: string }[] = [
   { view: "chat", icon: ChatBubble, labelKey: "navigation.chat" },
   { view: "sessions", icon: Clock, labelKey: "navigation.sessions" },
   { view: "agents", icon: Users, labelKey: "navigation.agents" },
-  { view: "office", icon: Building, labelKey: "navigation.office" },
   { view: "models", icon: Layers, labelKey: "navigation.models" },
   { view: "providers", icon: KeyRound, labelKey: "navigation.providers" },
   { view: "skills", icon: Puzzle, labelKey: "navigation.skills" },
@@ -70,8 +67,6 @@ function Layout(): React.JSX.Element {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [activeProfile, setActiveProfile] = useState("default");
-  // Lazy mount: only render Office after first visit, then keep mounted
-  const [officeVisited, setOfficeVisited] = useState(false);
   // Remote mode — many screens show "not available" instead of empty data
   const [remoteMode, setRemoteMode] = useState(false);
 
@@ -81,13 +76,25 @@ function Layout(): React.JSX.Element {
   }, [view]);
 
   // Auto-update state
+  const [appVersion, setAppVersion] = useState<string>("");
   const [updateVersion, setUpdateVersion] = useState<string | null>(null);
   const [updateState, setUpdateState] = useState<
-    "available" | "downloading" | "ready" | null
-  >(null);
+    "idle" | "checking" | "available" | "downloading" | "ready" | "error"
+  >("idle");
   const [downloadPercent, setDownloadPercent] = useState(0);
 
   useEffect(() => {
+    window.hermesAPI.getAppVersion().then(setAppVersion).catch(() => setAppVersion(""));
+    window.hermesAPI
+      .checkForUpdates()
+      .then((version) => {
+        if (version) {
+          setUpdateVersion(version);
+          setUpdateState("available");
+        }
+      })
+      .catch(() => setUpdateState("idle"));
+
     const cleanupAvailable = window.hermesAPI.onUpdateAvailable((info) => {
       setUpdateVersion(info.version);
       setUpdateState("available");
@@ -108,7 +115,20 @@ function Layout(): React.JSX.Element {
   }, []);
 
   async function handleUpdate(): Promise<void> {
-    if (updateState === "available") {
+    if (updateState === "idle" || updateState === "error") {
+      setUpdateState("checking");
+      try {
+        const version = await window.hermesAPI.checkForUpdates();
+        if (version) {
+          setUpdateVersion(version);
+          setUpdateState("available");
+        } else {
+          setUpdateState("idle");
+        }
+      } catch {
+        setUpdateState("error");
+      }
+    } else if (updateState === "available") {
       setUpdateState("downloading");
       await window.hermesAPI.downloadUpdate();
     } else if (updateState === "ready") {
@@ -165,7 +185,7 @@ function Layout(): React.JSX.Element {
           </div>
           <div className="sidebar-brand-copy">
             <div className="sidebar-brand-name">Yat Studio</div>
-            <div className="sidebar-brand-subtitle">Hermes Agent inside</div>
+            <div className="sidebar-brand-subtitle">AI workspace</div>
           </div>
         </div>
 
@@ -175,7 +195,6 @@ function Layout(): React.JSX.Element {
               key={v}
               className={`sidebar-nav-item ${view === v ? "active" : ""}`}
               onClick={() => {
-                if (v === "office") setOfficeVisited(true);
                 setView(v);
               }}
             >
@@ -186,24 +205,37 @@ function Layout(): React.JSX.Element {
         </nav>
 
         <div className="sidebar-footer">
-          {updateState && (
-            <button className="sidebar-update-btn" onClick={handleUpdate}>
-              <Download size={13} />
-              {updateState === "available" && (
-                <span>
-                  {t("common.updateAvailable", { version: updateVersion })}
-                </span>
-              )}
-              {updateState === "downloading" && (
-                <span>
-                  {t("common.downloading", { percent: downloadPercent })}
-                </span>
-              )}
-              {updateState === "ready" && (
-                <span>{t("common.restartToUpdate")}</span>
-              )}
-            </button>
-          )}
+          <button
+            className={`sidebar-version-btn update-${updateState}`}
+            onClick={handleUpdate}
+            title={
+              updateState === "available"
+                ? t("common.updateAvailable", { version: updateVersion })
+                : updateState === "ready"
+                  ? t("common.restartToUpdate")
+                  : t("common.checkForUpdates")
+            }
+          >
+            <span className="sidebar-version-status" />
+            <span className="sidebar-version-copy">
+              <span className="sidebar-version-title">Yat Studio</span>
+              <span className="sidebar-version-meta">
+                {updateState === "checking" && t("common.checkingUpdates")}
+                {updateState === "available" &&
+                  t("common.updateAvailable", { version: updateVersion })}
+                {updateState === "downloading" &&
+                  t("common.downloading", { percent: downloadPercent })}
+                {updateState === "ready" && t("common.restartToUpdate")}
+                {updateState === "error" && t("common.updateCheckFailed")}
+                {updateState === "idle" && `${t("common.version")} ${appVersion || "—"}`}
+              </span>
+            </span>
+            {updateState === "available" || updateState === "ready" ? (
+              <Download size={14} />
+            ) : (
+              <Refresh size={14} />
+            )}
+          </button>
           <div className="sidebar-footer-text">
             {activeProfile === "default" ? t("common.appName") : activeProfile}
           </div>
@@ -250,18 +282,6 @@ function Layout(): React.JSX.Element {
               }}
             />
           ))}
-        {officeVisited && (
-          <div
-            style={{
-              display: view === "office" ? "flex" : "none",
-              flex: 1,
-              flexDirection: "column",
-              overflow: "hidden",
-            }}
-          >
-            <Office visible={view === "office"} />
-          </div>
-        )}
         {view === "models" && <Models />}
         <div
           style={{

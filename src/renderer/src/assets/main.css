@@ -1082,6 +1082,97 @@ body {
   background: var(--accent-hover);
 }
 
+.sidebar-version-btn {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 10px 1fr 16px;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--shell-text);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background var(--transition),
+    border-color var(--transition),
+    box-shadow var(--transition),
+    transform var(--transition);
+}
+
+.sidebar-version-btn:hover {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(0, 113, 227, 0.28);
+  transform: translateY(-1px);
+}
+
+.sidebar-version-status {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #8e8e93;
+  box-shadow: 0 0 0 3px rgba(142, 142, 147, 0.12);
+}
+
+.sidebar-version-btn.update-idle .sidebar-version-status {
+  background: #34c759;
+  box-shadow: 0 0 0 3px rgba(52, 199, 89, 0.14);
+}
+
+.sidebar-version-btn.update-checking .sidebar-version-status,
+.sidebar-version-btn.update-downloading .sidebar-version-status {
+  background: #0071e3;
+  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.16);
+  animation: sidebar-version-pulse 1.2s ease-in-out infinite;
+}
+
+.sidebar-version-btn.update-available .sidebar-version-status,
+.sidebar-version-btn.update-ready .sidebar-version-status {
+  background: #ff9f0a;
+  box-shadow: 0 0 0 3px rgba(255, 159, 10, 0.18);
+}
+
+.sidebar-version-btn.update-error .sidebar-version-status {
+  background: #ff3b30;
+  box-shadow: 0 0 0 3px rgba(255, 59, 48, 0.16);
+}
+
+.sidebar-version-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebar-version-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--shell-text);
+  letter-spacing: -0.02em;
+}
+
+.sidebar-version-meta {
+  font-size: 11px;
+  color: var(--shell-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@keyframes sidebar-version-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.92);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+
 /* Theme Switcher */
 .theme-switcher {
   display: flex;
