@@ -70,7 +70,7 @@ function setCache(key: string, data: unknown): void {
 }
 
 function invalidateCache(prefix: string): void {
-  for (const key of _cache.keys()) {
+  for (const key of Array.from(_cache.keys())) {
     if (key.startsWith(prefix)) _cache.delete(key);
   }
 }
@@ -232,16 +232,22 @@ export function setModelConfig(
   const providerRegex = /^(\s*provider:\s*)["']?[^"'\n#]*["']?/m;
   if (providerRegex.test(content)) {
     content = content.replace(providerRegex, `$1"${provider}"`);
+  } else {
+    content = content.replace(/^(\s*model:\s*\n)/m, `$1  provider: "${provider}"\n`);
   }
 
   const modelRegex = /^(\s*default:\s*)["']?[^"'\n#]*["']?/m;
   if (modelRegex.test(content)) {
     content = content.replace(modelRegex, `$1"${model}"`);
+  } else {
+    content = content.replace(/^(\s*model:\s*\n)/m, `$1  default: "${model}"\n`);
   }
 
   const baseUrlRegex = /^(\s*base_url:\s*)["']?[^"'\n#]*["']?/m;
   if (baseUrlRegex.test(content)) {
     content = content.replace(baseUrlRegex, `$1"${baseUrl}"`);
+  } else {
+    content = content.replace(/^(\s*model:\s*\n)/m, `$1  base_url: "${baseUrl}"\n`);
   }
 
   // Disable smart_model_routing

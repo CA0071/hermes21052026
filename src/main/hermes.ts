@@ -2,8 +2,8 @@ import { ChildProcess, spawn } from "child_process";
 import { existsSync, readFileSync, appendFileSync, unlinkSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
-import http from "http";
-import https from "https";
+import * as http from "http";
+import * as https from "https";
 import {
   HERMES_HOME,
   HERMES_REPO,
@@ -57,7 +57,67 @@ const URL_KEY_MAP: Array<{ pattern: RegExp; envKey: string }> = [
   { pattern: /api\.cerebras\.ai/i, envKey: "CEREBRAS_API_KEY" },
   { pattern: /api\.mistral\.ai/i, envKey: "MISTRAL_API_KEY" },
   { pattern: /api\.perplexity\.ai/i, envKey: "PERPLEXITY_API_KEY" },
+  { pattern: /dashscope\.aliyuncs\.com/i, envKey: "DASHSCOPE_API_KEY" },
+  { pattern: /bigmodel\.cn|zhipuai|glm/i, envKey: "GLM_API_KEY" },
+  { pattern: /moonshot\.cn|api\.kimi\.com|kimi/i, envKey: "KIMI_API_KEY" },
+  { pattern: /minimax\.chat|minimaxi\.com/i, envKey: "MINIMAX_CN_API_KEY" },
 ];
+
+function isCustomProvider(provider: string): boolean {
+  return LOCAL_PROVIDERS.has(provider) || provider.startsWith("custom:");
+}
+
+function resolveApiKeyForBaseUrl(
+  baseUrl: string,
+  profileEnv: Record<string, string>,
+  env: Record<string, string>,
+): string {
+  for (const { pattern, envKey } of URL_KEY_MAP) {
+    if (pattern.test(baseUrl)) {
+      const matched = profileEnv[envKey] || env[envKey] || "";
+      if (matched) return matched;
+      break;
+    }
+  }
+
+  return (
+    profileEnv.CUSTOM_API_KEY ||
+    env.CUSTOM_API_KEY ||
+    profileEnv.OPENAI_API_KEY ||
+    env.OPENAI_API_KEY ||
+    ""
+  );
+}
+
+function applyCustomRuntimeEnv(
+  targetEnv: Record<string, string>,
+  mc: { provider: string; baseUrl: string },
+  profileEnv: Record<string, string>,
+): void {
+  if (!isCustomProvider(mc.provider) || !mc.baseUrl) return;
+
+  const normalizedBaseUrl = mc.baseUrl.replace(/\/+$/, "");
+  targetEnv.HERMES_INFERENCE_PROVIDER = "custom";
+  targetEnv.CUSTOM_BASE_URL = normalizedBaseUrl;
+  // Keep OPENAI_BASE_URL for older Hermes Agent builds and OpenAI-compatible helpers.
+  targetEnv.OPENAI_BASE_URL = normalizedBaseUrl;
+
+  let resolvedKey = resolveApiKeyForBaseUrl(normalizedBaseUrl, profileEnv, targetEnv);
+
+  // Local servers (localhost/127.0.0.1) don't need a real key, but the SDK
+  // path still requires a non-empty bearer string.
+  if (!resolvedKey && /localhost|127\.0\.0\.1/i.test(normalizedBaseUrl)) {
+    resolvedKey = "no-key-required";
+  }
+
+  targetEnv.OPENAI_API_KEY = resolvedKey || "no-key-required";
+
+  // Avoid auto-detect or stale global creds hijacking a custom endpoint.
+  delete targetEnv.OPENROUTER_API_KEY;
+  delete targetEnv.ANTHROPIC_API_KEY;
+  delete targetEnv.ANTHROPIC_TOKEN;
+  delete targetEnv.OPENROUTER_BASE_URL;
+}
 
 interface ChatHandle {
   abort: () => void;
@@ -141,6 +201,13 @@ function sendMessageViaApi(
   history?: Array<{ role: string; content: string }>,
 ): ChatHandle {
   const mc = getModelConfig(profile);
+  const profileEnv = readEnv(profile);
+  for (const [key, value] of Object.entries(profileEnv)) {
+    if (value) {
+      process.env[key] = value;
+    }
+  }
+  applyCustomRuntimeEnv(process.env as Record<string, string>, mc, profileEnv);
   const controller = new AbortController();
 
   // Build full conversation from history + current message (standard OpenAI format)
@@ -462,38 +529,7 @@ function sendMessageViaCli(
     }
   }
 
-  const isCustomEndpoint = LOCAL_PROVIDERS.has(mc.provider);
-  if (isCustomEndpoint && mc.baseUrl) {
-    env.HERMES_INFERENCE_PROVIDER = "custom";
-    env.OPENAI_BASE_URL = mc.baseUrl.replace(/\/+$/, "");
-
-    // Resolve the right API key: check URL-specific key first, then OPENAI_API_KEY
-    let resolvedKey = "";
-    for (const { pattern, envKey } of URL_KEY_MAP) {
-      if (pattern.test(mc.baseUrl)) {
-        resolvedKey = profileEnv[envKey] || env[envKey] || "";
-        break;
-      }
-    }
-    if (!resolvedKey) {
-      resolvedKey =
-        profileEnv.CUSTOM_API_KEY ||
-        env.CUSTOM_API_KEY ||
-        profileEnv.OPENAI_API_KEY ||
-        env.OPENAI_API_KEY ||
-        "";
-    }
-    // Local servers (localhost/127.0.0.1) don't need a real key
-    if (!resolvedKey && /localhost|127\.0\.0\.1/i.test(mc.baseUrl)) {
-      resolvedKey = "no-key-required";
-    }
-    env.OPENAI_API_KEY = resolvedKey || "no-key-required";
-
-    delete env.OPENROUTER_API_KEY;
-    delete env.ANTHROPIC_API_KEY;
-    delete env.ANTHROPIC_TOKEN;
-    delete env.OPENROUTER_BASE_URL;
-  }
+  applyCustomRuntimeEnv(env, mc, profileEnv);
 
   const proc = spawn(HERMES_PYTHON, args, {
     cwd: HERMES_REPO,
@@ -673,6 +709,8 @@ export function startGateway(profile?: string): boolean {
       gatewayEnv[key] = value;
     }
   }
+
+  applyCustomRuntimeEnv(gatewayEnv, getModelConfig(profile), profileEnv);
 
   gatewayProcess = spawn(HERMES_PYTHON, [HERMES_SCRIPT, "gateway"], {
     cwd: HERMES_REPO,

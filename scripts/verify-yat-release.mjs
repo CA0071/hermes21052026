@@ -732,6 +732,7 @@ function main() {
     `${releasePaths.appFileName}/Contents/Resources/hermes-agent-bundle/hermes-agent/pyproject.toml`,
     `${releasePaths.appFileName}/Contents/Resources/hermes-agent-bundle/hermes-bundle.json`,
     `${releasePaths.appFileName}/Contents/Resources/uv/macos-arm64/uv`,
+    `${releasePaths.appFileName}/Contents/Resources/python/macos-arm64/cpython-3.11.15-macos-aarch64-none/bin/python3.11`,
     `${releasePaths.appFileName}/Contents/_CodeSignature/CodeResources`,
   ];
   assert(

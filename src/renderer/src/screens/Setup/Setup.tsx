@@ -34,6 +34,10 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
     if (/api\.cerebras\.ai/i.test(url)) return "CEREBRAS_API_KEY";
     if (/api\.mistral\.ai/i.test(url)) return "MISTRAL_API_KEY";
     if (/api\.perplexity\.ai/i.test(url)) return "PERPLEXITY_API_KEY";
+    if (/dashscope\.aliyuncs\.com/i.test(url)) return "DASHSCOPE_API_KEY";
+    if (/bigmodel\.cn|zhipuai|glm/i.test(url)) return "GLM_API_KEY";
+    if (/moonshot\.cn|kimi/i.test(url)) return "KIMI_API_KEY";
+    if (/minimax\.chat|minimaxi\.com/i.test(url)) return "MINIMAX_CN_API_KEY";
     return "CUSTOM_API_KEY";
   }
 

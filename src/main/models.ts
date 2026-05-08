@@ -57,9 +57,13 @@ export function addModel(
 ): SavedModel {
   const models = readModels();
 
-  // Dedup: if same model ID + provider exists, return existing
+  // Dedup: if same model ID + provider + endpoint exists, return existing
+  const normalizedBaseUrl = baseUrl || "";
   const existing = models.find(
-    (m) => m.model === model && m.provider === provider,
+    (m) =>
+      m.model === model &&
+      m.provider === provider &&
+      (m.baseUrl || "") === normalizedBaseUrl,
   );
   if (existing) return existing;
 
@@ -68,7 +72,7 @@ export function addModel(
     name,
     provider,
     model,
-    baseUrl: baseUrl || "",
+    baseUrl: normalizedBaseUrl,
     createdAt: Date.now(),
   };
   models.push(entry);

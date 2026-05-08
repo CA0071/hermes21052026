@@ -1,13 +1,23 @@
-import icon from "../../assets/icon.png";
+import { CSSProperties } from "react";
 
-function HermesLogo({ size = 32 }: { size?: number }): React.JSX.Element {
+type HermesLogoProps = {
+  size?: number;
+  className?: string;
+};
+
+function HermesLogo({ size = 32, className = "" }: HermesLogoProps): React.JSX.Element {
+  const style = {
+    "--yat-logo-size": `${size}px`,
+  } as CSSProperties;
+
   return (
     <div
-      className="yat-logo"
-      style={{ width: size, height: size, borderRadius: Math.max(8, size / 4) }}
+      className={`yat-logo ${className}`.trim()}
+      style={style}
       aria-label="Yat"
+      role="img"
     >
-      <img src={icon} width={size} height={size} alt="" />
+      <span className="yat-logo-word">yat</span>
     </div>
   );
 }

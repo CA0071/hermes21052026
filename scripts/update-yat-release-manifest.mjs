@@ -230,6 +230,12 @@ function normalizeReleasePaths(manifest, paths, repositories) {
   );
   nextManifest = replaceOne(
     nextManifest,
+    /^ {4}[^/\n]+\.app\/Contents\/Resources\/python\/macos-arm64\/cpython-3\.11\.15-macos-aarch64-none\/bin\/python3\.11$/m,
+    `    ${paths.appFileName}/Contents/Resources/python/macos-arm64/cpython-3.11.15-macos-aarch64-none/bin/python3.11`,
+    "ZIP required bundled Python entry",
+  );
+  nextManifest = replaceOne(
+    nextManifest,
     /^ {4}[^/\n]+\.app\/Contents\/_CodeSignature\/CodeResources$/m,
     `    ${paths.appFileName}/Contents/_CodeSignature/CodeResources`,
     "ZIP required CodeResources entry",

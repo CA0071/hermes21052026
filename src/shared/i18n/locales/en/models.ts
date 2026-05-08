@@ -7,7 +7,7 @@ export default {
   displayName: "Display Name",
   modelId: "Model ID",
   namePlaceholder: "e.g. Claude Sonnet 4",
-  modelIdPlaceholder: "e.g. anthropic/claude-sonnet-4-20250514",
+  modelIdPlaceholder: "e.g. qwen-plus, deepseek-chat, kimi-k2-0711-preview",
   baseUrlPlaceholder: "http://localhost:1234/v1",
   subtitle:
     "Manage your model library. These models will appear in the chat page model selector.",

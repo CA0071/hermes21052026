@@ -1,5 +1,5 @@
 Yat 0.3.2 macOS release manifest
-Generated: 2026-05-07
+Generated: 2026-05-08
 
 Source repo:
   https://github.com/fathah/hermes-desktop.git
@@ -13,25 +13,25 @@ Application identity:
 
 Artifacts:
   dist/mac-arm64/Yat.app
-    size: 442M
+    size: 511M
 
   dist/yat-0.3.2.dmg
-    size: 176M
-    sha256: e993eeec32d70152fbb152c7f15366a0bb2c563be8de078d8fb0b92533f2a527
+    size: 193M
+    sha256: 9f3ee29bc1741d84cc0e47bca29b315608fb52a396abf4ddb60d03d3d58988d3
 
   dist/Yat-0.3.2-arm64-mac.zip
-    size: 177M
-    sha256: 86ac279e4c9a4b88dfe8d6face91c0c13b99ea9ef7adbdc688cace03797f3649
+    size: 193M
+    sha256: 6446af0ecc9728278e0e4292e04b27c5cfe0d64071e382038c711f1e767b2988
 
 Bundled Hermes Agent:
   bundle path: resources/hermes-agent-bundle
   packaged path: Yat.app/Contents/Resources/hermes-agent-bundle
-  size: 83M
+  size: 81M
   source: /Users/yat/.hermes/hermes-agent
   commit: 54e78cadb2e6d16a4f82185b2dc81c9dc176a813
   short commit: 54e78cadb2e6
   ref: v2026.4.30-393-g54e78cadb-dirty
-  metadata sha256: 1f8675315c31d920ad2638d626d997bb4ba004213c7826516926e36b145e7e8b
+  metadata sha256: 124793231493bba320ce13c321da3a0e5fdefa489cad9c43342e0933c865e9f7
 
 Verification already performed:
   npm run typecheck
@@ -49,20 +49,21 @@ Mounted DMG verification:
   mountpoint contained Yat.app and Applications symlink
   mounted app CFBundleDisplayName: Yat
   mounted app CFBundleIdentifier: dev.yat.desktop
-  mounted app size: 442M
-  mounted Hermes bundle size: 83M
+  mounted app size: 511M
+  mounted Hermes bundle size: 81M
   mounted app codesign verification: valid on disk, satisfies designated requirement
 
 ZIP verification:
   unzip test result: No errors detected in compressed data
-  entries: 4214
-  zip file size: 177029527 bytes
-  uncompressed total: 447646031 bytes
-  compressed total: 175870521 bytes
-  compression ratio: 60.7%
+  entries: 7383
+  zip file size: 198454917 bytes
+  uncompressed total: 507553072 bytes
+  compressed total: 196220753 bytes
+  compression ratio: 61.3%
   required entries found:
     Yat.app/Contents/Info.plist
     Yat.app/Contents/Resources/hermes-agent-bundle/hermes-agent/pyproject.toml
     Yat.app/Contents/Resources/hermes-agent-bundle/hermes-bundle.json
     Yat.app/Contents/Resources/uv/macos-arm64/uv
+    Yat.app/Contents/Resources/python/macos-arm64/cpython-3.11.15-macos-aarch64-none/bin/python3.11
     Yat.app/Contents/_CodeSignature/CodeResources

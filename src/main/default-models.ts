@@ -26,6 +26,38 @@ const DEFAULT_MODELS: DefaultModel[] = [
     baseUrl: "",
   },
 
+  // ── China-friendly OpenAI-compatible APIs ─────────────────────────────
+  {
+    name: "DeepSeek Chat",
+    provider: "custom",
+    model: "deepseek-chat",
+    baseUrl: "https://api.deepseek.com/v1",
+  },
+  {
+    name: "Qwen Plus (DashScope)",
+    provider: "custom",
+    model: "qwen-plus",
+    baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+  },
+  {
+    name: "Kimi K2 (Moonshot)",
+    provider: "custom",
+    model: "kimi-k2-0711-preview",
+    baseUrl: "https://api.moonshot.cn/v1",
+  },
+  {
+    name: "GLM 4.5 (Zhipu)",
+    provider: "custom",
+    model: "glm-4.5",
+    baseUrl: "https://open.bigmodel.cn/api/paas/v4",
+  },
+  {
+    name: "MiniMax M1",
+    provider: "custom",
+    model: "MiniMax-M1",
+    baseUrl: "https://api.minimax.chat/v1",
+  },
+
   // ── Anthropic (direct) ───────────────────────────────────────────────
   {
     name: "Claude Sonnet 4",

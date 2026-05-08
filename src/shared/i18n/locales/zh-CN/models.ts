@@ -7,7 +7,7 @@ export default {
   displayName: "显示名称",
   modelId: "模型 ID",
   namePlaceholder: "例如：Claude Sonnet 4",
-  modelIdPlaceholder: "例如：anthropic/claude-sonnet-4-20250514",
+  modelIdPlaceholder: "例如：qwen-plus、deepseek-chat、kimi-k2-0711-preview",
   baseUrlPlaceholder: "http://localhost:1234/v1",
   subtitle: "管理你的模型库。这些模型会出现在聊天页面的模型选择器中。",
   addModel: "添加模型",

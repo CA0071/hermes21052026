@@ -20,6 +20,14 @@ extraResources:
     to: uv
     filter:
       - "**/*"
+  - from: resources/python
+    to: python
+    filter:
+      - "**/*"
+  - from: resources/wheelhouse
+    to: wheelhouse
+    filter:
+      - "**/*"
 win:
   executableName: yat
 nsis:

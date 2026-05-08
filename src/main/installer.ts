@@ -112,7 +112,7 @@ export function checkInstallStatus(): InstallStatus {
   try {
     const mc = getModelConfig();
     const localProviders = ["custom", "lmstudio", "ollama", "vllm", "llamacpp"];
-    if (localProviders.includes(mc.provider)) {
+    if (localProviders.includes(mc.provider) || mc.provider.startsWith("custom:")) {
       hasApiKey = true;
     }
   } catch {
@@ -521,6 +521,67 @@ async function installUvIfMissing(
   return installed;
 }
 
+function findBundledPythonCommand(): string | null {
+  const candidates = [
+    join(
+      process.resourcesPath,
+      "python",
+      "macos-arm64",
+      "cpython-3.11.15-macos-aarch64-none",
+      "bin",
+      "python3.11",
+    ),
+    join(
+      app.getAppPath(),
+      "resources",
+      "python",
+      "macos-arm64",
+      "cpython-3.11.15-macos-aarch64-none",
+      "bin",
+      "python3.11",
+    ),
+    join(
+      process.cwd(),
+      "resources",
+      "python",
+      "macos-arm64",
+      "cpython-3.11.15-macos-aarch64-none",
+      "bin",
+      "python3.11",
+    ),
+  ];
+  for (const candidate of candidates) {
+    try {
+      execFileSync(candidate, ["--version"], {
+        stdio: ["ignore", "ignore", "ignore"],
+        timeout: 10000,
+      });
+      return candidate;
+    } catch {
+      /* try next candidate */
+    }
+  }
+  return null;
+}
+
+function findBundledWheelhouse(): string | null {
+  const candidates = [
+    join(process.resourcesPath, "wheelhouse", "macos-arm64"),
+    join(app.getAppPath(), "resources", "wheelhouse", "macos-arm64"),
+    join(process.cwd(), "resources", "wheelhouse", "macos-arm64"),
+  ];
+  for (const dir of candidates) {
+    if (!existsSync(dir)) continue;
+    try {
+      const hasWheel = readdirSync(dir).some((entry) => entry.endsWith(".whl"));
+      if (hasWheel) return dir;
+    } catch {
+      /* ignore unreadable candidate */
+    }
+  }
+  return null;
+}
+
 async function runBundledInstall(
   sourceDir: string,
   onProgress: (progress: InstallProgress) => void,
@@ -570,8 +631,18 @@ async function runBundledInstall(
   emit(4, "Setting up package manager", `uv found: ${uv}\n`);
 
   await new Promise<void>((resolve, reject) => {
-    emit(5, "Creating Python environment", "Creating Hermes venv with Python 3.11...\n");
-    const proc = spawn(uv, ["venv", "venv", "--python", "3.11"], {
+    const bundledPython = findBundledPythonCommand();
+    const pythonArgs = bundledPython
+      ? ["venv", "venv", "--python", bundledPython, "--no-python-downloads"]
+      : ["venv", "venv", "--python", "3.11"];
+    emit(
+      5,
+      "Creating Python environment",
+      bundledPython
+        ? `Creating Hermes venv with bundled Python: ${bundledPython}\n`
+        : "Creating Hermes venv with Python 3.11...\n",
+    );
+    const proc = spawn(uv, pythonArgs, {
       cwd: HERMES_REPO,
       env: { ...process.env, PATH: getEnhancedPath(), HOME: home, TERM: "dumb" },
       stdio: ["ignore", "pipe", "pipe"],
@@ -590,8 +661,26 @@ async function runBundledInstall(
   });
 
   await new Promise<void>((resolve, reject) => {
-    emit(6, "Installing dependencies", "Installing Hermes Python dependencies...\n");
-    const proc = spawn(uv, ["pip", "install", "-e", ".[all]"], {
+    const bundledWheelhouse = findBundledWheelhouse();
+    const pipArgs = bundledWheelhouse
+      ? [
+          "pip",
+          "install",
+          "--no-index",
+          "--find-links",
+          bundledWheelhouse,
+          "-e",
+          ".[all]",
+        ]
+      : ["pip", "install", "-e", ".[all]"];
+    emit(
+      6,
+      "Installing dependencies",
+      bundledWheelhouse
+        ? `Installing Hermes Python dependencies from bundled wheelhouse: ${bundledWheelhouse}\n`
+        : "Installing Hermes Python dependencies...\n",
+    );
+    const proc = spawn(uv, pipArgs, {
       cwd: HERMES_REPO,
       env: {
         ...process.env,
@@ -599,6 +688,7 @@ async function runBundledInstall(
         HOME: home,
         TERM: "dumb",
         VIRTUAL_ENV: HERMES_VENV,
+        ...(bundledWheelhouse ? { UV_OFFLINE: "1" } : {}),
       },
       stdio: ["ignore", "pipe", "pipe"],
     });

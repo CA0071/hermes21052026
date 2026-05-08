@@ -8,6 +8,10 @@ node_modules/
 dist/
 out/
 resources/hermes-agent-bundle/
+resources/python/*
+resources/wheelhouse/*
+!resources/python/.keep
+!resources/wheelhouse/.keep
 
 # TypeScript incremental build info
 *.tsbuildinfo
