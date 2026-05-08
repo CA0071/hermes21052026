@@ -217,6 +217,26 @@ export function getModelConfig(profile?: string): {
   return result;
 }
 
+function updateModelBlockValue(content: string, key: string, value: string): string {
+  const quoted = `"${value.replace(/"/g, '\\"')}"`;
+  const modelMatch = content.match(/^model:\s*\n((?:[ \t]+.*(?:\n|$))*)/m);
+  if (!modelMatch || modelMatch.index === undefined) {
+    return `model:\n  ${key}: ${quoted}\n` + content;
+  }
+
+  const block = modelMatch[1];
+  const keyRegex = new RegExp(
+    `^(\\s*${escapeRegex(key)}:\\s*)["']?[^"'\\n#]*["']?`,
+    "m",
+  );
+  const nextBlock = keyRegex.test(block)
+    ? block.replace(keyRegex, `$1${quoted}`)
+    : `  ${key}: ${quoted}\n` + block;
+
+  const blockStart = modelMatch.index + "model:\n".length;
+  return content.slice(0, blockStart) + nextBlock + content.slice(modelMatch.index + modelMatch[0].length);
+}
+
 export function setModelConfig(
   provider: string,
   model: string,
@@ -229,26 +249,9 @@ export function setModelConfig(
 
   let content = readFileSync(configFile, "utf-8");
 
-  const providerRegex = /^(\s*provider:\s*)["']?[^"'\n#]*["']?/m;
-  if (providerRegex.test(content)) {
-    content = content.replace(providerRegex, `$1"${provider}"`);
-  } else {
-    content = content.replace(/^(\s*model:\s*\n)/m, `$1  provider: "${provider}"\n`);
-  }
-
-  const modelRegex = /^(\s*default:\s*)["']?[^"'\n#]*["']?/m;
-  if (modelRegex.test(content)) {
-    content = content.replace(modelRegex, `$1"${model}"`);
-  } else {
-    content = content.replace(/^(\s*model:\s*\n)/m, `$1  default: "${model}"\n`);
-  }
-
-  const baseUrlRegex = /^(\s*base_url:\s*)["']?[^"'\n#]*["']?/m;
-  if (baseUrlRegex.test(content)) {
-    content = content.replace(baseUrlRegex, `$1"${baseUrl}"`);
-  } else {
-    content = content.replace(/^(\s*model:\s*\n)/m, `$1  base_url: "${baseUrl}"\n`);
-  }
+  content = updateModelBlockValue(content, "provider", provider);
+  content = updateModelBlockValue(content, "default", model);
+  content = updateModelBlockValue(content, "base_url", baseUrl);
 
   // Disable smart_model_routing
   const lines = content.split("\n");

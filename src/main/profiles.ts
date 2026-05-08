@@ -32,8 +32,12 @@ async function readProfileConfig(profilePath: string): Promise<{
   const configFile = join(profilePath, "config.yaml");
   try {
     const content = await fs.readFile(configFile, "utf-8");
-    const modelMatch = content.match(/^\s*default:\s*["']?([^"'\n#]+)["']?/m);
-    const providerMatch = content.match(
+    const modelBlock =
+      content.match(/^model:\s*\n((?:[ \t]+.*(?:\n|$))*)/m)?.[1] || "";
+    const modelMatch = modelBlock.match(
+      /^\s*default:\s*["']?([^"'\n#]+)["']?/m,
+    );
+    const providerMatch = modelBlock.match(
       /^\s*provider:\s*["']?([^"'\n#]+)["']?/m,
     );
     return {
