@@ -28,6 +28,7 @@ import {
   Timer,
   Download,
   Refresh,
+  Plus,
 } from "../../assets/icons";
 import type { LucideIcon } from "lucide-react";
 
@@ -63,6 +64,43 @@ type View =
   | "gateway"
   | "settings";
 
+
+
+type ChatThread = {
+  id: string;
+  title: string;
+  messages: ChatMessage[];
+  sessionId: string | null;
+  profile: string;
+  running: boolean;
+  updatedAt: number;
+};
+
+function createThread(profile = "default"): ChatThread {
+  const now = Date.now();
+  return {
+    id: `thread-${now}-${Math.random().toString(16).slice(2)}`,
+    title: "新对话",
+    messages: [],
+    sessionId: null,
+    profile,
+    running: false,
+    updatedAt: now,
+  };
+}
+
+function getThreadPreview(thread: ChatThread): string {
+  const last = [...thread.messages].reverse().find((m) => m.content.trim());
+  if (!last) return "新的 Yat Studio 对话";
+  return last.content.replace(/\s+/g, " ").slice(0, 44);
+}
+
+function getThreadTitle(thread: ChatThread): string {
+  const firstUser = thread.messages.find((m) => m.role === "user" && m.content.trim());
+  if (!firstUser) return thread.title;
+  return firstUser.content.replace(/\s+/g, " ").slice(0, 18);
+}
+
 const NAV_ITEMS: { view: View; icon: LucideIcon; labelKey: string }[] = [
   { view: "chat", icon: ChatBubble, labelKey: "navigation.chat" },
   { view: "sessions", icon: Clock, labelKey: "navigation.sessions" },
@@ -81,9 +119,10 @@ const NAV_ITEMS: { view: View; icon: LucideIcon; labelKey: string }[] = [
 function Layout(): React.JSX.Element {
   const { t } = useI18n();
   const [view, setView] = useState<View>("chat");
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
-  const [activeProfile, setActiveProfile] = useState("default");
+  const [threads, setThreads] = useState<ChatThread[]>(() => [createThread()]);
+  const [activeThreadId, setActiveThreadId] = useState(() => threads[0]?.id || "");
+  const activeThread = threads.find((thread) => thread.id === activeThreadId) || threads[0];
+  const activeProfile = activeThread?.profile || "default";
   // Remote mode — many screens show "not available" instead of empty data
   const [remoteMode, setRemoteMode] = useState(false);
 
@@ -199,13 +238,56 @@ function Layout(): React.JSX.Element {
     }
   }
 
+
+  const updateActiveThread = useCallback(
+    (updater: (thread: ChatThread) => ChatThread) => {
+      setThreads((prev) =>
+        prev.map((thread) =>
+          thread.id === activeThreadId ? updater(thread) : thread,
+        ),
+      );
+    },
+    [activeThreadId],
+  );
+
+  const setActiveMessages = useCallback(
+    (value: React.SetStateAction<ChatMessage[]>) => {
+      updateActiveThread((thread) => {
+        const nextMessages =
+          typeof value === "function" ? value(thread.messages) : value;
+        return {
+          ...thread,
+          title: getThreadTitle({ ...thread, messages: nextMessages }),
+          messages: nextMessages,
+          updatedAt: Date.now(),
+        };
+      });
+    },
+    [updateActiveThread],
+  );
+
+  const handleThreadRunningChange = useCallback((running: boolean) => {
+    setThreads((prev) =>
+      prev.map((thread) =>
+        thread.id === activeThreadId ? { ...thread, running, updatedAt: Date.now() } : thread,
+      ),
+    );
+  }, [activeThreadId]);
+
+  const handleThreadSessionChange = useCallback((sessionId: string | null) => {
+    setThreads((prev) =>
+      prev.map((thread) =>
+        thread.id === activeThreadId ? { ...thread, sessionId, updatedAt: Date.now() } : thread,
+      ),
+    );
+  }, [activeThreadId]);
+
   const handleNewChat = useCallback(() => {
-    // Abort any in-flight chat before clearing
-    window.hermesAPI.abortChat();
-    setMessages([]);
-    setCurrentSessionId(null);
+    const thread = createThread(activeProfile);
+    setThreads((prev) => [thread, ...prev]);
+    setActiveThreadId(thread.id);
     setView("chat");
-  }, []);
+  }, [activeProfile]);
 
   // Listen for menu IPC events (Cmd+N, Cmd+K from app menu)
   useEffect(() => {
@@ -222,9 +304,9 @@ function Layout(): React.JSX.Element {
   }, [handleNewChat]);
 
   const handleSelectProfile = useCallback((name: string) => {
-    setActiveProfile(name);
-    setMessages([]);
-    setCurrentSessionId(null);
+    const thread = createThread(name);
+    setThreads((prev) => [thread, ...prev]);
+    setActiveThreadId(thread.id);
   }, []);
 
   const handleResumeSession = useCallback(async (sessionId: string) => {
@@ -234,10 +316,18 @@ function Layout(): React.JSX.Element {
       role: m.role === "user" ? "user" : "agent",
       content: m.content,
     }));
-    setMessages(chatMessages);
-    setCurrentSessionId(sessionId);
+    const thread: ChatThread = {
+      ...createThread(activeProfile),
+      id: `session-${sessionId}`,
+      title: chatMessages[0]?.content.slice(0, 18) || t("chat.title"),
+      messages: chatMessages,
+      sessionId,
+      updatedAt: Date.now(),
+    };
+    setThreads((prev) => [thread, ...prev.filter((t) => t.id !== thread.id)]);
+    setActiveThreadId(thread.id);
     setView("chat");
-  }, []);
+  }, [activeProfile, t]);
 
   return (
     <div className="layout">
@@ -325,6 +415,36 @@ function Layout(): React.JSX.Element {
         </div>
       </aside>
 
+      {view === "chat" && (
+        <section className="wechat-thread-pane">
+          <div className="wechat-thread-head">
+            <div>
+              <div className="wechat-thread-title">对话</div>
+              <div className="wechat-thread-count">{threads.length} 个窗口</div>
+            </div>
+            <button className="wechat-thread-new" onClick={handleNewChat} title={t("chat.newChat")}>
+              <Plus size={16} />
+            </button>
+          </div>
+          <div className="wechat-thread-list">
+            {threads.map((thread) => (
+              <button
+                key={thread.id}
+                className={`wechat-thread-item ${thread.id === activeThreadId ? "active" : ""}`}
+                onClick={() => setActiveThreadId(thread.id)}
+              >
+                <span className="wechat-thread-avatar">Y</span>
+                <span className="wechat-thread-copy">
+                  <span className="wechat-thread-name">{getThreadTitle(thread)}</span>
+                  <span className="wechat-thread-preview">{getThreadPreview(thread)}</span>
+                </span>
+                {thread.running && <span className="wechat-thread-running" />}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
       <main className="content">
         <div
           style={{
@@ -335,11 +455,14 @@ function Layout(): React.JSX.Element {
           }}
         >
           <Chat
-            messages={messages}
-            setMessages={setMessages}
-            sessionId={currentSessionId}
+            conversationId={activeThread?.id}
+            messages={activeThread?.messages || []}
+            setMessages={setActiveMessages}
+            sessionId={activeThread?.sessionId || null}
             profile={activeProfile}
             onNewChat={handleNewChat}
+            onRunningChange={handleThreadRunningChange}
+            onSessionIdChange={handleThreadSessionChange}
           />
         </div>
         {view === "sessions" &&
@@ -349,7 +472,7 @@ function Layout(): React.JSX.Element {
             <Sessions
               onResumeSession={handleResumeSession}
               onNewChat={handleNewChat}
-              currentSessionId={currentSessionId}
+              currentSessionId={activeThread?.sessionId || null}
             />
           ))}
         {view === "agents" &&

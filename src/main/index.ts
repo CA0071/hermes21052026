@@ -124,7 +124,7 @@ process.on("unhandledRejection", (reason) => {
 });
 
 let mainWindow: BrowserWindow | null = null;
-let currentChatAbort: (() => void) | null = null;
+const chatAborts = new Map<string, () => void>();
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -417,13 +417,11 @@ function setupIPC(): void {
       profile?: string,
       resumeSessionId?: string,
       history?: Array<{ role: string; content: string }>,
+      requestId?: string,
     ) => {
+      const chatRequestId = requestId || `chat-${Date.now()}-${Math.random().toString(16).slice(2)}`;
       if (!isRemoteMode() && !isGatewayRunning()) {
         startGateway(profile);
-      }
-
-      if (currentChatAbort) {
-        currentChatAbort();
       }
 
       let fullResponse = "";
@@ -442,11 +440,11 @@ function setupIPC(): void {
         {
           onChunk: (chunk) => {
             fullResponse += chunk;
-            event.sender.send("chat-chunk", chunk);
+            event.sender.send("chat-chunk", chunk, chatRequestId);
           },
           onDone: (sessionId) => {
-            currentChatAbort = null;
-            event.sender.send("chat-done", sessionId || "");
+            chatAborts.delete(chatRequestId);
+            event.sender.send("chat-done", sessionId || "", chatRequestId);
             resolveChat({ response: fullResponse, sessionId });
             // Desktop notification when window is not focused and response took >10s
             if (
@@ -465,8 +463,8 @@ function setupIPC(): void {
             }
           },
           onError: (error) => {
-            currentChatAbort = null;
-            event.sender.send("chat-error", error);
+            chatAborts.delete(chatRequestId);
+            event.sender.send("chat-error", error, chatRequestId);
             rejectChat(new Error(error));
             // Notify on error too if window not focused
             if (mainWindow && !mainWindow.isFocused()) {
@@ -477,10 +475,10 @@ function setupIPC(): void {
             }
           },
           onToolProgress: (tool) => {
-            event.sender.send("chat-tool-progress", tool);
+            event.sender.send("chat-tool-progress", tool, chatRequestId);
           },
           onUsage: (usage) => {
-            event.sender.send("chat-usage", usage);
+            event.sender.send("chat-usage", usage, chatRequestId);
           },
         },
         profile,
@@ -488,16 +486,22 @@ function setupIPC(): void {
         history,
       );
 
-      currentChatAbort = handle.abort;
+      chatAborts.set(chatRequestId, handle.abort);
       return promise;
     },
   );
 
-  ipcMain.handle("abort-chat", () => {
-    if (currentChatAbort) {
-      currentChatAbort();
-      currentChatAbort = null;
+  ipcMain.handle("abort-chat", (_event, requestId?: string) => {
+    if (requestId) {
+      const abort = chatAborts.get(requestId);
+      if (abort) {
+        abort();
+        chatAborts.delete(requestId);
+      }
+      return;
     }
+    Array.from(chatAborts.values()).forEach((abort) => abort());
+    chatAborts.clear();
   });
 
   // Gateway
@@ -964,10 +968,8 @@ app.on("window-all-closed", () => {
 
 app.on("before-quit", () => {
   stopHealthPolling();
-  if (currentChatAbort) {
-    currentChatAbort();
-    currentChatAbort = null;
-  }
+  Array.from(chatAborts.values()).forEach((abort) => abort());
+  chatAborts.clear();
   stopGateway();
   stopClaw3d();
 });

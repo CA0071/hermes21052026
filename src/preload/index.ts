@@ -185,6 +185,7 @@ const hermesAPI = {
     profile?: string,
     resumeSessionId?: string,
     history?: Array<{ role: string; content: string }>,
+    requestId?: string,
   ): Promise<{ response: string; sessionId?: string }> =>
     ipcRenderer.invoke(
       "send-message",
@@ -192,29 +193,31 @@ const hermesAPI = {
       profile,
       resumeSessionId,
       history,
+      requestId,
     ),
 
-  abortChat: (): Promise<void> => ipcRenderer.invoke("abort-chat"),
+  abortChat: (requestId?: string): Promise<void> => ipcRenderer.invoke("abort-chat", requestId),
 
-  onChatChunk: (callback: (chunk: string) => void): (() => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, chunk: string): void =>
-      callback(chunk);
+  onChatChunk: (callback: (chunk: string, requestId?: string) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, chunk: string, requestId?: string): void =>
+      callback(chunk, requestId);
     ipcRenderer.on("chat-chunk", handler);
     return () => ipcRenderer.removeListener("chat-chunk", handler);
   },
 
-  onChatDone: (callback: (sessionId?: string) => void): (() => void) => {
+  onChatDone: (callback: (sessionId?: string, requestId?: string) => void): (() => void) => {
     const handler = (
       _event: Electron.IpcRendererEvent,
       sessionId?: string,
-    ): void => callback(sessionId);
+      requestId?: string,
+    ): void => callback(sessionId, requestId);
     ipcRenderer.on("chat-done", handler);
     return () => ipcRenderer.removeListener("chat-done", handler);
   },
 
-  onChatToolProgress: (callback: (tool: string) => void): (() => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, tool: string): void =>
-      callback(tool);
+  onChatToolProgress: (callback: (tool: string, requestId?: string) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, tool: string, requestId?: string): void =>
+      callback(tool, requestId);
     ipcRenderer.on("chat-tool-progress", handler);
     return () => ipcRenderer.removeListener("chat-tool-progress", handler);
   },
@@ -227,9 +230,9 @@ const hermesAPI = {
       cost?: number;
       rateLimitRemaining?: number;
       rateLimitReset?: number;
-    }) => void,
+    }, requestId?: string) => void,
   ): (() => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, usage: unknown): void =>
+    const handler = (_event: Electron.IpcRendererEvent, usage: unknown, requestId?: string): void =>
       callback(
         usage as {
           promptTokens: number;
@@ -239,14 +242,15 @@ const hermesAPI = {
           rateLimitRemaining?: number;
           rateLimitReset?: number;
         },
+        requestId,
       );
     ipcRenderer.on("chat-usage", handler);
     return () => ipcRenderer.removeListener("chat-usage", handler);
   },
 
-  onChatError: (callback: (error: string) => void): (() => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, error: string): void =>
-      callback(error);
+  onChatError: (callback: (error: string, requestId?: string) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, error: string, requestId?: string): void =>
+      callback(error, requestId);
     ipcRenderer.on("chat-error", handler);
     return () => ipcRenderer.removeListener("chat-error", handler);
   },

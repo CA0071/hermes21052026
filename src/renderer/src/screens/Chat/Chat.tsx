@@ -200,21 +200,27 @@ import { PROVIDERS } from "../../constants";
 import { useI18n } from "../../components/useI18n";
 
 interface ChatProps {
+  conversationId?: string;
   messages: ChatMessage[];
   setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
   sessionId: string | null;
   profile?: string;
   onSessionStarted?: () => void;
   onNewChat?: () => void;
+  onRunningChange?: (running: boolean) => void;
+  onSessionIdChange?: (sessionId: string | null) => void;
 }
 
 function Chat({
+  conversationId = "default",
   messages,
   setMessages,
   sessionId,
   profile,
   onSessionStarted,
   onNewChat,
+  onRunningChange,
+  onSessionIdChange,
 }: ChatProps): React.JSX.Element {
   const { t } = useI18n();
   const [input, setInput] = useState("");
@@ -233,6 +239,7 @@ function Chat({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const isLoadingRef = useRef(false);
   const userScrolledUpRef = useRef(false);
+  const activeRequestIdRef = useRef<string | null>(null);
 
   // Model picker state
   const [currentModel, setCurrentModel] = useState("");
@@ -251,6 +258,15 @@ function Chat({
 
   // Keep ref in sync for use in IPC callbacks
   isLoadingRef.current = isLoading;
+
+
+  useEffect(() => {
+    setHermesSessionId(sessionId);
+    setInput("");
+    setToolProgress(null);
+    setUsage(null);
+    setIsLoading(Boolean(activeRequestIdRef.current));
+  }, [conversationId, sessionId]);
 
   // Filtered slash commands based on current input
   const filteredSlashCommands = useMemo(
@@ -390,7 +406,8 @@ function Chat({
 
   // IPC listeners — stable callback refs, registered once
   useEffect(() => {
-    const cleanupChunk = window.hermesAPI.onChatChunk((chunk) => {
+    const cleanupChunk = window.hermesAPI.onChatChunk((chunk, requestId) => {
+      if (requestId && requestId !== activeRequestIdRef.current) return;
       setMessages((prev) => {
         const last = prev[prev.length - 1];
         // Append to existing agent message
@@ -409,13 +426,20 @@ function Chat({
       });
     });
 
-    const cleanupDone = window.hermesAPI.onChatDone((sessionId) => {
-      if (sessionId) setHermesSessionId(sessionId);
+    const cleanupDone = window.hermesAPI.onChatDone((sessionId, requestId) => {
+      if (requestId && requestId !== activeRequestIdRef.current) return;
+      if (sessionId) {
+        setHermesSessionId(sessionId);
+        onSessionIdChange?.(sessionId);
+      }
+      activeRequestIdRef.current = null;
       setToolProgress(null);
       setIsLoading(false);
+      onRunningChange?.(false);
     });
 
-    const cleanupError = window.hermesAPI.onChatError((error) => {
+    const cleanupError = window.hermesAPI.onChatError((error, requestId) => {
+      if (requestId && requestId !== activeRequestIdRef.current) return;
       setMessages((prev) => [
         ...prev,
         {
@@ -424,15 +448,19 @@ function Chat({
           content: `Error: ${error}`,
         },
       ]);
+      activeRequestIdRef.current = null;
       setToolProgress(null);
       setIsLoading(false);
+      onRunningChange?.(false);
     });
 
-    const cleanupToolProgress = window.hermesAPI.onChatToolProgress((tool) => {
+    const cleanupToolProgress = window.hermesAPI.onChatToolProgress((tool, requestId) => {
+      if (requestId && requestId !== activeRequestIdRef.current) return;
       setToolProgress(tool);
     });
 
-    const cleanupUsage = window.hermesAPI.onChatUsage((u) => {
+    const cleanupUsage = window.hermesAPI.onChatUsage((u, requestId) => {
+      if (requestId && requestId !== activeRequestIdRef.current) return;
       setUsage((prev) => ({
         promptTokens: (prev?.promptTokens || 0) + u.promptTokens,
         completionTokens: (prev?.completionTokens || 0) + u.completionTokens,
@@ -448,7 +476,7 @@ function Chat({
       cleanupToolProgress();
       cleanupUsage();
     };
-  }, [setMessages]);
+  }, [setMessages, onRunningChange, onSessionIdChange]);
 
   useEffect(() => {
     scrollToBottom();
@@ -516,7 +544,10 @@ function Chat({
       }
     }
 
+    const requestId = `${conversationId}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    activeRequestIdRef.current = requestId;
     setIsLoading(true);
+    onRunningChange?.(true);
     setMessages((prev) => [
       ...prev,
       { id: `user-${Date.now()}`, role: "user", content: text },
@@ -529,8 +560,12 @@ function Chat({
         profile,
         hermesSessionId || undefined,
         messages.map((m) => ({ role: m.role, content: m.content })),
+        requestId,
       );
     } catch {
+      activeRequestIdRef.current = null;
+      setIsLoading(false);
+      onRunningChange?.(false);
       // Error already handled by onChatError IPC listener — avoid duplicate
     }
   }
@@ -541,7 +576,10 @@ function Chat({
     // /btw sends an ephemeral side question that doesn't pollute conversation context
     setInput("");
     if (inputRef.current) inputRef.current.style.height = "auto";
+    const requestId = `${conversationId}-btw-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    activeRequestIdRef.current = requestId;
     setIsLoading(true);
+    onRunningChange?.(true);
     setMessages((prev) => [
       ...prev,
       { id: `user-btw-${Date.now()}`, role: "user", content: `💭 ${text}` },
@@ -552,8 +590,12 @@ function Chat({
         profile,
         hermesSessionId || undefined,
         messages.map((m) => ({ role: m.role, content: m.content })),
+        requestId,
       );
     } catch {
+      activeRequestIdRef.current = null;
+      setIsLoading(false);
+      onRunningChange?.(false);
       // Error already handled by onChatError IPC listener — avoid duplicate
     }
   }
@@ -805,8 +847,10 @@ function Chat({
   }
 
   function handleAbort(): void {
-    window.hermesAPI.abortChat();
+    window.hermesAPI.abortChat(activeRequestIdRef.current || undefined);
+    activeRequestIdRef.current = null;
     setIsLoading(false);
+    onRunningChange?.(false);
     // Refocus input after aborting
     setTimeout(() => inputRef.current?.focus(), 50);
   }
@@ -814,40 +858,57 @@ function Chat({
   function handleClear(): void {
     // Abort any in-flight request before clearing
     if (isLoading) {
-      window.hermesAPI.abortChat();
+      window.hermesAPI.abortChat(activeRequestIdRef.current || undefined);
+      activeRequestIdRef.current = null;
       setIsLoading(false);
+      onRunningChange?.(false);
     }
     setMessages([]);
     setHermesSessionId(null);
+    onSessionIdChange?.(null);
     setUsage(null);
     setToolProgress(null);
   }
 
   const handleApprove = useCallback(() => {
     setInput("");
+    const requestId = `${conversationId}-approve-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    activeRequestIdRef.current = requestId;
     setIsLoading(true);
+    onRunningChange?.(true);
     setMessages((prev) => [
       ...prev,
       { id: `user-approve-${Date.now()}`, role: "user", content: "/approve" },
     ]);
     const history = messages.map((m) => ({ role: m.role, content: m.content }));
     window.hermesAPI
-      .sendMessage("/approve", profile, hermesSessionId || undefined, history)
-      .catch(() => setIsLoading(false));
-  }, [profile, hermesSessionId, setMessages, messages]);
+      .sendMessage("/approve", profile, hermesSessionId || undefined, history, requestId)
+      .catch(() => {
+        activeRequestIdRef.current = null;
+        setIsLoading(false);
+        onRunningChange?.(false);
+      });
+  }, [conversationId, profile, hermesSessionId, setMessages, messages, onRunningChange]);
 
   const handleDeny = useCallback(() => {
     setInput("");
+    const requestId = `${conversationId}-deny-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    activeRequestIdRef.current = requestId;
     setIsLoading(true);
+    onRunningChange?.(true);
     setMessages((prev) => [
       ...prev,
       { id: `user-deny-${Date.now()}`, role: "user", content: "/deny" },
     ]);
     const history = messages.map((m) => ({ role: m.role, content: m.content }));
     window.hermesAPI
-      .sendMessage("/deny", profile, hermesSessionId || undefined, history)
-      .catch(() => setIsLoading(false));
-  }, [profile, hermesSessionId, setMessages, messages]);
+      .sendMessage("/deny", profile, hermesSessionId || undefined, history, requestId)
+      .catch(() => {
+        activeRequestIdRef.current = null;
+        setIsLoading(false);
+        onRunningChange?.(false);
+      });
+  }, [conversationId, profile, hermesSessionId, setMessages, messages, onRunningChange]);
 
   const visibleMessages = useMemo(
     () => messages.filter((m) => m.content.trim()),

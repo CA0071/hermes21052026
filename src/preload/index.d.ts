@@ -103,11 +103,12 @@ interface HermesAPI {
     profile?: string,
     resumeSessionId?: string,
     history?: Array<{ role: string; content: string }>,
+    requestId?: string,
   ) => Promise<{ response: string; sessionId?: string }>;
-  abortChat: () => Promise<void>;
-  onChatChunk: (callback: (chunk: string) => void) => () => void;
-  onChatDone: (callback: (sessionId?: string) => void) => () => void;
-  onChatToolProgress: (callback: (tool: string) => void) => () => void;
+  abortChat: (requestId?: string) => Promise<void>;
+  onChatChunk: (callback: (chunk: string, requestId?: string) => void) => () => void;
+  onChatDone: (callback: (sessionId?: string, requestId?: string) => void) => () => void;
+  onChatToolProgress: (callback: (tool: string, requestId?: string) => void) => () => void;
   onChatUsage: (
     callback: (usage: {
       promptTokens: number;
@@ -116,9 +117,9 @@ interface HermesAPI {
       cost?: number;
       rateLimitRemaining?: number;
       rateLimitReset?: number;
-    }) => void,
+    }, requestId?: string) => void,
   ) => () => void;
-  onChatError: (callback: (error: string) => void) => () => void;
+  onChatError: (callback: (error: string, requestId?: string) => void) => () => void;
 
   // Gateway
   startGateway: () => Promise<boolean>;

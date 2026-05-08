@@ -1,5 +1,6 @@
 import "./assets/main.css";
 import "./assets/apple-overrides.css";
+import "./assets/wechat-overrides.css";
 
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
