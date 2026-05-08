@@ -699,7 +699,7 @@ body {
 
 .setup-provider-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
   width: 100%;
   max-width: 580px;
@@ -707,6 +707,7 @@ body {
 }
 
 .setup-provider-card {
+  min-height: 104px;
   padding: 16px 12px;
   background: #fff;
   border: 1.5px solid var(--border);
@@ -810,6 +811,7 @@ body {
 
 .setup-local-presets {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   margin-bottom: 16px;
 }
@@ -857,10 +859,26 @@ body {
   margin-bottom: 12px;
 }
 
+.setup-actions {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.7fr) minmax(180px, 1.3fr);
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.setup-skip,
 .setup-continue {
   width: 100%;
   padding: 12px;
   font-size: 15px;
+}
+
+.setup-skip-hint {
+  margin-top: 10px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
 }
 
 /* ========================================================================

@@ -114,6 +114,18 @@ export const PROVIDERS = {
       needsKey: false,
     },
     {
+      id: "customApi",
+      name: "constants.customApiName",
+      desc: "constants.customApiDesc",
+      tag: "constants.customApiTag",
+      envKey: "",
+      url: "",
+      placeholder: "sk-...",
+      configProvider: "custom",
+      baseUrl: "https://api.deepseek.com/v1",
+      needsKey: false,
+    },
+    {
       id: "local",
       name: "constants.localName",
       desc: "constants.localDesc",

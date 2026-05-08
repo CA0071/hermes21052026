@@ -17,21 +17,21 @@ Artifacts:
 
   dist/yat-0.3.2.dmg
     size: 193M
-    sha256: 9f3ee29bc1741d84cc0e47bca29b315608fb52a396abf4ddb60d03d3d58988d3
+    sha256: 8346323935f71031da8a747839060d16e60ae599025c584104a188c0062975a1
 
   dist/Yat-0.3.2-arm64-mac.zip
     size: 193M
-    sha256: 6446af0ecc9728278e0e4292e04b27c5cfe0d64071e382038c711f1e767b2988
+    sha256: 55dc3b143073c6921259ce49b0de38369e84d03ae58ddbe2ab7849c85409915a
 
 Bundled Hermes Agent:
   bundle path: resources/hermes-agent-bundle
   packaged path: Yat.app/Contents/Resources/hermes-agent-bundle
-  size: 81M
+  size: 83M
   source: /Users/yat/.hermes/hermes-agent
   commit: 54e78cadb2e6d16a4f82185b2dc81c9dc176a813
   short commit: 54e78cadb2e6
   ref: v2026.4.30-393-g54e78cadb-dirty
-  metadata sha256: 124793231493bba320ce13c321da3a0e5fdefa489cad9c43342e0933c865e9f7
+  metadata sha256: bf786e2ef8fdba1f10ed725d6f8040d310b36b0a69742068e8636465e90e1c18
 
 Verification already performed:
   npm run typecheck
@@ -50,15 +50,15 @@ Mounted DMG verification:
   mounted app CFBundleDisplayName: Yat
   mounted app CFBundleIdentifier: dev.yat.desktop
   mounted app size: 511M
-  mounted Hermes bundle size: 81M
+  mounted Hermes bundle size: 83M
   mounted app codesign verification: valid on disk, satisfies designated requirement
 
 ZIP verification:
   unzip test result: No errors detected in compressed data
-  entries: 7383
-  zip file size: 198454917 bytes
-  uncompressed total: 507553072 bytes
-  compressed total: 196220753 bytes
+  entries: 7386
+  zip file size: 198455239 bytes
+  uncompressed total: 507558408 bytes
+  compressed total: 196220607 bytes
   compression ratio: 61.3%
   required entries found:
     Yat.app/Contents/Info.plist

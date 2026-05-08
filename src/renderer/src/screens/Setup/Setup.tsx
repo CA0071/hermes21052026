@@ -5,16 +5,18 @@ import { useI18n } from "../../components/useI18n";
 
 function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
   const { t } = useI18n();
-  const [selectedProvider, setSelectedProvider] = useState("openrouter");
+  const [selectedProvider, setSelectedProvider] = useState("customApi");
   const [apiKey, setApiKey] = useState("");
-  const [baseUrl, setBaseUrl] = useState("http://localhost:1234/v1");
+  const [baseUrl, setBaseUrl] = useState("https://api.deepseek.com/v1");
   const [modelName, setModelName] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [showKey, setShowKey] = useState(false);
 
   const provider = PROVIDERS.setup.find((p) => p.id === selectedProvider)!;
+  const isCustomApi = selectedProvider === "customApi";
   const isLocal = selectedProvider === "local";
+  const usesOpenAiCompatibleEndpoint = isCustomApi || isLocal;
 
   function applyLocalPreset(presetBaseUrl: string): void {
     setBaseUrl(presetBaseUrl);
@@ -46,7 +48,7 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
       setError(t("setup.missingApiKey"));
       return;
     }
-    if (isLocal && !baseUrl.trim()) {
+    if (usesOpenAiCompatibleEndpoint && !baseUrl.trim()) {
       setError(t("setup.missingServerUrl"));
       return;
     }
@@ -57,13 +59,13 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
     try {
       if (provider.needsKey && provider.envKey) {
         await window.hermesAPI.setEnv(provider.envKey, apiKey.trim());
-      } else if (isLocal && apiKey.trim()) {
+      } else if (usesOpenAiCompatibleEndpoint && apiKey.trim()) {
         const envKey = resolveCustomEnvKey(baseUrl.trim());
         await window.hermesAPI.setEnv(envKey, apiKey.trim());
       }
 
-      const configProvider = isLocal ? "custom" : provider.configProvider;
-      const configBaseUrl = isLocal ? baseUrl.trim() : provider.baseUrl;
+      const configProvider = usesOpenAiCompatibleEndpoint ? "custom" : provider.configProvider;
+      const configBaseUrl = usesOpenAiCompatibleEndpoint ? baseUrl.trim() : provider.baseUrl;
       const configModel = modelName.trim() || "";
       await window.hermesAPI.setModelConfig(
         configProvider,
@@ -74,6 +76,18 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
       onComplete();
     } catch {
       setError(t("setup.saveFailed"));
+      setSaving(false);
+    }
+  }
+
+  async function handleSkip(): Promise<void> {
+    setSaving(true);
+    setError("");
+    try {
+      await window.hermesAPI.setModelConfig("custom", "", "http://localhost:1234/v1");
+      onComplete();
+    } catch {
+      setError(t("setup.skipFailed"));
       setSaving(false);
     }
   }
@@ -101,11 +115,11 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
       </div>
 
       <div className="setup-form">
-        {isLocal ? (
+        {usesOpenAiCompatibleEndpoint ? (
           <>
-            <label className="setup-label">{t("setup.localGroupLabel")}</label>
+            <label className="setup-label">{t("setup.customApiGroupLabel")}</label>
             <div className="setup-local-presets">
-              {LOCAL_PRESETS.filter((p) => p.group === "local").map(
+              {LOCAL_PRESETS.filter((p) => p.group === (isLocal ? "local" : "remote")).map(
                 (preset) => (
                   <button
                     key={preset.id}
@@ -118,22 +132,26 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
               )}
             </div>
 
-            <label className="setup-label" style={{ marginTop: 12 }}>
-              {t("setup.remoteGroupLabel")}
-            </label>
-            <div className="setup-local-presets">
-              {LOCAL_PRESETS.filter((p) => p.group === "remote").map(
-                (preset) => (
-                  <button
-                    key={preset.id}
-                    className={`setup-local-preset ${baseUrl === preset.baseUrl ? "active" : ""}`}
-                    onClick={() => applyLocalPreset(preset.baseUrl)}
-                  >
-                    {t(`setup.localPresets.${preset.id}`)}
-                  </button>
-                ),
-              )}
-            </div>
+            {isLocal && (
+              <>
+                <label className="setup-label" style={{ marginTop: 12 }}>
+                  {t("setup.remoteGroupLabel")}
+                </label>
+                <div className="setup-local-presets">
+                  {LOCAL_PRESETS.filter((p) => p.group === "remote").map(
+                    (preset) => (
+                      <button
+                        key={preset.id}
+                        className={`setup-local-preset ${baseUrl === preset.baseUrl ? "active" : ""}`}
+                        onClick={() => applyLocalPreset(preset.baseUrl)}
+                      >
+                        {t(`setup.localPresets.${preset.id}`)}
+                      </button>
+                    ),
+                  )}
+                </div>
+              </>
+            )}
 
             <label className="setup-label" style={{ marginTop: 16 }}>
               {t("setup.serverUrl")}
@@ -150,7 +168,7 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
               autoFocus
             />
             <div className="setup-field-hint">
-              {t("setup.customServerHint")}
+              {isLocal ? t("setup.customServerHint") : t("setup.remoteApiServerHint")}
             </div>
 
             <label className="setup-label" style={{ marginTop: 16 }}>
@@ -238,19 +256,29 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
 
         {error && <div className="setup-error">{error}</div>}
 
-        <button
-          className="btn btn-primary setup-continue"
-          onClick={handleContinue}
-          disabled={
-            saving ||
-            (provider.needsKey && !apiKey.trim()) ||
-            (isLocal && !baseUrl.trim())
-          }
-          style={{ marginTop: isLocal ? 20 : 0 }}
-        >
-          {saving ? t("setup.saving") : t("setup.continue")}
-          {!saving && <ArrowRight size={16} />}
-        </button>
+        <div className="setup-actions">
+          <button
+            className="btn btn-secondary setup-skip"
+            onClick={handleSkip}
+            disabled={saving}
+            type="button"
+          >
+            {t("setup.skipForNow")}
+          </button>
+          <button
+            className="btn btn-primary setup-continue"
+            onClick={handleContinue}
+            disabled={
+              saving ||
+              (provider.needsKey && !apiKey.trim()) ||
+              (usesOpenAiCompatibleEndpoint && !baseUrl.trim())
+            }
+          >
+            {saving ? t("setup.saving") : t("setup.continue")}
+            {!saving && <ArrowRight size={16} />}
+          </button>
+        </div>
+        <div className="setup-skip-hint">{t("setup.skipHint")}</div>
       </div>
     </div>
   );
