@@ -19,6 +19,26 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
   const isLocal = selectedProvider === "local";
   const usesOpenAiCompatibleEndpoint = isCustomApi || isLocal;
 
+  function applyProvider(providerId: string): void {
+    setSelectedProvider(providerId);
+    setError("");
+    if (providerId === "customApi") {
+      setBaseUrl("https://api.deepseek.com/v1");
+      setModelName("deepseek-chat");
+      setSelectedModelPreset("deepseek-chat");
+    } else if (providerId === "local") {
+      setBaseUrl("http://localhost:1234/v1");
+      setModelName("");
+      setSelectedModelPreset("custom-model");
+    }
+  }
+
+  function isLocalUrl(url: string): boolean {
+    return /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(?::|\/|$)/i.test(
+      url.trim(),
+    );
+  }
+
   function applyLocalPreset(presetBaseUrl: string): void {
     const preset = LOCAL_PRESETS.find((p) => p.baseUrl === presetBaseUrl);
     setBaseUrl(presetBaseUrl);
@@ -70,6 +90,14 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
     }
     if (usesOpenAiCompatibleEndpoint && !baseUrl.trim()) {
       setError(t("setup.missingServerUrl"));
+      return;
+    }
+    if (isCustomApi && !modelName.trim()) {
+      setError(t("setup.missingModelName"));
+      return;
+    }
+    if (isCustomApi && !isLocalUrl(baseUrl) && !apiKey.trim()) {
+      setError(t("setup.missingApiKey"));
       return;
     }
 
@@ -127,10 +155,7 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
           <button
             key={p.id}
             className={`setup-provider-card ${selectedProvider === p.id ? "selected" : ""}`}
-            onClick={() => {
-              setSelectedProvider(p.id);
-              setError("");
-            }}
+            onClick={() => applyProvider(p.id)}
           >
             <div className="setup-provider-name">{t(p.name)}</div>
             <div className="setup-provider-desc">{t(p.desc)}</div>
@@ -200,7 +225,7 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
             <label className="setup-label" style={{ marginTop: 16 }}>
               {t("setup.customApiKeyLabel")}{" "}
               <span className="setup-label-optional">
-                {t("common.optional")}
+                {isCustomApi ? t("setup.required") : t("common.optional")}
               </span>
             </label>
             <div className="setup-input-group">
@@ -317,7 +342,9 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
             disabled={
               saving ||
               (provider.needsKey && !apiKey.trim()) ||
-              (usesOpenAiCompatibleEndpoint && !baseUrl.trim())
+              (usesOpenAiCompatibleEndpoint && !baseUrl.trim()) ||
+              (isCustomApi && !modelName.trim()) ||
+              (isCustomApi && !isLocalUrl(baseUrl) && !apiKey.trim())
             }
           >
             {saving ? t("setup.saving") : t("setup.continue")}

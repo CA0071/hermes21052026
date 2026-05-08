@@ -17,11 +17,11 @@ Artifacts:
 
   dist/yat-0.3.2.dmg
     size: 193M
-    sha256: 06923f95c54311a4e9682bd201d7b42c6c0775818046ca50db89bf925b1943fc
+    sha256: eabc79f1e383521c6207867b31a854ac4cf3ac26b847dcc7de0a5f261eb31aac
 
   dist/Yat-0.3.2-arm64-mac.zip
     size: 193M
-    sha256: a3606182f25a913d105c87eecb0419dfd10973eec29d9710be18e77a8fb915d5
+    sha256: c7e06b0440cd21f4533a475222c8e1753b873a8e1a34800d8a505d2ebdc1bbee
 
 Bundled Hermes Agent:
   bundle path: resources/hermes-agent-bundle
@@ -31,7 +31,7 @@ Bundled Hermes Agent:
   commit: 54e78cadb2e6d16a4f82185b2dc81c9dc176a813
   short commit: 54e78cadb2e6
   ref: v2026.4.30-393-g54e78cadb-dirty
-  metadata sha256: d0a7b3be00489bcc4753fc0ada941bd1df51e85ca445731701f1f3ef2723e353
+  metadata sha256: 1b4da4a90dcb4faa776df6932cc27ca7a92025c660b0ad5942f83fca573a544b
 
 Verification already performed:
   npm run typecheck
@@ -56,9 +56,9 @@ Mounted DMG verification:
 ZIP verification:
   unzip test result: No errors detected in compressed data
   entries: 7386
-  zip file size: 198457344 bytes
-  uncompressed total: 507571852 bytes
-  compressed total: 196222712 bytes
+  zip file size: 198457665 bytes
+  uncompressed total: 507573057 bytes
+  compressed total: 196223033 bytes
   compression ratio: 61.3%
   required entries found:
     Yat.app/Contents/Info.plist
