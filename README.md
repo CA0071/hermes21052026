@@ -1,17 +1,17 @@
-# Yat
+# Yat Studio
 
-Yat is a Yat-branded macOS build of [`fathah/hermes-desktop`](https://github.com/fathah/hermes-desktop) with Hermes Agent source bundled into the app package.
+Yat is a Yat Studio-branded macOS build of [`fathah/hermes-desktop`](https://github.com/fathah/hermes-desktop) with Hermes Agent source bundled into the app package.
 
-This repository is not the upstream Hermes Desktop release channel. It is the local Yat build workspace used to package:
+This repository is not the upstream Hermes Desktop release channel. It is the local Yat Studio build workspace used to package:
 
-- `dist/mac-arm64/Yat.app`
-- `dist/yat-0.3.2.dmg`
-- `dist/Yat-0.3.2-arm64-mac.zip`
+- `dist/mac-arm64/Yat Studio.app`
+- `dist/yat-studio-0.3.2.dmg`
+- `dist/Yat Studio-0.3.2-arm64-mac.zip`
 
 ## Identity
 
-- Product name: `Yat`
-- Bundle identifier: `dev.yat.desktop`
+- Product name: `Yat Studio`
+- Bundle identifier: `studio.yat.desktop`
 - Version: `0.3.2`
 - Platform: macOS
 - Architecture: Apple Silicon only (`arm64`)
@@ -30,7 +30,7 @@ Current bundled metadata:
 - Commit: `5d3be898a8671eb9fb99cf18f43165502f54e7f4`
 - Ref: `v2026.4.30-188-g5d3be898a-dirty`
 - Bundle path: `resources/hermes-agent-bundle`
-- Packaged path: `Yat.app/Contents/Resources/hermes-agent-bundle`
+- Packaged path: `Yat Studio.app/Contents/Resources/hermes-agent-bundle`
 
 On first-run setup, Yat looks for the packaged Hermes source first, copies it to `~/.hermes/hermes-agent`, uses the bundled macOS arm64 `uv` binary if available, creates a Python 3.11 environment with `uv`, and installs Hermes dependencies with `uv pip install -e .[all]`. It falls back to installing `uv` online only if the bundled binary is missing or unusable, then falls back to the official online installer only if the bundled Hermes setup is unavailable or fails.
 
@@ -39,8 +39,8 @@ On first-run setup, Yat looks for the packaged Hermes source first, copies it to
 Use the local release artifacts:
 
 ```text
-/Users/yat/hermes-desktop-yat/dist/yat-0.3.2.dmg
-/Users/yat/hermes-desktop-yat/dist/Yat-0.3.2-arm64-mac.zip
+/Users/yat/hermes-desktop-yat/dist/yat-studio-0.3.2.dmg
+/Users/yat/hermes-desktop-yat/dist/Yat Studio-0.3.2-arm64-mac.zip
 ```
 
 Expected SHA-256:
@@ -102,8 +102,8 @@ npm run build:mac
 
 ## Main Changes From Upstream
 
-- Product identity changed to `Yat`.
-- Bundle identifier changed to `dev.yat.desktop`.
+- Product identity changed to `Yat Studio`.
+- Bundle identifier changed to `studio.yat.desktop`.
 - Hermes Agent source is bundled into the app resources.
 - First-run installer prefers the bundled Hermes source before falling back online.
 - Renderer styling was adjusted toward a Codex-like desktop workbench.

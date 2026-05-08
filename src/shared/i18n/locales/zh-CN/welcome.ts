@@ -1,5 +1,5 @@
 export default {
-  title: "欢迎使用 Yat",
+  title: "欢迎使用 Yat Studio",
   subtitle:
     "一个 Codex 风格的桌面 AI 工作台，内置 Hermes Agent 源码，本地优先，适合认真干活。",
   installIssueTitle: "安装问题",

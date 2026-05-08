@@ -1,17 +1,17 @@
-# Yat
+# Yat Studio
 
-Yat 是基于 [`fathah/hermes-desktop`](https://github.com/fathah/hermes-desktop) 做的 Yat 品牌版 macOS 构建，并把 Hermes Agent 源码打进了 App 包内。
+Yat 是基于 [`fathah/hermes-desktop`](https://github.com/fathah/hermes-desktop) 做的 Yat Studio 品牌版 macOS 构建，并把 Hermes Agent 源码打进了 App 包内。
 
-这个仓库不是上游 Hermes Desktop 的官方发布通道，而是本机 Yat 构建工作区。当前产物是：
+这个仓库不是上游 Hermes Desktop 的官方发布通道，而是本机 Yat Studio 构建工作区。当前产物是：
 
-- `dist/mac-arm64/Yat.app`
-- `dist/yat-0.3.2.dmg`
-- `dist/Yat-0.3.2-arm64-mac.zip`
+- `dist/mac-arm64/Yat Studio.app`
+- `dist/yat-studio-0.3.2.dmg`
+- `dist/Yat Studio-0.3.2-arm64-mac.zip`
 
 ## 应用身份
 
-- 产品名：`Yat`
-- Bundle identifier：`dev.yat.desktop`
+- 产品名：`Yat Studio`
+- Bundle identifier：`studio.yat.desktop`
 - 版本：`0.3.2`
 - 平台：macOS
 - 架构：仅 Apple Silicon (`arm64`)
@@ -30,7 +30,7 @@ Yat 是基于 [`fathah/hermes-desktop`](https://github.com/fathah/hermes-desktop
 - Commit：`5d3be898a8671eb9fb99cf18f43165502f54e7f4`
 - Ref：`v2026.4.30-188-g5d3be898a-dirty`
 - Bundle 路径：`resources/hermes-agent-bundle`
-- App 内路径：`Yat.app/Contents/Resources/hermes-agent-bundle`
+- App 内路径：`Yat Studio.app/Contents/Resources/hermes-agent-bundle`
 
 首次设置时，Yat 会优先使用 App 包内的 Hermes 源码，复制到 `~/.hermes/hermes-agent`，优先使用 App 包内自带的 macOS arm64 `uv` 可执行文件，然后通过 `uv` 创建 Python 3.11 环境，并执行 `uv pip install -e .[all]` 安装依赖。只有包内 `uv` 缺失或不可用时，才在线安装 `uv`；只有当包内 Hermes 不可用或安装失败时，才回退到官方在线安装脚本。
 
@@ -39,8 +39,8 @@ Yat 是基于 [`fathah/hermes-desktop`](https://github.com/fathah/hermes-desktop
 使用本地构建产物：
 
 ```text
-/Users/yat/hermes-desktop-yat/dist/yat-0.3.2.dmg
-/Users/yat/hermes-desktop-yat/dist/Yat-0.3.2-arm64-mac.zip
+/Users/yat/hermes-desktop-yat/dist/yat-studio-0.3.2.dmg
+/Users/yat/hermes-desktop-yat/dist/Yat Studio-0.3.2-arm64-mac.zip
 ```
 
 预期 SHA-256：
@@ -102,8 +102,8 @@ npm run build:mac
 
 ## 相比上游的主要改动
 
-- 产品身份改为 `Yat`。
-- Bundle identifier 改为 `dev.yat.desktop`。
+- 产品身份改为 `Yat Studio`。
+- Bundle identifier 改为 `studio.yat.desktop`。
 - Hermes Agent 源码被打进 App resources。
 - 首次安装优先使用包内 Hermes 源码，再回退在线安装。
 - 渲染层样式调整为更接近 Codex 的桌面工作台。

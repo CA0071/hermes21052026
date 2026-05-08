@@ -164,7 +164,7 @@ function Layout(): React.JSX.Element {
             <HermesLogo size={30} />
           </div>
           <div className="sidebar-brand-copy">
-            <div className="sidebar-brand-name">Yat</div>
+            <div className="sidebar-brand-name">Yat Studio</div>
             <div className="sidebar-brand-subtitle">Hermes Agent inside</div>
           </div>
         </div>

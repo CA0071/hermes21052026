@@ -1,5 +1,5 @@
 export default {
-  title: "Welcome to Yat",
+  title: "Welcome to Yat Studio",
   subtitle:
     "A Codex-style desktop workspace powered by a bundled Hermes Agent. Private, local-first, and built for real work.",
   installIssueTitle: "Installation Issue",

@@ -1,20 +1,20 @@
 # Yat Delivery Notes
 
-This repo is the Yat-branded build of `fathah/hermes-desktop`.
+This repo is the Yat Studio-branded build of `fathah/hermes-desktop`.
 
 ## Source
 
 - Base repo: `https://github.com/fathah/hermes-desktop.git`
 - Local repo: `/Users/yat/hermes-desktop-yat`
-- Product name: `Yat`
-- Bundle identifier: `dev.yat.desktop`
+- Product name: `Yat Studio`
+- Bundle identifier: `studio.yat.desktop`
 - Version: `0.3.2`
 
 ## Built Artifacts
 
-- App: `/Users/yat/hermes-desktop-yat/dist/mac-arm64/Yat.app`
-- DMG: `/Users/yat/hermes-desktop-yat/dist/yat-0.3.2.dmg`
-- ZIP: `/Users/yat/hermes-desktop-yat/dist/Yat-0.3.2-arm64-mac.zip`
+- App: `/Users/yat/hermes-desktop-yat/dist/mac-arm64/Yat Studio.app`
+- DMG: `/Users/yat/hermes-desktop-yat/dist/yat-studio-0.3.2.dmg`
+- ZIP: `/Users/yat/hermes-desktop-yat/dist/Yat Studio-0.3.2-arm64-mac.zip`
 
 ## Bundled Hermes Agent
 
@@ -33,7 +33,7 @@ resources/hermes-agent-bundle/
 The packaged app includes it at:
 
 ```text
-Yat.app/Contents/Resources/hermes-agent-bundle/
+Yat Studio.app/Contents/Resources/hermes-agent-bundle/
 ```
 
 Bundle metadata from the verified build:
@@ -91,8 +91,8 @@ Commands run successfully on the final build:
 npm run lint
 npm run typecheck
 npm run test
-codesign --verify --deep --strict --verbose=2 dist/mac-arm64/Yat.app
-hdiutil verify dist/yat-0.3.2.dmg
+codesign --verify --deep --strict --verbose=2 dist/mac-arm64/Yat Studio.app
+hdiutil verify dist/yat-studio-0.3.2.dmg
 ```
 
 The final distributables were rebuilt after the lint gate was fixed, so the release manifest records the post-lint artifact hashes.
@@ -106,9 +106,9 @@ Observed verification results:
 - `npm run verify:release:no-mount` passes on the current system; full `npm run verify:release` still requires macOS DiskManagement/DiskArbitration to be available for DMG mounting.
 - Codesign verification reported `valid on disk` and satisfies its designated requirement.
 - DMG verification reported checksum `VALID`.
-- `Info.plist` reports `CFBundleDisplayName=Yat`, `CFBundleExecutable=Yat`, and `CFBundleIdentifier=dev.yat.desktop`.
-- Computer Use verified the packaged app opens with window title `Yat`, app id `dev.yat.desktop`, and sidebar brand `Yat / Hermes Agent inside`.
-- The DMG was mounted read-only at `/Volumes/YatVerify`; its `Yat.app` reported `CFBundleDisplayName=Yat`, `CFBundleIdentifier=dev.yat.desktop`, contained the `74M` Hermes bundle, and passed deep strict codesign verification from the mounted volume.
+- `Info.plist` reports `CFBundleDisplayName=Yat Studio`, `CFBundleExecutable=Yat`, and `CFBundleIdentifier=studio.yat.desktop`.
+- Computer Use verified the packaged app opens with window title `Yat`, app id `studio.yat.desktop`, and sidebar brand `Yat / Hermes Agent inside`.
+- The DMG was mounted read-only at `/Volumes/YatVerify`; its `Yat Studio.app` reported `CFBundleDisplayName=Yat Studio`, `CFBundleIdentifier=studio.yat.desktop`, contained the `74M` Hermes bundle, and passed deep strict codesign verification from the mounted volume.
 - The ZIP was tested with `unzip -t` and reported no compressed-data errors; `zipinfo` reports `4182` entries and required entries for `Info.plist`, `hermes-bundle.json`, Hermes `pyproject.toml`, and `_CodeSignature/CodeResources`.
 
 ## Build Commands

@@ -1,5 +1,5 @@
 export default {
-  appName: "Yat",
+  appName: "Yat Studio",
   continue: "Continue",
   cancel: "Cancel",
   retry: "Retry",

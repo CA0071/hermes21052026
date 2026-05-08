@@ -17,4 +17,4 @@ if (existsSync(target)) {
   console.log(`Already clean: ${target}`);
 }
 
-console.log('Next Yat launch will run the bundled install flow again.');
+console.log('Next Yat Studio launch will run the bundled install flow again.');

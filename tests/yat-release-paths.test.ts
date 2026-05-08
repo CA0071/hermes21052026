@@ -20,20 +20,20 @@ describe("releasePathsForPackage", () => {
   it("derives macOS release artifact paths from package name and version", () => {
     expect(
       releasePathsForPackage({
-        name: "yat",
+        name: "yat-studio",
         version: "0.4.0",
       }),
     ).toEqual({
-      appId: "dev.yat.desktop",
+      appId: "studio.yat.desktop",
       arch: "arm64",
       minimumMacos: "12.0",
-      packageName: "yat",
-      productName: "Yat",
+      packageName: "yat-studio",
+      productName: "Yat Studio",
       version: "0.4.0",
-      appFileName: "Yat.app",
-      appRelativePath: "dist/mac-arm64/Yat.app",
-      dmgRelativePath: "dist/yat-0.4.0.dmg",
-      zipRelativePath: "dist/Yat-0.4.0-arm64-mac.zip",
+      appFileName: "Yat Studio.app",
+      appRelativePath: "dist/mac-arm64/Yat Studio.app",
+      dmgRelativePath: "dist/yat-studio-0.4.0.dmg",
+      zipRelativePath: "dist/Yat Studio-0.4.0-arm64-mac.zip",
     });
   });
 

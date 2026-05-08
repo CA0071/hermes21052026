@@ -1,4 +1,4 @@
-Yat 0.3.2 macOS release manifest
+Yat Studio 0.3.2 macOS release manifest
 Generated: 2026-05-08
 
 Source repo:
@@ -8,62 +8,62 @@ Local repo:
   /Users/yat/hermes-desktop-yat
 
 Application identity:
-  Product name: Yat
-  Bundle identifier: dev.yat.desktop
+  Product name: Yat Studio
+  Bundle identifier: studio.yat.desktop
 
 Artifacts:
-  dist/mac-arm64/Yat.app
-    size: 511M
+  dist/mac-arm64/Yat Studio.app
+    size: 510M
 
-  dist/yat-0.3.2.dmg
-    size: 193M
-    sha256: 2d30dc9844b12d62c61d1c89a883778ea043ca6ca861af519ad63ac647926dc8
+  dist/yat-studio-0.3.2.dmg
+    size: 192M
+    sha256: 1720a1c85961010fa413ed55730d55b6b2ab29bf66032861ae85f4b08d6497c9
 
-  dist/Yat-0.3.2-arm64-mac.zip
+  dist/Yat Studio-0.3.2-arm64-mac.zip
     size: 193M
-    sha256: 3a5ea8c73f62d7bd4b776bfb2ba0a0192ac32ebbe264d7f5925584ea9937843d
+    sha256: 37379337907c9fc1275951812c601055ef458a7b6ba31f21e713aca21152d50d
 
 Bundled Hermes Agent:
   bundle path: resources/hermes-agent-bundle
-  packaged path: Yat.app/Contents/Resources/hermes-agent-bundle
+  packaged path: Yat Studio.app/Contents/Resources/hermes-agent-bundle
   size: 83M
   source: /Users/yat/.hermes/hermes-agent
   commit: 54e78cadb2e6d16a4f82185b2dc81c9dc176a813
   short commit: 54e78cadb2e6
   ref: v2026.4.30-393-g54e78cadb-dirty
-  metadata sha256: 1c12fd77e368fa67dd671c08b6e2011caf403c5fb4a4620ab3cfb99dcfbbd58d
+  metadata sha256: eaa3a93f95d6ebab3c645b55713e04ac893d90e88e1dd9534dd1f7831da91dad
 
 Verification already performed:
   npm run typecheck
   npm run test
-  codesign --verify --deep --strict --verbose=2 dist/mac-arm64/Yat.app
-  hdiutil verify dist/yat-0.3.2.dmg
-  Computer Use smoke check on packaged Yat.app
-  hdiutil attach dist/yat-0.3.2.dmg -readonly -nobrowse -mountpoint /Volumes/YatVerify
-  codesign --verify --deep --strict --verbose=2 /Volumes/YatVerify/Yat.app
+  codesign --verify --deep --strict --verbose=2 dist/mac-arm64/Yat Studio.app
+  hdiutil verify dist/yat-studio-0.3.2.dmg
+  Computer Use smoke check on packaged Yat Studio.app
+  hdiutil attach dist/yat-studio-0.3.2.dmg -readonly -nobrowse -mountpoint /Volumes/YatVerify
+  codesign --verify --deep --strict --verbose=2 /Volumes/YatVerify/Yat Studio.app
   hdiutil detach /Volumes/YatVerify
-  unzip -t dist/Yat-0.3.2-arm64-mac.zip
-  zipinfo -t dist/Yat-0.3.2-arm64-mac.zip
+  unzip -t dist/Yat Studio-0.3.2-arm64-mac.zip
+  zipinfo -t dist/Yat Studio-0.3.2-arm64-mac.zip
 
 Mounted DMG verification:
-  mountpoint contained Yat.app and Applications symlink
-  mounted app CFBundleDisplayName: Yat
-  mounted app CFBundleIdentifier: dev.yat.desktop
-  mounted app size: 511M
+  mountpoint contained Yat Studio.app and Applications symlink
+  mounted app CFBundleDisplayName: Yat Studio
+  mounted app CFBundleIdentifier: studio.yat.desktop
+  mounted app size: 510M
   mounted Hermes bundle size: 83M
   mounted app codesign verification: valid on disk, satisfies designated requirement
 
 ZIP verification:
   unzip test result: No errors detected in compressed data
   entries: 7386
-  zip file size: 198458312 bytes
-  uncompressed total: 507574321 bytes
-  compressed total: 196223680 bytes
-  compression ratio: 61.3%
+  zip file size: 198001977 bytes
+  uncompressed total: 506955287 bytes
+  compressed total: 195663423 bytes
+  compression ratio: 61.4%
   required entries found:
-    Yat.app/Contents/Info.plist
-    Yat.app/Contents/Resources/hermes-agent-bundle/hermes-agent/pyproject.toml
-    Yat.app/Contents/Resources/hermes-agent-bundle/hermes-bundle.json
-    Yat.app/Contents/Resources/uv/macos-arm64/uv
-    Yat.app/Contents/Resources/python/macos-arm64/cpython-3.11.15-macos-aarch64-none/bin/python3.11
-    Yat.app/Contents/_CodeSignature/CodeResources
+    Yat Studio.app/Contents/Info.plist
+    Yat Studio.app/Contents/Resources/hermes-agent-bundle/hermes-agent/pyproject.toml
+    Yat Studio.app/Contents/Resources/hermes-agent-bundle/hermes-bundle.json
+    Yat Studio.app/Contents/Resources/uv/macos-arm64/uv
+    Yat Studio.app/Contents/Resources/python/macos-arm64/cpython-3.11.15-macos-aarch64-none/bin/python3.11
+    Yat Studio.app/Contents/_CodeSignature/CodeResources

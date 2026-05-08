@@ -384,7 +384,7 @@ function setupIPC(): void {
                 .trim()
                 .slice(0, 80);
               new Notification({
-                title: "Yat",
+                title: "Yat Studio",
                 body: preview || "Response ready",
               }).show();
             }
@@ -396,7 +396,7 @@ function setupIPC(): void {
             // Notify on error too if window not focused
             if (mainWindow && !mainWindow.isFocused()) {
               new Notification({
-                title: "Yat — Error",
+                title: "Yat Studio — Error",
                 body: error.slice(0, 100),
               }).show();
             }
@@ -859,8 +859,8 @@ function setupUpdater(): void {
 }
 
 app.whenReady().then(() => {
-  app.name = "Yat";
-  electronApp.setAppUserModelId("dev.yat.desktop");
+  app.name = "Yat Studio";
+  electronApp.setAppUserModelId("studio.yat.desktop");
 
   app.on("browser-window-created", (_, window) => {
     optimizer.watchWindowShortcuts(window);

@@ -4,16 +4,16 @@ const { parseZipInfoOutput, refreshManifestText } =
   await import("../scripts/update-yat-release-manifest.mjs");
 
 const paths = {
-  appId: "dev.yat.desktop",
-  productName: "Yat",
+  appId: "studio.yat.desktop",
+  productName: "Yat Studio",
   version: "0.4.0",
-  appFileName: "Yat.app",
-  appRelativePath: "dist/mac-arm64/Yat.app",
-  dmgRelativePath: "dist/yat-0.4.0.dmg",
-  zipRelativePath: "dist/Yat-0.4.0-arm64-mac.zip",
+  appFileName: "Yat Studio.app",
+  appRelativePath: "dist/mac-arm64/Yat Studio.app",
+  dmgRelativePath: "dist/yat-studio-0.4.0.dmg",
+  zipRelativePath: "dist/Yat Studio-0.4.0-arm64-mac.zip",
 };
 
-const manifest = `Yat 0.3.2 macOS release manifest
+const manifest = `Yat Studio 0.3.2 macOS release manifest
 Generated: 2026-01-02
 
 Source repo:
@@ -27,20 +27,20 @@ Application identity:
   Bundle identifier: dev.old.desktop
 
 Artifacts:
-  dist/mac-arm64/Yat.app
+  dist/mac-arm64/Yat Studio.app
     size: old-app
 
-  dist/yat-0.3.2.dmg
+  dist/yat-studio-0.3.2.dmg
     size: old-dmg
     sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 
-  dist/Yat-0.3.2-arm64-mac.zip
+  dist/Yat Studio-0.3.2-arm64-mac.zip
     size: old-zip
     sha256: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 
 Bundled Hermes Agent:
   bundle path: resources/hermes-agent-bundle
-  packaged path: Yat.app/Contents/Resources/hermes-agent-bundle
+  packaged path: Yat Studio.app/Contents/Resources/hermes-agent-bundle
   size: old-bundle
   source: old-source
   commit: old-commit
@@ -49,14 +49,14 @@ Bundled Hermes Agent:
   metadata sha256: cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 
 Verification already performed:
-  hdiutil verify dist/yat-0.3.2.dmg
-  hdiutil attach dist/yat-0.3.2.dmg -readonly -nobrowse -mountpoint /Volumes/YatVerify
-  codesign --verify --deep --strict --verbose=2 /Volumes/YatVerify/Yat.app
-  unzip -t dist/Yat-0.3.2-arm64-mac.zip
-  zipinfo -t dist/Yat-0.3.2-arm64-mac.zip
+  hdiutil verify dist/yat-studio-0.3.2.dmg
+  hdiutil attach dist/yat-studio-0.3.2.dmg -readonly -nobrowse -mountpoint /Volumes/YatVerify
+  codesign --verify --deep --strict --verbose=2 /Volumes/YatVerify/Yat Studio.app
+  unzip -t dist/Yat Studio-0.3.2-arm64-mac.zip
+  zipinfo -t dist/Yat Studio-0.3.2-arm64-mac.zip
 
 Mounted DMG verification:
-  mountpoint contained OldYat.app and Applications symlink
+  mountpoint contained OldYat Studio.app and Applications symlink
   mounted app CFBundleDisplayName: OldYat
   mounted app CFBundleIdentifier: dev.old.desktop
   mounted app size: old-mounted-app
@@ -70,12 +70,12 @@ ZIP verification:
   compressed total: 4 bytes
   compression ratio: 5.0%
   required entries found:
-    OldYat.app/Contents/Info.plist
-    OldYat.app/Contents/Resources/hermes-agent-bundle/hermes-agent/pyproject.toml
-    OldYat.app/Contents/Resources/hermes-agent-bundle/hermes-bundle.json
-    OldYat.app/Contents/Resources/uv/macos-arm64/uv
-    OldYat.app/Contents/Resources/python/macos-arm64/cpython-3.11.15-macos-aarch64-none/bin/python3.11
-    OldYat.app/Contents/_CodeSignature/CodeResources
+    OldYat Studio.app/Contents/Info.plist
+    OldYat Studio.app/Contents/Resources/hermes-agent-bundle/hermes-agent/pyproject.toml
+    OldYat Studio.app/Contents/Resources/hermes-agent-bundle/hermes-bundle.json
+    OldYat Studio.app/Contents/Resources/uv/macos-arm64/uv
+    OldYat Studio.app/Contents/Resources/python/macos-arm64/cpython-3.11.15-macos-aarch64-none/bin/python3.11
+    OldYat Studio.app/Contents/_CodeSignature/CodeResources
 `;
 
 const values = {
@@ -129,46 +129,46 @@ describe("parseZipInfoOutput", () => {
 describe("refreshManifestText", () => {
   it("updates artifact, metadata, and ZIP statistics fields", () => {
     const refreshed = refreshManifestText(manifest, values, paths);
-    expect(refreshed).toContain("Yat 0.4.0 macOS release manifest");
+    expect(refreshed).toContain("Yat Studio 0.4.0 macOS release manifest");
     expect(refreshed).toContain("Generated: 2026-05-04");
     expect(refreshed).toContain(
       "Source repo:\n  https://github.com/fathah/hermes-desktop.git",
     );
     expect(refreshed).toContain("Local repo:\n  /Users/yat/hermes-desktop-yat");
-    expect(refreshed).toContain("  Product name: Yat");
-    expect(refreshed).toContain("  Bundle identifier: dev.yat.desktop");
-    expect(refreshed).toContain("dist/mac-arm64/Yat.app\n    size: 392M");
+    expect(refreshed).toContain("  Product name: Yat Studio");
+    expect(refreshed).toContain("  Bundle identifier: studio.yat.desktop");
+    expect(refreshed).toContain("dist/mac-arm64/Yat Studio.app\n    size: 392M");
     expect(refreshed).toContain(
-      "dist/yat-0.4.0.dmg\n    size: 155M\n    sha256: f6096993966b59c8cf52d633e73988b44d7a45f4daab971db08fa85e0f03938c",
+      "dist/yat-studio-0.4.0.dmg\n    size: 155M\n    sha256: f6096993966b59c8cf52d633e73988b44d7a45f4daab971db08fa85e0f03938c",
     );
     expect(refreshed).toContain(
-      "dist/Yat-0.4.0-arm64-mac.zip\n    size: 151M\n    sha256: 593cab28f5d43532b2beb9a71c0fe27820299a8d53127185cb3c1650d6d10dc4",
+      "dist/Yat Studio-0.4.0-arm64-mac.zip\n    size: 151M\n    sha256: 593cab28f5d43532b2beb9a71c0fe27820299a8d53127185cb3c1650d6d10dc4",
     );
     expect(refreshed).toContain("  source: /Users/yat/.hermes/hermes-agent");
     expect(refreshed).toContain("  entries: 4182");
     expect(refreshed).toContain("  zip file size: 158837969 bytes");
     expect(refreshed).toContain("  compressed total: 157688391 bytes");
-    expect(refreshed).toContain("hdiutil verify dist/yat-0.4.0.dmg");
-    expect(refreshed).toContain("zipinfo -t dist/Yat-0.4.0-arm64-mac.zip");
+    expect(refreshed).toContain("hdiutil verify dist/yat-studio-0.4.0.dmg");
+    expect(refreshed).toContain("zipinfo -t dist/Yat Studio-0.4.0-arm64-mac.zip");
     expect(refreshed).toContain(
-      "Verification already performed:\n  npm run typecheck\n  npm run test\n  codesign --verify --deep --strict --verbose=2 dist/mac-arm64/Yat.app\n  hdiutil verify dist/yat-0.4.0.dmg\n  Computer Use smoke check on packaged Yat.app\n  hdiutil attach dist/yat-0.4.0.dmg -readonly -nobrowse -mountpoint /Volumes/YatVerify\n  codesign --verify --deep --strict --verbose=2 /Volumes/YatVerify/Yat.app\n  hdiutil detach /Volumes/YatVerify\n  unzip -t dist/Yat-0.4.0-arm64-mac.zip\n  zipinfo -t dist/Yat-0.4.0-arm64-mac.zip\n\nMounted DMG verification:",
+      "Verification already performed:\n  npm run typecheck\n  npm run test\n  codesign --verify --deep --strict --verbose=2 dist/mac-arm64/Yat Studio.app\n  hdiutil verify dist/yat-studio-0.4.0.dmg\n  Computer Use smoke check on packaged Yat Studio.app\n  hdiutil attach dist/yat-studio-0.4.0.dmg -readonly -nobrowse -mountpoint /Volumes/YatVerify\n  codesign --verify --deep --strict --verbose=2 /Volumes/YatVerify/Yat Studio.app\n  hdiutil detach /Volumes/YatVerify\n  unzip -t dist/Yat Studio-0.4.0-arm64-mac.zip\n  zipinfo -t dist/Yat Studio-0.4.0-arm64-mac.zip\n\nMounted DMG verification:",
     );
     expect(refreshed).toContain(
-      "Mounted DMG verification:\n  mountpoint contained Yat.app and Applications symlink\n  mounted app CFBundleDisplayName: Yat\n  mounted app CFBundleIdentifier: dev.yat.desktop\n  mounted app size: 392M\n  mounted Hermes bundle size: 74M\n  mounted app codesign verification: valid on disk, satisfies designated requirement",
+      "Mounted DMG verification:\n  mountpoint contained Yat Studio.app and Applications symlink\n  mounted app CFBundleDisplayName: Yat Studio\n  mounted app CFBundleIdentifier: studio.yat.desktop\n  mounted app size: 392M\n  mounted Hermes bundle size: 74M\n  mounted app codesign verification: valid on disk, satisfies designated requirement",
     );
     expect(refreshed).toContain(
-      "required entries found:\n    Yat.app/Contents/Info.plist\n    Yat.app/Contents/Resources/hermes-agent-bundle/hermes-agent/pyproject.toml\n    Yat.app/Contents/Resources/hermes-agent-bundle/hermes-bundle.json\n    Yat.app/Contents/Resources/uv/macos-arm64/uv\n    Yat.app/Contents/Resources/python/macos-arm64/cpython-3.11.15-macos-aarch64-none/bin/python3.11\n    Yat.app/Contents/_CodeSignature/CodeResources",
+      "required entries found:\n    Yat Studio.app/Contents/Info.plist\n    Yat Studio.app/Contents/Resources/hermes-agent-bundle/hermes-agent/pyproject.toml\n    Yat Studio.app/Contents/Resources/hermes-agent-bundle/hermes-bundle.json\n    Yat Studio.app/Contents/Resources/uv/macos-arm64/uv\n    Yat Studio.app/Contents/Resources/python/macos-arm64/cpython-3.11.15-macos-aarch64-none/bin/python3.11\n    Yat Studio.app/Contents/_CodeSignature/CodeResources",
     );
-    expect(refreshed).not.toContain("dist/yat-0.3.2.dmg");
-    expect(refreshed).not.toContain("dist/Yat-0.3.2-arm64-mac.zip");
+    expect(refreshed).not.toContain("dist/yat-studio-0.3.2.dmg");
+    expect(refreshed).not.toContain("dist/Yat Studio-0.3.2-arm64-mac.zip");
     expect(refreshed).not.toContain("OldYat");
     expect(refreshed).not.toContain("dev.old.desktop");
   });
 
   it("throws a targeted error when a manifest field is missing", () => {
     const brokenManifest = manifest.replace(
-      "dist/mac-arm64/Yat.app\n    size: old-app",
-      "dist/mac-arm64/Yat.app",
+      "dist/mac-arm64/Yat Studio.app\n    size: old-app",
+      "dist/mac-arm64/Yat Studio.app",
     );
     expect(() => refreshManifestText(brokenManifest, values, paths)).toThrow(
       "Could not update manifest field: app size",
@@ -203,7 +203,7 @@ describe("refreshManifestText", () => {
 
   it("throws a targeted error when mounted app file name is missing", () => {
     const brokenManifest = manifest.replace(
-      "  mountpoint contained OldYat.app and Applications symlink\n",
+      "  mountpoint contained OldYat Studio.app and Applications symlink\n",
       "",
     );
     expect(() => refreshManifestText(brokenManifest, values, paths)).toThrow(
@@ -213,7 +213,7 @@ describe("refreshManifestText", () => {
 
   it("throws a targeted error when a ZIP required entry is missing", () => {
     const brokenManifest = manifest.replace(
-      "    OldYat.app/Contents/Resources/hermes-agent-bundle/hermes-bundle.json\n",
+      "    OldYat Studio.app/Contents/Resources/hermes-agent-bundle/hermes-bundle.json\n",
       "",
     );
     expect(() => refreshManifestText(brokenManifest, values, paths)).toThrow(
@@ -235,7 +235,7 @@ describe("refreshManifestText", () => {
     );
     const refreshed = refreshManifestText(staleManifest, values, paths);
     expect(refreshed).toContain(
-      "Verification already performed:\n  npm run typecheck\n  npm run test\n  codesign --verify --deep --strict --verbose=2 dist/mac-arm64/Yat.app\n  hdiutil verify dist/yat-0.4.0.dmg\n  Computer Use smoke check on packaged Yat.app\n  hdiutil attach dist/yat-0.4.0.dmg -readonly -nobrowse -mountpoint /Volumes/YatVerify\n  codesign --verify --deep --strict --verbose=2 /Volumes/YatVerify/Yat.app\n  hdiutil detach /Volumes/YatVerify\n  unzip -t dist/Yat-0.4.0-arm64-mac.zip\n  zipinfo -t dist/Yat-0.4.0-arm64-mac.zip\n\nMounted DMG verification:",
+      "Verification already performed:\n  npm run typecheck\n  npm run test\n  codesign --verify --deep --strict --verbose=2 dist/mac-arm64/Yat Studio.app\n  hdiutil verify dist/yat-studio-0.4.0.dmg\n  Computer Use smoke check on packaged Yat Studio.app\n  hdiutil attach dist/yat-studio-0.4.0.dmg -readonly -nobrowse -mountpoint /Volumes/YatVerify\n  codesign --verify --deep --strict --verbose=2 /Volumes/YatVerify/Yat Studio.app\n  hdiutil detach /Volumes/YatVerify\n  unzip -t dist/Yat Studio-0.4.0-arm64-mac.zip\n  zipinfo -t dist/Yat Studio-0.4.0-arm64-mac.zip\n\nMounted DMG verification:",
     );
     expect(refreshed).not.toContain("dist/old-yat-0.1.0.dmg");
     expect(refreshed).not.toContain("dist/OldYat-0.1.0-arm64-mac.zip");
@@ -253,7 +253,7 @@ describe("refreshManifestText", () => {
 
   it("throws a targeted error when app path references are missing", () => {
     const brokenManifest = manifest.replace(
-      ["  dist/mac-arm64/Yat.app", "    size: old-app\n"].join("\n"),
+      ["  dist/mac-arm64/Yat Studio.app", "    size: old-app\n"].join("\n"),
       "",
     );
     expect(() => refreshManifestText(brokenManifest, values, paths)).toThrow(
@@ -265,14 +265,14 @@ describe("refreshManifestText", () => {
     const brokenManifest = manifest
       .replace(
         [
-          "  dist/yat-0.3.2.dmg",
+          "  dist/yat-studio-0.3.2.dmg",
           "    size: old-dmg",
           "    sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
         ].join("\n"),
         "",
       )
       .replace(
-        / {2}hdiutil (?:verify dist\/yat-0\.3\.2\.dmg|attach dist\/yat-0\.3\.2\.dmg .+)\n/g,
+        / {2}hdiutil (?:verify dist\/yat-studio-0\.3\.2\.dmg|attach dist\/yat-studio-0\.3\.2\.dmg .+)\n/g,
         "",
       );
     expect(() => refreshManifestText(brokenManifest, values, paths)).toThrow(
@@ -284,14 +284,14 @@ describe("refreshManifestText", () => {
     const brokenManifest = manifest
       .replace(
         [
-          "  dist/Yat-0.3.2-arm64-mac.zip",
+          "  dist/Yat Studio-0.3.2-arm64-mac.zip",
           "    size: old-zip",
           "    sha256: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n",
         ].join("\n"),
         "",
       )
       .replace(
-        / {2}(?:unzip -t|zipinfo -t) dist\/Yat-0\.3\.2-arm64-mac\.zip\n/g,
+        / {2}(?:unzip -t|zipinfo -t) dist\/Yat Studio-0\.3\.2-arm64-mac\.zip\n/g,
         "",
       );
     expect(() => refreshManifestText(brokenManifest, values, paths)).toThrow(
@@ -301,7 +301,7 @@ describe("refreshManifestText", () => {
 
   it("throws a targeted error when mounted app path references are missing", () => {
     const brokenManifest = manifest.replace(
-      "  codesign --verify --deep --strict --verbose=2 /Volumes/YatVerify/Yat.app\n",
+      "  codesign --verify --deep --strict --verbose=2 /Volumes/YatVerify/Yat Studio.app\n",
       "",
     );
     expect(() => refreshManifestText(brokenManifest, values, paths)).toThrow(

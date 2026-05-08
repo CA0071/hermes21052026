@@ -135,7 +135,7 @@ function normalizeReleasePaths(manifest, paths, repositories) {
 
   nextManifest = replaceAllRequired(
     nextManifest,
-    /dist\/mac-[^/\s]+\/[^/\s]+\.app/g,
+    /dist\/mac-[^/\n]+\/[^\n]+\.app/g,
     paths.appRelativePath,
     "app path references",
   );
@@ -147,13 +147,13 @@ function normalizeReleasePaths(manifest, paths, repositories) {
   );
   nextManifest = replaceAllRequired(
     nextManifest,
-    /dist\/[^\s]+\.zip/g,
+    /dist\/[^\n]+\.zip/g,
     paths.zipRelativePath,
     "ZIP path references",
   );
   nextManifest = replaceAllRequired(
     nextManifest,
-    /\/Volumes\/YatVerify\/[^/\s]+\.app/g,
+    /\/Volumes\/YatVerify\/[^\n]+\.app/g,
     `/Volumes/YatVerify/${paths.appFileName}`,
     "mounted app path references",
   );

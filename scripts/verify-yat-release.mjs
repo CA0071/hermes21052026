@@ -329,7 +329,7 @@ export function parseReleaseManifest(
     ),
     appRelativePath: matchOne(
       artifactsSection,
-      /^ {2}(dist\/mac-[^\s]+\/[^\s]+\.app)$/m,
+      /^ {2}(dist\/mac-[^\n]+\/[^\n]+\.app)$/m,
       "manifest app path",
     ),
     appSize: matchOne(
@@ -464,7 +464,7 @@ export function parseReleaseManifest(
 
 function printFailure(error) {
   const message = error instanceof Error ? error.message : String(error);
-  console.error("Yat release verification failed");
+  console.error("Yat Studio release verification failed");
   console.error(message);
 
   if (message.includes("hdiutil attach")) {
@@ -755,7 +755,7 @@ function main() {
     verifyMountedDmg({ dmgPath, releasePaths: releaseConfig });
   }
 
-  console.log("Yat release verification passed");
+  console.log("Yat Studio release verification passed");
   console.log(`DMG SHA-256: ${expected.dmgSha}`);
   console.log(`ZIP SHA-256: ${expected.zipSha}`);
   console.log(`Hermes metadata SHA-256: ${expected.metadataSha}`);

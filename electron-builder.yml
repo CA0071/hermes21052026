@@ -1,5 +1,5 @@
-appId: dev.yat.desktop
-productName: Yat
+appId: studio.yat.desktop
+productName: Yat Studio
 directories:
   buildResources: build
 files:
@@ -29,7 +29,7 @@ extraResources:
     filter:
       - "**/*"
 win:
-  executableName: yat
+  executableName: yat-studio
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
@@ -56,11 +56,11 @@ linux:
     - deb
     - rpm
   maintainer: electronjs.org
-  vendor: Yat
+  vendor: Yat Studio
   category: Utility
-  synopsis: Yat desktop AI workspace
+  synopsis: Yat Studio desktop AI workspace
   description: >-
-    Yat is a native desktop AI workspace powered by bundled Hermes Agent source,
+    Yat Studio is a native desktop AI workspace powered by bundled Hermes Agent source,
     tool use, multi-platform messaging, and a closed learning loop.
 appImage:
   artifactName: ${name}-${version}.${ext}

@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-const defaultProductName = "Yat";
-const defaultAppId = "dev.yat.desktop";
+const defaultProductName = "Yat Studio";
+const defaultAppId = "studio.yat.desktop";
 const defaultArch = "arm64";
 const defaultMinimumMacos = "12.0";
 

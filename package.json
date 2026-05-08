@@ -1,9 +1,9 @@
 {
-  "name": "yat",
+  "name": "yat-studio",
   "version": "0.3.2",
-  "description": "Yat — desktop AI workspace powered by Hermes Agent",
+  "description": "Yat Studio — desktop AI workspace powered by Hermes Agent",
   "main": "./out/main/index.js",
-  "author": "Yat",
+  "author": "Yat Studio",
   "homepage": "https://github.com/fathah/hermes-desktop",
   "scripts": {
     "prepare:hermes": "node scripts/prepare-bundled-hermes.mjs",
