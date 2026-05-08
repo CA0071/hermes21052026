@@ -333,3 +333,93 @@ body {
 .chat-model-bar {
   color: #777 !important;
 }
+
+
+.sidebar-nav-item {
+  position: relative;
+}
+
+.sidebar-nav-label {
+  display: inline-flex;
+}
+
+.sidebar-nav-tooltip {
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%) translateX(-4px);
+  z-index: 50;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: rgba(20, 20, 20, 0.92);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+  transition: opacity 0.14s ease, transform 0.14s ease;
+}
+
+.sidebar-nav-tooltip::before {
+  content: "";
+  position: absolute;
+  left: -5px;
+  top: 50%;
+  transform: translateY(-50%) rotate(45deg);
+  width: 10px;
+  height: 10px;
+  background: rgba(20, 20, 20, 0.92);
+}
+
+.sidebar-nav-item:hover .sidebar-nav-tooltip,
+.sidebar-nav-item:focus-visible .sidebar-nav-tooltip {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
+.wechat-thread-item.editing {
+  background: #fff;
+  box-shadow: inset 3px 0 0 var(--wechat-green);
+}
+
+.wechat-thread-name-input {
+  width: 100%;
+  border: 1px solid rgba(7, 193, 96, 0.42);
+  outline: none;
+  border-radius: 6px;
+  padding: 4px 7px;
+  background: #fff;
+  color: #111827;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.wechat-thread-name-input:focus {
+  border-color: var(--wechat-green);
+  box-shadow: 0 0 0 3px rgba(7, 193, 96, 0.12);
+}
+
+.wechat-thread-rename {
+  opacity: 0;
+  align-self: center;
+  flex: 0 0 auto;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: rgba(7, 193, 96, 0.1);
+  color: var(--wechat-green-dark);
+  font-size: 11px;
+  font-weight: 700;
+  transition: opacity 0.14s ease;
+}
+
+.wechat-thread-item:hover .wechat-thread-rename {
+  opacity: 1;
+}
+
+.wechat-thread-item.editing .wechat-thread-rename,
+.wechat-thread-item.editing .wechat-thread-running {
+  display: none;
+}

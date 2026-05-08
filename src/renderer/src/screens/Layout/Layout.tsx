@@ -140,6 +140,8 @@ function Layout(): React.JSX.Element {
   const [downloadPercent, setDownloadPercent] = useState(0);
   const [engineStatus, setEngineStatus] = useState<EngineStatus | null>(null);
   const [benchmark, setBenchmark] = useState<EngineBenchmark | null>(null);
+  const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
 
   useEffect(() => {
     window.hermesAPI.getAppVersion().then(setAppVersion).catch(() => setAppVersion(""));
@@ -257,7 +259,7 @@ function Layout(): React.JSX.Element {
           typeof value === "function" ? value(thread.messages) : value;
         return {
           ...thread,
-          title: getThreadTitle({ ...thread, messages: nextMessages }),
+          title: thread.title === "新对话" ? getThreadTitle({ ...thread, messages: nextMessages }) : thread.title,
           messages: nextMessages,
           updatedAt: Date.now(),
         };
@@ -281,6 +283,27 @@ function Layout(): React.JSX.Element {
       ),
     );
   }, [activeThreadId]);
+
+  const handleCommitThreadTitle = useCallback(async (threadId: string, rawTitle: string) => {
+    const title = rawTitle.trim().slice(0, 40) || "新对话";
+    let sessionId: string | null = null;
+    setThreads((prev) =>
+      prev.map((thread) => {
+        if (thread.id !== threadId) return thread;
+        sessionId = thread.sessionId;
+        return { ...thread, title, updatedAt: Date.now() };
+      }),
+    );
+    setEditingThreadId(null);
+    setEditingTitle("");
+    if (sessionId) {
+      try {
+        await window.hermesAPI.updateSessionTitle(sessionId, title);
+      } catch {
+        // Local rename still works for active in-memory thread.
+      }
+    }
+  }, []);
 
   const handleNewChat = useCallback(() => {
     const thread = createThread(activeProfile);
@@ -350,9 +373,12 @@ function Layout(): React.JSX.Element {
               onClick={() => {
                 setView(v);
               }}
+              title={t(labelKey)}
+              aria-label={t(labelKey)}
             >
               <Icon size={16} />
-              {t(labelKey)}
+              <span className="sidebar-nav-label">{t(labelKey)}</span>
+              <span className="sidebar-nav-tooltip" role="tooltip">{t(labelKey)}</span>
             </button>
           ))}
         </nav>
@@ -427,20 +453,57 @@ function Layout(): React.JSX.Element {
             </button>
           </div>
           <div className="wechat-thread-list">
-            {threads.map((thread) => (
-              <button
-                key={thread.id}
-                className={`wechat-thread-item ${thread.id === activeThreadId ? "active" : ""}`}
-                onClick={() => setActiveThreadId(thread.id)}
-              >
-                <span className="wechat-thread-avatar">Y</span>
-                <span className="wechat-thread-copy">
-                  <span className="wechat-thread-name">{getThreadTitle(thread)}</span>
-                  <span className="wechat-thread-preview">{getThreadPreview(thread)}</span>
-                </span>
-                {thread.running && <span className="wechat-thread-running" />}
-              </button>
-            ))}
+            {threads.map((thread) => {
+              const isEditing = editingThreadId === thread.id;
+              return (
+                <button
+                  key={thread.id}
+                  className={`wechat-thread-item ${thread.id === activeThreadId ? "active" : ""} ${isEditing ? "editing" : ""}`}
+                  onClick={() => {
+                    setActiveThreadId(thread.id);
+                    if (!isEditing) setView("chat");
+                  }}
+                  onDoubleClick={(event) => {
+                    event.preventDefault();
+                    setEditingThreadId(thread.id);
+                    setEditingTitle(getThreadTitle(thread));
+                  }}
+                  title="双击重命名"
+                >
+                  <span className="wechat-thread-avatar">Y</span>
+                  <span className="wechat-thread-copy">
+                    {isEditing ? (
+                      <input
+                        className="wechat-thread-name-input"
+                        value={editingTitle}
+                        autoFocus
+                        maxLength={40}
+                        onChange={(event) => setEditingTitle(event.target.value)}
+                        onClick={(event) => event.stopPropagation()}
+                        onDoubleClick={(event) => event.stopPropagation()}
+                        onBlur={() => handleCommitThreadTitle(thread.id, editingTitle)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            event.preventDefault();
+                            handleCommitThreadTitle(thread.id, editingTitle);
+                          }
+                          if (event.key === "Escape") {
+                            event.preventDefault();
+                            setEditingThreadId(null);
+                            setEditingTitle("");
+                          }
+                        }}
+                      />
+                    ) : (
+                      <span className="wechat-thread-name">{getThreadTitle(thread)}</span>
+                    )}
+                    <span className="wechat-thread-preview">{isEditing ? "回车保存，Esc 取消" : getThreadPreview(thread)}</span>
+                  </span>
+                  {thread.running && <span className="wechat-thread-running" />}
+                  {!isEditing && <span className="wechat-thread-rename">重命名</span>}
+                </button>
+              );
+            })}
           </div>
         </section>
       )}
