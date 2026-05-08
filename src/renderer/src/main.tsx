@@ -1,5 +1,5 @@
 import "./assets/main.css";
-import "./assets/codex-overrides.css";
+import "./assets/apple-overrides.css";
 
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";

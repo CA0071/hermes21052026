@@ -1,0 +1,308 @@
+/* ========================================================================
+   Apple-style release polish overrides
+   Premium macOS-style surfaces: SF Pro/system typography, glass sidebars,
+   light gray canvas, restrained blue accent, generous whitespace.
+   ======================================================================== */
+
+:root,
+[data-theme="dark"],
+[data-theme="light"] {
+  --bg-primary: #f5f5f7;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #fbfbfd;
+  --bg-elevated: rgba(255, 255, 255, 0.82);
+  --bg-hover: rgba(0, 0, 0, 0.035);
+  --bg-active: rgba(0, 113, 227, 0.1);
+  --accent: #0071e3;
+  --accent-hover: #0077ed;
+  --accent-subtle: rgba(0, 113, 227, 0.11);
+  --accent-text: #ffffff;
+  --text-primary: #1d1d1f;
+  --text-secondary: rgba(0, 0, 0, 0.72);
+  --text-muted: rgba(0, 0, 0, 0.48);
+  --border: rgba(0, 0, 0, 0.08);
+  --border-bright: rgba(0, 0, 0, 0.14);
+  --border-focus: #0071e3;
+  --success: #34c759;
+  --success-bg: rgba(52, 199, 89, 0.12);
+  --error: #ff3b30;
+  --error-bg: rgba(255, 59, 48, 0.1);
+  --warning: #ff9f0a;
+  --warning-bg: rgba(255, 159, 10, 0.12);
+  --user-bubble: #0071e3;
+  --user-bubble-text: #ffffff;
+  --agent-bubble: #ffffff;
+  --agent-bubble-text: #1d1d1f;
+  --code-bg: #f5f5f7;
+  --scrollbar-thumb: rgba(0, 0, 0, 0.22);
+  --scrollbar-hover: rgba(0, 0, 0, 0.34);
+  --selection: rgba(0, 113, 227, 0.22);
+  --shell-bg: rgba(255, 255, 255, 0.74);
+  --shell-bg-soft: rgba(245, 245, 247, 0.88);
+  --shell-text: #1d1d1f;
+  --shell-muted: rgba(0, 0, 0, 0.5);
+}
+
+* {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+  background: #f5f5f7;
+  color: #1d1d1f;
+}
+
+.app {
+  background:
+    radial-gradient(circle at 50% -12%, rgba(255, 255, 255, 0.96), rgba(245, 245, 247, 0.72) 32%, transparent 58%),
+    linear-gradient(180deg, #fbfbfd 0%, #f5f5f7 48%, #eeeeef 100%);
+}
+
+.app-content {
+  padding: 10px;
+}
+
+.screen,
+.main-layout,
+.settings-container,
+.chat-screen,
+.setup-screen,
+.install-screen,
+.welcome-screen {
+  background: transparent;
+}
+
+.main-layout {
+  gap: 10px;
+}
+
+.sidebar {
+  width: 250px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  border-radius: 22px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  backdrop-filter: saturate(180%) blur(24px);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
+}
+
+.sidebar-brand {
+  padding: 20px 18px 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.055);
+}
+
+.sidebar-brand-name,
+.settings-header,
+.models-header h1,
+.agents-header h1,
+.chat-title,
+.setup-title,
+.welcome-title,
+.install-title {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  color: #1d1d1f;
+}
+
+.sidebar-brand-subtitle,
+.settings-description,
+.models-header p,
+.agents-header p,
+.setup-subtitle,
+.welcome-subtitle,
+.install-subtitle {
+  color: rgba(0, 0, 0, 0.56);
+  letter-spacing: -0.018em;
+}
+
+.sidebar-nav-item {
+  border: 0;
+  color: rgba(0, 0, 0, 0.62);
+  border-radius: 999px;
+  margin: 3px 9px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.sidebar-nav-item:hover {
+  background: rgba(0, 0, 0, 0.045);
+  color: #1d1d1f;
+}
+
+.sidebar-nav-item.active {
+  background: #0071e3;
+  color: #ffffff;
+  box-shadow: 0 8px 22px rgba(0, 113, 227, 0.24);
+}
+
+.content-area {
+  background: rgba(255, 255, 255, 0.74);
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  border-radius: 22px;
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  backdrop-filter: saturate(180%) blur(24px);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
+  overflow: hidden;
+}
+
+.btn {
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-weight: 500;
+  letter-spacing: -0.018em;
+  box-shadow: none;
+}
+
+.btn-primary {
+  background: #0071e3;
+  color: #ffffff;
+  border-color: #0071e3;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #0077ed;
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(0, 113, 227, 0.22);
+}
+
+.btn-secondary,
+.btn-ghost {
+  background: rgba(0, 0, 0, 0.035);
+  color: #1d1d1f;
+  border-color: rgba(0, 0, 0, 0.07);
+}
+
+.btn-secondary:hover:not(:disabled),
+.btn-ghost:hover {
+  background: rgba(0, 0, 0, 0.065);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+.input,
+input,
+textarea,
+select,
+.models-search,
+.chat-input,
+.setup-input,
+.settings-input,
+.form-input,
+.form-select {
+  background: rgba(255, 255, 255, 0.82) !important;
+  color: #1d1d1f !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  border-radius: 14px !important;
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.025);
+}
+
+.input:focus,
+input:focus,
+textarea:focus,
+select:focus,
+.chat-input:focus,
+.setup-input:focus,
+.settings-input:focus,
+.form-input:focus,
+.form-select:focus {
+  border-color: #0071e3 !important;
+  box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.16) !important;
+  outline: none !important;
+}
+
+.settings-container,
+.models-header,
+.agents-header,
+.gateway-container,
+.providers-container,
+.skills-container,
+.memory-container,
+.tools-container,
+.schedules-container {
+  color: #1d1d1f;
+}
+
+.settings-card,
+.models-card,
+.agents-card,
+.provider-card,
+.tool-card,
+.skill-card,
+.gateway-card,
+.schedule-card,
+.setup-card,
+.welcome-card,
+.modal-content {
+  background: rgba(255, 255, 255, 0.86);
+  border: 0;
+  border-radius: 18px;
+  box-shadow: 3px 5px 30px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+.models-card:hover,
+.agents-card:hover,
+.settings-card:hover,
+.provider-card:hover,
+.tool-card:hover,
+.skill-card:hover {
+  background: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 3px 8px 34px rgba(0, 0, 0, 0.1);
+}
+
+.models-card.active,
+.agents-card.active,
+.provider-card.active {
+  box-shadow: 0 0 0 2px rgba(0, 113, 227, 0.34), 3px 8px 34px rgba(0, 0, 0, 0.1);
+}
+
+.chat-bubble-agent {
+  background: #ffffff;
+  color: #1d1d1f;
+  border: 0;
+  box-shadow: 3px 5px 24px rgba(0, 0, 0, 0.06);
+}
+
+.chat-bubble-user {
+  background: #0071e3;
+  color: #ffffff;
+  box-shadow: 0 8px 24px rgba(0, 113, 227, 0.2);
+}
+
+.chat-composer,
+.chat-input-container {
+  background: rgba(255, 255, 255, 0.78);
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+
+pre,
+code,
+.code-block {
+  font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Monaco, Consolas, monospace;
+  background: #f5f5f7;
+  color: #1d1d1f;
+  border-radius: 10px;
+}
+
+.yat-logo {
+  background: linear-gradient(180deg, #ffffff, #e8e8ed);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+.yat-logo-word {
+  color: #1d1d1f;
+}
+
+.splash-screen {
+  background: linear-gradient(180deg, #fbfbfd, #f5f5f7);
+}
+
+.splash-tagline,
+.splash-status {
+  color: rgba(0, 0, 0, 0.56);
+}
