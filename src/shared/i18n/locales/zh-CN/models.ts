@@ -23,6 +23,7 @@ export default {
   apiKeyLabel: "API Key",
   apiKeyHint:
     "保存为环境变量。会按 URL 匹配对应的环境变量名,否则使用 CUSTOM_API_KEY。",
+  validationFailed: "模型检测失败：{{error}}",
   active: "当前使用",
   inUse: "已启用",
   useModel: "使用此模型",

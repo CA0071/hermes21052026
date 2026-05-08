@@ -121,6 +121,21 @@ function Models(): React.JSX.Element {
     setFormError("");
 
     if (editingModel) {
+      const validation = await window.hermesAPI.validateModelConnection(
+        formProvider,
+        model,
+        formBaseUrl.trim(),
+        formApiKey.trim() || undefined,
+        "default",
+      );
+      if (!validation.ok) {
+        setFormError(
+          t("models.validationFailed", {
+            error: validation.error || `HTTP ${validation.status || "error"}`,
+          }),
+        );
+        return;
+      }
       await window.hermesAPI.updateModel(editingModel.id, {
         name,
         provider: formProvider,
@@ -135,12 +150,22 @@ function Models(): React.JSX.Element {
         );
       }
     } else {
-      await window.hermesAPI.addModel(
+      const result = await window.hermesAPI.configureValidatedDefaultModel(
         name,
         formProvider,
         model,
         formBaseUrl.trim(),
+        formApiKey.trim() || undefined,
+        "default",
       );
+      if (!result.ok) {
+        setFormError(
+          t("models.validationFailed", {
+            error: result.error || `HTTP ${result.status || "error"}`,
+          }),
+        );
+        return;
+      }
     }
 
     if (formApiKey.trim() && formProvider === "custom") {

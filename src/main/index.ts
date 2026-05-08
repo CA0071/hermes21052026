@@ -79,6 +79,7 @@ import {
   updateSessionTitle,
 } from "./session-cache";
 import { listModels, addModel, removeModel, updateModel } from "./models";
+import { validateModelConnection } from "./model-validation";
 import {
   listProfiles,
   createProfile,
@@ -313,6 +314,63 @@ function setupIPC(): void {
       }
 
       return true;
+    },
+  );
+
+  ipcMain.handle(
+    "validate-model-connection",
+    (
+      _event,
+      provider: string,
+      model: string,
+      baseUrl: string,
+      apiKey?: string,
+      profile?: string,
+    ) =>
+      validateModelConnection({
+        provider,
+        model,
+        baseUrl,
+        apiKey,
+        profile,
+      }),
+  );
+
+  ipcMain.handle(
+    "configure-validated-default-model",
+    async (
+      _event,
+      name: string,
+      provider: string,
+      model: string,
+      baseUrl: string,
+      apiKey?: string,
+      profile = "default",
+    ) => {
+      const validation = await validateModelConnection({
+        provider,
+        model,
+        baseUrl,
+        apiKey,
+        profile,
+      });
+      if (!validation.ok) {
+        return validation;
+      }
+
+      const saved = addModel(name, provider, model, baseUrl);
+      const prev = getModelConfig(profile);
+      setModelConfig(provider, model, baseUrl, profile);
+      if (
+        isGatewayRunning() &&
+        (prev.provider !== provider ||
+          prev.model !== model ||
+          prev.baseUrl !== baseUrl)
+      ) {
+        restartGateway(profile);
+      }
+      setYatSetupSkipped(false);
+      return { ...validation, model: saved };
     },
   );
 

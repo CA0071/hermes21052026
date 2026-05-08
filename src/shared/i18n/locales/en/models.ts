@@ -24,6 +24,7 @@ export default {
   apiKeyLabel: "API Key",
   apiKeyHint:
     "Stored as an environment variable. Picks the matching env key based on the URL, or CUSTOM_API_KEY otherwise.",
+  validationFailed: "Model test failed: {{error}}",
   active: "Active",
   inUse: "In use",
   useModel: "Use this model",

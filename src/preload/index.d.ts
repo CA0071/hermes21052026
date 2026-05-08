@@ -55,6 +55,33 @@ interface HermesAPI {
     baseUrl: string,
     profile?: string,
   ) => Promise<boolean>;
+  validateModelConnection: (
+    provider: string,
+    model: string,
+    baseUrl: string,
+    apiKey?: string,
+    profile?: string,
+  ) => Promise<{ ok: boolean; error?: string; status?: number }>;
+  configureValidatedDefaultModel: (
+    name: string,
+    provider: string,
+    model: string,
+    baseUrl: string,
+    apiKey?: string,
+    profile?: string,
+  ) => Promise<{
+    ok: boolean;
+    error?: string;
+    status?: number;
+    model?: {
+      id: string;
+      name: string;
+      provider: string;
+      model: string;
+      baseUrl: string;
+      createdAt: number;
+    };
+  }>;
 
   // Connection mode (local vs remote)
   isRemoteMode: () => Promise<boolean>;

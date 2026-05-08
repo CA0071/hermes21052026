@@ -11,6 +11,7 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
   const [modelName, setModelName] = useState("deepseek-chat");
   const [selectedModelPreset, setSelectedModelPreset] = useState("deepseek-chat");
   const [saving, setSaving] = useState(false);
+  const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
   const [showKey, setShowKey] = useState(false);
 
@@ -103,6 +104,7 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
 
     setSaving(true);
     setError("");
+    setSuccess("");
 
     try {
       if (provider.needsKey && provider.envKey) {
@@ -119,12 +121,29 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
       const configProvider = usesOpenAiCompatibleEndpoint ? "custom" : provider.configProvider;
       const configBaseUrl = usesOpenAiCompatibleEndpoint ? baseUrl.trim() : provider.baseUrl;
       const configModel = modelName.trim() || "";
-      await window.hermesAPI.setModelConfig(
+      const modelLabel =
+        PROVIDERS.setup.find((p) => p.id === selectedProvider)?.id === "customApi"
+          ? `${configModel} @ ${configBaseUrl}`
+          : `${selectedProvider} ${configModel}`.trim();
+      const result = await window.hermesAPI.configureValidatedDefaultModel(
+        modelLabel,
         configProvider,
         configModel,
         configBaseUrl,
+        apiKey.trim() || undefined,
+        "default",
       );
+      if (!result.ok) {
+        setError(
+          t("setup.validationFailed", {
+            error: result.error || `HTTP ${result.status || "error"}`,
+          }),
+        );
+        setSaving(false);
+        return;
+      }
 
+      setSuccess(t("setup.validationSucceeded"));
       onComplete();
     } catch {
       setError(t("setup.saveFailed"));
@@ -215,6 +234,7 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
                 setBaseUrl(e.target.value);
                 setSelectedModelPreset("custom-model");
                 setError("");
+                setSuccess("");
               }}
               autoFocus
             />
@@ -237,6 +257,7 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
                 onChange={(e) => {
                   setApiKey(e.target.value);
                   setError("");
+                setSuccess("");
                 }}
               />
               <button
@@ -302,6 +323,7 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
                 onChange={(e) => {
                   setApiKey(e.target.value);
                   setError("");
+                setSuccess("");
                 }}
                 onKeyDown={(e) => e.key === "Enter" && handleContinue()}
                 autoFocus
@@ -326,6 +348,7 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
         )}
 
         {error && <div className="setup-error">{error}</div>}
+        {success && <div className="settings-saved">{success}</div>}
 
         <div className="setup-actions">
           <button
@@ -347,7 +370,7 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
               (isCustomApi && !isLocalUrl(baseUrl) && !apiKey.trim())
             }
           >
-            {saving ? t("setup.saving") : t("setup.continue")}
+            {saving ? t("setup.validatingModel") : t("setup.continue")}
             {!saving && <ArrowRight size={16} />}
           </button>
         </div>

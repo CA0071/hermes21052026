@@ -98,6 +98,52 @@ const hermesAPI = {
   ): Promise<boolean> =>
     ipcRenderer.invoke("set-model-config", provider, model, baseUrl, profile),
 
+  validateModelConnection: (
+    provider: string,
+    model: string,
+    baseUrl: string,
+    apiKey?: string,
+    profile?: string,
+  ): Promise<{ ok: boolean; error?: string; status?: number }> =>
+    ipcRenderer.invoke(
+      "validate-model-connection",
+      provider,
+      model,
+      baseUrl,
+      apiKey,
+      profile,
+    ),
+
+  configureValidatedDefaultModel: (
+    name: string,
+    provider: string,
+    model: string,
+    baseUrl: string,
+    apiKey?: string,
+    profile?: string,
+  ): Promise<{
+    ok: boolean;
+    error?: string;
+    status?: number;
+    model?: {
+      id: string;
+      name: string;
+      provider: string;
+      model: string;
+      baseUrl: string;
+      createdAt: number;
+    };
+  }> =>
+    ipcRenderer.invoke(
+      "configure-validated-default-model",
+      name,
+      provider,
+      model,
+      baseUrl,
+      apiKey,
+      profile,
+    ),
+
   // Connection mode (local vs remote)
   isRemoteMode: (): Promise<boolean> => ipcRenderer.invoke("is-remote-mode"),
   getConnectionConfig: (): Promise<{
