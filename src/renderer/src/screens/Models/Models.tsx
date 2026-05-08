@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Trash, Search, X } from "../../assets/icons";
+import { Plus, Trash, Search, X, Check } from "../../assets/icons";
 import { PROVIDERS } from "../../constants";
 import { useI18n } from "../../components/useI18n";
 
@@ -12,6 +12,12 @@ interface SavedModel {
   createdAt: number;
 }
 
+interface ModelConfig {
+  provider: string;
+  model: string;
+  baseUrl: string;
+}
+
 function providerLabelKey(value: string): string {
   return PROVIDERS.options.find((p) => p.value === value)?.label || value;
 }
@@ -22,6 +28,13 @@ function Models(): React.JSX.Element {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [activeConfig, setActiveConfig] = useState<ModelConfig>({
+    provider: "auto",
+    model: "",
+    baseUrl: "",
+  });
+  const [activatingModelId, setActivatingModelId] = useState<string | null>(null);
+  const [activeSaved, setActiveSaved] = useState(false);
 
   // Modal state
   const [showModal, setShowModal] = useState(false);
@@ -55,8 +68,12 @@ function Models(): React.JSX.Element {
   }
 
   const loadModels = useCallback(async () => {
-    const list = await window.hermesAPI.listModels();
+    const [list, mc] = await Promise.all([
+      window.hermesAPI.listModels(),
+      window.hermesAPI.getModelConfig(),
+    ]);
     setModels(list);
+    setActiveConfig(mc);
     setLoading(false);
   }, []);
 
@@ -110,6 +127,13 @@ function Models(): React.JSX.Element {
         model,
         baseUrl: formBaseUrl.trim(),
       });
+      if (isActiveModel(editingModel)) {
+        await window.hermesAPI.setModelConfig(
+          formProvider,
+          model,
+          formBaseUrl.trim(),
+        );
+      }
     } else {
       await window.hermesAPI.addModel(
         name,
@@ -124,6 +148,10 @@ function Models(): React.JSX.Element {
       await window.hermesAPI.setEnv(envKey, formApiKey.trim());
     }
 
+    if (editingModel) {
+      await loadModels();
+    }
+
     closeModal();
     await loadModels();
   }
@@ -132,6 +160,26 @@ function Models(): React.JSX.Element {
     await window.hermesAPI.removeModel(id);
     setConfirmDelete(null);
     await loadModels();
+  }
+
+  function isActiveModel(m: SavedModel): boolean {
+    return (
+      activeConfig.provider === m.provider &&
+      activeConfig.model === m.model &&
+      (activeConfig.baseUrl || "") === (m.baseUrl || "")
+    );
+  }
+
+  async function handleUseModel(m: SavedModel): Promise<void> {
+    setActivatingModelId(m.id);
+    try {
+      await window.hermesAPI.setModelConfig(m.provider, m.model, m.baseUrl || "");
+      setActiveConfig({ provider: m.provider, model: m.model, baseUrl: m.baseUrl || "" });
+      setActiveSaved(true);
+      setTimeout(() => setActiveSaved(false), 2000);
+    } finally {
+      setActivatingModelId(null);
+    }
   }
 
   const filtered = models.filter((m) => {
@@ -162,7 +210,14 @@ function Models(): React.JSX.Element {
           <h1 className="settings-header" style={{ marginBottom: 4 }}>
             {t("models.title")}
           </h1>
-          <p className="models-subtitle">{t("models.subtitle")}</p>
+          <p className="models-subtitle">
+            {t("models.subtitle")}
+            {activeSaved && (
+              <span className="settings-saved" style={{ marginLeft: 8 }}>
+                {t("models.activeSaved")}
+              </span>
+            )}
+          </p>
         </div>
         <button className="btn btn-primary btn-sm" onClick={openAddModal}>
           <Plus size={14} />
@@ -196,14 +251,23 @@ function Models(): React.JSX.Element {
         </div>
       ) : (
         <div className="models-grid">
-          {filtered.map((m) => (
-            <div
-              key={m.id}
-              className="models-card"
-              onClick={() => openEditModal(m)}
-            >
-              <div className="models-card-header">
-                <div className="models-card-name">{m.name}</div>
+          {filtered.map((m) => {
+            const active = isActiveModel(m);
+            return (
+              <div
+                key={m.id}
+                className={`models-card ${active ? "active" : ""}`}
+                onClick={() => openEditModal(m)}
+              >
+                <div className="models-card-header">
+                <div className="models-card-name">
+                  {m.name}
+                  {active && (
+                    <span className="models-active-badge">
+                      <Check size={12} /> {t("models.active")}
+                    </span>
+                  )}
+                </div>
                 <span className="models-card-provider">
                   {t(providerLabelKey(m.provider))}
                 </span>
@@ -211,6 +275,16 @@ function Models(): React.JSX.Element {
               <div className="models-card-model">{m.model}</div>
               {m.baseUrl && <div className="models-card-url">{m.baseUrl}</div>}
               <div className="models-card-footer">
+                <button
+                  className={`btn btn-sm ${active ? "btn-secondary" : "btn-primary"}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleUseModel(m);
+                  }}
+                  disabled={active || activatingModelId === m.id}
+                >
+                  {active ? t("models.inUse") : t("models.useModel")}
+                </button>
                 {confirmDelete === m.id ? (
                   <div
                     className="models-card-confirm"
@@ -245,7 +319,8 @@ function Models(): React.JSX.Element {
                 )}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

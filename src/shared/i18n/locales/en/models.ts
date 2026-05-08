@@ -24,4 +24,8 @@ export default {
   apiKeyLabel: "API Key",
   apiKeyHint:
     "Stored as an environment variable. Picks the matching env key based on the URL, or CUSTOM_API_KEY otherwise.",
+  active: "Active",
+  inUse: "In use",
+  useModel: "Use this model",
+  activeSaved: "Switched — chat will call this model",
 } as const;

@@ -4445,6 +4445,11 @@ body {
   transition: border-color var(--transition);
 }
 
+.models-card.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-subtle);
+}
+
 .models-card:hover {
   border-color: var(--border-bright);
   cursor: pointer;
@@ -4458,9 +4463,25 @@ body {
 }
 
 .models-card-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
   font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
+}
+
+.models-active-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent-text);
+  background: var(--accent-subtle);
+  padding: 2px 7px;
+  border-radius: 999px;
 }
 
 .models-card-provider {
@@ -4490,7 +4511,9 @@ body {
 
 .models-card-footer {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
   margin-top: 8px;
 }
 

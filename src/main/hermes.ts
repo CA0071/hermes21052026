@@ -516,11 +516,15 @@ function sendMessageViaCli(
     "TAVILY_API_KEY",
     "FIRECRAWL_API_KEY",
     "FAL_KEY",
+    "TINKER_API_KEY",
     "HONCHO_API_KEY",
     "BROWSERBASE_API_KEY",
     "BROWSERBASE_PROJECT_ID",
     "VOICE_TOOLS_OPENAI_KEY",
-    "TINKER_API_KEY",
+    "DASHSCOPE_API_KEY",
+    "DEEPSEEK_API_KEY",
+    "CUSTOM_API_KEY",
+    "TOGETHER_API_KEY",
     "WANDB_API_KEY",
   ];
   for (const key of KNOWN_API_KEYS) {
