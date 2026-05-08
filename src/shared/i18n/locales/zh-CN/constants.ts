@@ -28,6 +28,7 @@ export default {
   vllm: "vLLM",
   llamacpp: "llama.cpp",
   groq: "Groq",
+  openaiCompatible: "OpenAI / Relay",
   deepseek: "DeepSeek",
   dashscope: "通义千问 / DashScope",
   kimi: "Kimi / Moonshot",

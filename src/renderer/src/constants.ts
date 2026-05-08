@@ -183,6 +183,14 @@ export const LOCAL_PRESETS: LocalPreset[] = [
     group: "local",
   },
   {
+    id: "openaiCompatible",
+    name: "constants.openaiCompatible",
+    baseUrl: "https://api.openai.com/v1",
+    group: "remote",
+    envKey: "OPENAI_API_KEY",
+    defaultModel: "gpt-4o-mini",
+  },
+  {
     id: "groq",
     name: "constants.groq",
     baseUrl: "https://api.groq.com/openai/v1",
@@ -262,6 +270,27 @@ export const LOCAL_PRESETS: LocalPreset[] = [
 ];
 
 export const OPENAI_COMPATIBLE_MODEL_PRESETS: OpenAICompatibleModelPreset[] = [
+  {
+    id: "openai-gpt-4o-mini",
+    label: "OpenAI / 中转站 GPT-4o mini",
+    model: "gpt-4o-mini",
+    baseUrl: "https://api.openai.com/v1",
+    envKey: "OPENAI_API_KEY",
+  },
+  {
+    id: "openai-gpt-4o",
+    label: "OpenAI / 中转站 GPT-4o",
+    model: "gpt-4o",
+    baseUrl: "https://api.openai.com/v1",
+    envKey: "OPENAI_API_KEY",
+  },
+  {
+    id: "openai-gpt-4.1",
+    label: "OpenAI / 中转站 GPT-4.1",
+    model: "gpt-4.1",
+    baseUrl: "https://api.openai.com/v1",
+    envKey: "OPENAI_API_KEY",
+  },
   {
     id: "deepseek-chat",
     label: "DeepSeek Chat",
