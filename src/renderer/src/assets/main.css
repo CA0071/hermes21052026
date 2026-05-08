@@ -1173,6 +1173,79 @@ body {
   }
 }
 
+
+.sidebar-engine-btn {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 10px 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.62);
+  color: var(--shell-text);
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--transition), border-color var(--transition), transform var(--transition);
+}
+
+.sidebar-engine-btn:hover {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(0, 113, 227, 0.24);
+  transform: translateY(-1px);
+}
+
+.sidebar-engine-status {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #8e8e93;
+  box-shadow: 0 0 0 3px rgba(142, 142, 147, 0.12);
+}
+
+.sidebar-engine-btn.engine-ready .sidebar-engine-status {
+  background: #34c759;
+  box-shadow: 0 0 0 3px rgba(52, 199, 89, 0.14);
+}
+
+.sidebar-engine-btn.engine-starting .sidebar-engine-status {
+  background: #0071e3;
+  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.16);
+  animation: sidebar-version-pulse 1.2s ease-in-out infinite;
+}
+
+.sidebar-engine-btn.engine-fallback .sidebar-engine-status {
+  background: #ff9f0a;
+  box-shadow: 0 0 0 3px rgba(255, 159, 10, 0.18);
+}
+
+.sidebar-engine-btn.engine-offline .sidebar-engine-status {
+  background: #ff3b30;
+  box-shadow: 0 0 0 3px rgba(255, 59, 48, 0.16);
+}
+
+.sidebar-engine-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebar-engine-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--shell-text);
+}
+
+.sidebar-engine-meta {
+  font-size: 11px;
+  color: var(--shell-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Theme Switcher */
 .theme-switcher {
   display: flex;

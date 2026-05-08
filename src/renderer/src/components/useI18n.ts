@@ -1,10 +1,11 @@
 import { useContext } from "react";
 import { useTranslation } from "react-i18next";
-import { I18nContext } from "./I18nContext";
+import { I18nContext, type LocalePreference } from "./I18nContext";
 
 export function useI18n(): {
   locale: "en" | "zh-CN";
-  setLocale: (locale: "en" | "zh-CN") => void;
+  localePreference: LocalePreference;
+  setLocale: (locale: LocalePreference) => void;
   t: (key: string, options?: Record<string, unknown>) => string;
 } {
   const value = useContext(I18nContext);

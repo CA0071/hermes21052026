@@ -35,7 +35,7 @@ interface HermesAPI {
   runClawMigrate: () => Promise<{ success: boolean; error?: string }>;
 
   getLocale: () => Promise<"en" | "zh-CN">;
-  setLocale: (locale: "en" | "zh-CN") => Promise<"en" | "zh-CN">;
+  setLocale: (locale: "en" | "zh-CN" | "system") => Promise<"en" | "zh-CN">;
 
   // Configuration (profile-aware)
   getEnv: (profile?: string) => Promise<Record<string, string>>;
@@ -124,6 +124,9 @@ interface HermesAPI {
   startGateway: () => Promise<boolean>;
   stopGateway: () => Promise<boolean>;
   gatewayStatus: () => Promise<boolean>;
+  warmupEngine: (profile?: string) => Promise<EngineStatus>;
+  engineStatus: () => Promise<EngineStatus>;
+  engineBenchmark: () => Promise<EngineBenchmark>;
 
   // Platform toggles
   getPlatformEnabled: (profile?: string) => Promise<Record<string, boolean>>;
@@ -462,6 +465,24 @@ interface HermesAPI {
 }
 
 declare global {
+
+  type EngineStatus = {
+    mode: "remote" | "local";
+    state: "ready" | "starting" | "offline" | "fallback";
+    apiReady: boolean;
+    gatewayRunning: boolean;
+    path: "api" | "cli" | "remote-api";
+    latencyMs?: number;
+  };
+
+  type EngineBenchmark = {
+    ok: boolean;
+    mode: "remote" | "local";
+    path: "api" | "cli" | "remote-api";
+    healthLatencyMs: number | null;
+    error?: string;
+  };
+
   interface Window {
     electron: ElectronAPI;
     hermesAPI: HermesAPI;

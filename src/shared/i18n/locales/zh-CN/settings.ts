@@ -13,9 +13,10 @@ export default {
   },
   language: {
     label: "语言",
+    system: "跟随系统",
     english: "English",
     chinese: "中文",
-    hint: "选择界面语言",
+    hint: "默认根据操作系统语言自动匹配，也可以在这里手动切换。",
   },
   notDetected: "未检测到",
   updatedSuccessfully: "更新成功！",

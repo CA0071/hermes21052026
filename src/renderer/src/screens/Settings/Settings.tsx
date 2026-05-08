@@ -23,7 +23,7 @@ function getCachedOpenClaw(): { found: boolean; path: string | null } | null {
 }
 
 function Settings({ profile }: { profile?: string }): React.JSX.Element {
-  const { t, locale, setLocale } = useI18n();
+  const { t, localePreference, setLocale } = useI18n();
   const [hermesHome, setHermesHome] = useState("");
   const { theme, setTheme } = useTheme();
 
@@ -644,13 +644,19 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
           </label>
           <div className="settings-theme-options">
             <button
-              className={`settings-theme-option ${locale === "en" ? "active" : ""}`}
+              className={`settings-theme-option ${localePreference === "system" ? "active" : ""}`}
+              onClick={() => setLocale("system")}
+            >
+              {t("settings.language.system")}
+            </button>
+            <button
+              className={`settings-theme-option ${localePreference === "en" ? "active" : ""}`}
               onClick={() => setLocale("en")}
             >
               {t("settings.language.english")}
             </button>
             <button
-              className={`settings-theme-option ${locale === "zh-CN" ? "active" : ""}`}
+              className={`settings-theme-option ${localePreference === "zh-CN" ? "active" : ""}`}
               onClick={() => setLocale("zh-CN")}
             >
               {t("settings.language.chinese")}

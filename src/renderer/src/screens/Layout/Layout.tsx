@@ -30,6 +30,23 @@ import {
   Refresh,
 } from "../../assets/icons";
 import type { LucideIcon } from "lucide-react";
+
+type EngineStatus = {
+  mode: "remote" | "local";
+  state: "ready" | "starting" | "offline" | "fallback";
+  apiReady: boolean;
+  gatewayRunning: boolean;
+  path: "api" | "cli" | "remote-api";
+  latencyMs?: number;
+};
+
+type EngineBenchmark = {
+  ok: boolean;
+  mode: "remote" | "local";
+  path: "api" | "cli" | "remote-api";
+  healthLatencyMs: number | null;
+  error?: string;
+};
 import { useI18n } from "../../components/useI18n";
 
 type View =
@@ -82,6 +99,8 @@ function Layout(): React.JSX.Element {
     "idle" | "checking" | "available" | "downloading" | "ready" | "error"
   >("idle");
   const [downloadPercent, setDownloadPercent] = useState(0);
+  const [engineStatus, setEngineStatus] = useState<EngineStatus | null>(null);
+  const [benchmark, setBenchmark] = useState<EngineBenchmark | null>(null);
 
   useEffect(() => {
     window.hermesAPI.getAppVersion().then(setAppVersion).catch(() => setAppVersion(""));
@@ -113,6 +132,50 @@ function Layout(): React.JSX.Element {
       cleanupDownloaded();
     };
   }, []);
+
+
+  useEffect(() => {
+    let mounted = true;
+    window.hermesAPI
+      .warmupEngine(activeProfile)
+      .then((status) => {
+        if (mounted) setEngineStatus(status);
+      })
+      .catch(() => {
+        if (mounted) setEngineStatus(null);
+      });
+    const timer = window.setInterval(() => {
+      window.hermesAPI
+        .engineStatus()
+        .then((status) => {
+          if (mounted) setEngineStatus(status);
+        })
+        .catch(() => {
+          if (mounted) setEngineStatus(null);
+        });
+    }, 5000);
+    return () => {
+      mounted = false;
+      window.clearInterval(timer);
+    };
+  }, [activeProfile]);
+
+  async function handleEngineBenchmark(): Promise<void> {
+    try {
+      const result = await window.hermesAPI.engineBenchmark();
+      setBenchmark(result);
+      const status = await window.hermesAPI.engineStatus();
+      setEngineStatus(status);
+    } catch {
+      setBenchmark({
+        ok: false,
+        mode: "local",
+        path: "cli",
+        healthLatencyMs: null,
+        error: "Benchmark failed",
+      });
+    }
+  }
 
   async function handleUpdate(): Promise<void> {
     if (updateState === "idle" || updateState === "error") {
@@ -206,6 +269,26 @@ function Layout(): React.JSX.Element {
 
         <div className="sidebar-footer">
           <button
+            className={`sidebar-engine-btn engine-${engineStatus?.state || "offline"}`}
+            onClick={handleEngineBenchmark}
+            title={benchmark?.error || t("common.engineBenchmark")}
+          >
+            <span className="sidebar-engine-status" />
+            <span className="sidebar-engine-copy">
+              <span className="sidebar-engine-title">{t("common.engine")}</span>
+              <span className="sidebar-engine-meta">
+                {engineStatus?.state === "ready" &&
+                  `${t("common.engineReady")} · ${engineStatus.path}${
+                    engineStatus.latencyMs !== undefined ? ` · ${engineStatus.latencyMs}ms` : ""
+                  }`}
+                {engineStatus?.state === "starting" && t("common.engineStarting")}
+                {engineStatus?.state === "fallback" && t("common.engineFallback")}
+                {engineStatus?.state === "offline" && t("common.engineOffline")}
+                {!engineStatus && t("common.engineStarting")}
+              </span>
+            </span>
+          </button>
+          <button
             className={`sidebar-version-btn update-${updateState}`}
             onClick={handleUpdate}
             title={
@@ -227,7 +310,7 @@ function Layout(): React.JSX.Element {
                   t("common.downloading", { percent: downloadPercent })}
                 {updateState === "ready" && t("common.restartToUpdate")}
                 {updateState === "error" && t("common.updateCheckFailed")}
-                {updateState === "idle" && `${t("common.version")} ${appVersion || "—"}`}
+                {updateState === "idle" && `${t("settings.version", { version: appVersion || "—" })}`}
               </span>
             </span>
             {updateState === "available" || updateState === "ready" ? (

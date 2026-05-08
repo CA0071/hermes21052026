@@ -1,6 +1,23 @@
 import { contextBridge, ipcRenderer } from "electron";
 import { electronAPI } from "@electron-toolkit/preload";
 
+export type EngineStatus = {
+  mode: "remote" | "local";
+  state: "ready" | "starting" | "offline" | "fallback";
+  apiReady: boolean;
+  gatewayRunning: boolean;
+  path: "api" | "cli" | "remote-api";
+  latencyMs?: number;
+};
+
+export type EngineBenchmark = {
+  ok: boolean;
+  mode: "remote" | "local";
+  path: "api" | "cli" | "remote-api";
+  healthLatencyMs: number | null;
+  error?: string;
+};
+
 const hermesAPI = {
   // Installation
   checkInstall: (): Promise<{
@@ -57,7 +74,7 @@ const hermesAPI = {
     ipcRenderer.invoke("run-claw-migrate"),
 
   getLocale: (): Promise<"en" | "zh-CN"> => ipcRenderer.invoke("get-locale"),
-  setLocale: (locale: "en" | "zh-CN"): Promise<"en" | "zh-CN"> =>
+  setLocale: (locale: "en" | "zh-CN" | "system"): Promise<"en" | "zh-CN"> =>
     ipcRenderer.invoke("set-locale", locale),
 
   // Configuration (profile-aware)
@@ -238,6 +255,11 @@ const hermesAPI = {
   startGateway: (): Promise<boolean> => ipcRenderer.invoke("start-gateway"),
   stopGateway: (): Promise<boolean> => ipcRenderer.invoke("stop-gateway"),
   gatewayStatus: (): Promise<boolean> => ipcRenderer.invoke("gateway-status"),
+  warmupEngine: (profile?: string): Promise<EngineStatus> =>
+    ipcRenderer.invoke("warmup-engine", profile),
+  engineStatus: (): Promise<EngineStatus> => ipcRenderer.invoke("engine-status"),
+  engineBenchmark: (): Promise<EngineBenchmark> =>
+    ipcRenderer.invoke("engine-benchmark"),
 
   // Platform toggles
   getPlatformEnabled: (profile?: string): Promise<Record<string, boolean>> =>

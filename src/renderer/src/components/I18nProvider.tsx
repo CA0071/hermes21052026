@@ -11,45 +11,110 @@ import { I18nContext, type I18nContextValue } from "./I18nContext";
 
 void sharedI18n.use(initReactI18next);
 
-const STORAGE_KEY = "hermes-locale";
+const STORAGE_KEY = "yat-studio-locale";
+const LEGACY_STORAGE_KEY = "hermes-locale";
 
-function readStoredLocale(): AppLocale {
+type LocalePreference = AppLocale | "system";
+
+function isAppLocale(raw: string | null): raw is AppLocale {
+  return !!raw && (APP_LOCALES as string[]).includes(raw);
+}
+
+function readStoredPreference(): LocalePreference {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw && (APP_LOCALES as string[]).includes(raw)) {
-      return raw as AppLocale;
-    }
+    if (raw === "system") return "system";
+    if (isAppLocale(raw)) return raw;
+
+    const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+    if (isAppLocale(legacy)) return legacy;
   } catch {
     /* ignore */
   }
-  return DEFAULT_ACTIVE_LOCALE;
+  return "system";
 }
 
-const initialLocale = readStoredLocale();
-setSharedLocale(initialLocale);
+function persistPreference(preference: LocalePreference): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, preference);
+    localStorage.removeItem(LEGACY_STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+const initialPreference = readStoredPreference();
+setSharedLocale(DEFAULT_ACTIVE_LOCALE);
 
 export function I18nProvider({
   children,
 }: {
   children: React.ReactNode;
 }): React.JSX.Element {
-  const [locale, setLocaleState] = useState<AppLocale>(initialLocale);
+  const [locale, setLocaleState] = useState<AppLocale>(DEFAULT_ACTIVE_LOCALE);
+  const [localePreference, setLocalePreferenceState] =
+    useState<LocalePreference>(initialPreference);
 
   useEffect(() => {
-    setSharedLocale(locale);
-    try {
-      localStorage.setItem(STORAGE_KEY, locale);
-    } catch {
-      /* ignore */
+    let mounted = true;
+    const api = window.hermesAPI;
+    if (!api?.setLocale) {
+      setSharedLocale(DEFAULT_ACTIVE_LOCALE);
+      setLocaleState(DEFAULT_ACTIVE_LOCALE);
+      return () => {
+        mounted = false;
+      };
     }
-  }, [locale]);
+    api
+      .setLocale(initialPreference)
+      .then((resolved) => {
+        if (!mounted) return;
+        setSharedLocale(resolved);
+        setLocaleState(resolved);
+        persistPreference(initialPreference);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setSharedLocale(DEFAULT_ACTIVE_LOCALE);
+        setLocaleState(DEFAULT_ACTIVE_LOCALE);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const setLocale = (next: LocalePreference): void => {
+    setLocalePreferenceState(next);
+    persistPreference(next);
+    const api = window.hermesAPI;
+    if (!api?.setLocale) {
+      if (next !== "system") {
+        setSharedLocale(next);
+        setLocaleState(next);
+      }
+      return;
+    }
+    api
+      .setLocale(next)
+      .then((resolved) => {
+        setSharedLocale(resolved);
+        setLocaleState(resolved);
+      })
+      .catch(() => {
+        if (next !== "system") {
+          setSharedLocale(next);
+          setLocaleState(next);
+        }
+      });
+  };
 
   const value = useMemo<I18nContextValue>(
     () => ({
       locale,
-      setLocale: setLocaleState,
+      localePreference,
+      setLocale,
     }),
-    [locale],
+    [locale, localePreference],
   );
 
   return (

@@ -37,9 +37,12 @@ import {
   stopGateway,
   isGatewayRunning,
   isRemoteMode,
-  testRemoteConnection,
   stopHealthPolling,
+  testRemoteConnection,
   restartGateway,
+  getEngineStatus,
+  runEngineBenchmark,
+  warmupEngine,
 } from "./hermes";
 import {
   getClaw3dStatus,
@@ -110,7 +113,7 @@ import {
   resumeCronJob,
   triggerCronJob,
 } from "./cronjobs";
-import { getAppLocale, setAppLocale } from "./locale";
+import { getAppLocale, resolveAppLocale, setAppLocale } from "./locale";
 
 process.on("uncaughtException", (err) => {
   console.error("[MAIN UNCAUGHT]", err);
@@ -235,8 +238,8 @@ function setupIPC(): void {
 
   // Configuration (profile-aware)
   ipcMain.handle("get-locale", () => getAppLocale());
-  ipcMain.handle("set-locale", (_event, locale: "en" | "zh-CN") =>
-    setAppLocale(locale),
+  ipcMain.handle("set-locale", (_event, locale: "en" | "zh-CN" | "system") =>
+    locale === "system" ? resolveAppLocale(null) : setAppLocale(locale),
   );
 
   ipcMain.handle("get-env", (_event, profile?: string) => readEnv(profile));
@@ -504,6 +507,9 @@ function setupIPC(): void {
     return true;
   });
   ipcMain.handle("gateway-status", () => isGatewayRunning());
+  ipcMain.handle("warmup-engine", (_event, profile?: string) => warmupEngine(profile));
+  ipcMain.handle("engine-status", () => getEngineStatus());
+  ipcMain.handle("engine-benchmark", () => runEngineBenchmark());
 
   // Platform toggles (config.yaml platforms section)
   ipcMain.handle("get-platform-enabled", (_event, profile?: string) =>

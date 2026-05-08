@@ -13,9 +13,10 @@ export default {
   },
   language: {
     label: "Language",
+    system: "System",
     english: "English",
     chinese: "中文",
-    hint: "Choose the interface language",
+    hint: "Defaults to your operating system language. You can override it here.",
   },
   notDetected: "Not detected",
   updatedSuccessfully: "Updated successfully!",

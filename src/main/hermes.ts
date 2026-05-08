@@ -1,4 +1,5 @@
 import { ChildProcess, spawn } from "child_process";
+import { performance } from "perf_hooks";
 import { existsSync, readFileSync, appendFileSync, unlinkSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
@@ -134,11 +135,30 @@ interface ChatHandle {
   abort: () => void;
 }
 
+
+export type EngineStatus = {
+  mode: "remote" | "local";
+  state: "ready" | "starting" | "offline" | "fallback";
+  apiReady: boolean;
+  gatewayRunning: boolean;
+  path: "api" | "cli" | "remote-api";
+  latencyMs?: number;
+};
+
+export type EngineBenchmark = {
+  ok: boolean;
+  mode: "remote" | "local";
+  path: "api" | "cli" | "remote-api";
+  healthLatencyMs: number | null;
+  error?: string;
+};
+
 // ────────────────────────────────────────────────────
 //  API Server health check
 // ────────────────────────────────────────────────────
 
-function isApiServerReady(): Promise<boolean> {
+function probeApiServer(): Promise<{ ready: boolean; latencyMs: number }> {
+  const started = performance.now();
   return new Promise((resolve) => {
     const url = `${getApiUrl()}/health`;
     const mod = url.startsWith("https") ? https : http;
@@ -146,17 +166,21 @@ function isApiServerReady(): Promise<boolean> {
       url,
       { method: "GET", timeout: 1500, headers: getRemoteAuthHeader() },
       (res) => {
-        resolve(res.statusCode === 200);
+        resolve({ ready: res.statusCode === 200, latencyMs: Math.round(performance.now() - started) });
         res.resume();
       },
     );
-    req.on("error", () => resolve(false));
+    req.on("error", () => resolve({ ready: false, latencyMs: Math.round(performance.now() - started) }));
     req.on("timeout", () => {
       req.destroy();
-      resolve(false);
+      resolve({ ready: false, latencyMs: Math.round(performance.now() - started) });
     });
     req.end();
   });
+}
+
+function isApiServerReady(): Promise<boolean> {
+  return probeApiServer().then((probe) => probe.ready);
 }
 
 // ────────────────────────────────────────────────────
@@ -818,6 +842,59 @@ export function isGatewayRunning(): boolean {
 export function isApiReady(): boolean {
   return apiServerAvailable === true;
 }
+
+
+export async function getEngineStatus(): Promise<EngineStatus> {
+  if (isRemoteMode()) {
+    const probe = await probeApiServer();
+    return {
+      mode: "remote",
+      state: probe.ready ? "ready" : "offline",
+      apiReady: probe.ready,
+      gatewayRunning: false,
+      path: "remote-api",
+      latencyMs: probe.latencyMs,
+    };
+  }
+
+  const gatewayRunning = isGatewayRunning();
+  const probe = await probeApiServer();
+  apiServerAvailable = probe.ready;
+  const state: EngineStatus["state"] = probe.ready
+    ? "ready"
+    : gatewayRunning
+      ? "starting"
+      : "fallback";
+  return {
+    mode: "local",
+    state,
+    apiReady: probe.ready,
+    gatewayRunning,
+    path: probe.ready ? "api" : "cli",
+    latencyMs: probe.latencyMs,
+  };
+}
+
+export async function warmupEngine(profile?: string): Promise<EngineStatus> {
+  ensureInitialized();
+  if (!isRemoteMode() && !isGatewayRunning()) {
+    startGateway(profile);
+  }
+  return getEngineStatus();
+}
+
+export async function runEngineBenchmark(): Promise<EngineBenchmark> {
+  const probe = await probeApiServer();
+  const status = await getEngineStatus();
+  return {
+    ok: probe.ready,
+    mode: status.mode,
+    path: status.path,
+    healthLatencyMs: probe.ready ? probe.latencyMs : null,
+    error: probe.ready ? undefined : "API server is not ready; chat will use CLI fallback.",
+  };
+}
+
 
 export function testRemoteConnection(
   url: string,
