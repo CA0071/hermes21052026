@@ -361,6 +361,20 @@ function setupIPC(): void {
       const saved = addModel(name, provider, model, baseUrl);
       const prev = getModelConfig(profile);
       setModelConfig(provider, model, baseUrl, profile);
+      const written = getModelConfig(profile);
+      const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
+      const normalizedWrittenBaseUrl = written.baseUrl.replace(/\/+$/, "");
+      if (
+        written.provider !== provider ||
+        written.model !== model ||
+        normalizedWrittenBaseUrl !== normalizedBaseUrl
+      ) {
+        return {
+          ok: false,
+          error:
+            "Model tested successfully, but Yat Studio could not write it to the default profile config. Please check ~/.hermes/config.yaml permissions.",
+        };
+      }
       if (
         isGatewayRunning() &&
         (prev.provider !== provider ||

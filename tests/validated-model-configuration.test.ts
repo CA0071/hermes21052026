@@ -30,12 +30,21 @@ async function commitValidatedDefaultModel(
     setEnv: (key: string, value: string, profile?: string) => Promise<void>;
     addModel: (name: string, provider: string, model: string, baseUrl: string) => Promise<void>;
     setModelConfig: (provider: string, model: string, baseUrl: string, profile?: string) => Promise<void>;
+    getModelConfig: (profile?: string) => Promise<ModelConfig>;
   },
 ): Promise<void> {
   if (input.testState !== "ok") throw new Error("Test model before continuing");
   if (input.apiKey && input.envKey) await deps.setEnv(input.envKey, input.apiKey, "default");
   await deps.addModel(input.name, input.provider, input.model, input.baseUrl);
   await deps.setModelConfig(input.provider, input.model, input.baseUrl, "default");
+  const written = await deps.getModelConfig("default");
+  if (
+    written.provider !== input.provider ||
+    written.model !== input.model ||
+    written.baseUrl.replace(/\/+$/, "") !== input.baseUrl.replace(/\/+$/, "")
+  ) {
+    throw new Error("Could not write model to default profile config");
+  }
 }
 
 describe("validated model configuration", () => {
@@ -84,6 +93,11 @@ describe("validated model configuration", () => {
         setModelConfig: async (_provider, model, _baseUrl, profile) => {
           calls.push(`default:${profile}:${model}`);
         },
+        getModelConfig: async () => ({
+          provider: "custom",
+          model: "gpt-4o-mini",
+          baseUrl: "https://relay.example/v1",
+        }),
       },
     );
 
@@ -110,10 +124,32 @@ describe("validated model configuration", () => {
           setEnv: async () => calls.push("env"),
           addModel: async () => calls.push("add"),
           setModelConfig: async () => calls.push("default"),
+          getModelConfig: async () => ({ provider: "auto", model: "", baseUrl: "" }),
         },
       ),
     ).rejects.toThrow("Test model before continuing");
 
     expect(calls).toEqual([]);
   });
+
+  it("continue fails loudly if the default profile cannot be read back", async () => {
+    await expect(
+      commitValidatedDefaultModel(
+        {
+          name: "Relay model",
+          provider: "custom",
+          model: "gpt-4o-mini",
+          baseUrl: "https://relay.example/v1",
+          testState: "ok",
+        },
+        {
+          setEnv: async () => {},
+          addModel: async () => {},
+          setModelConfig: async () => {},
+          getModelConfig: async () => ({ provider: "auto", model: "", baseUrl: "" }),
+        },
+      ),
+    ).rejects.toThrow("Could not write model to default profile config");
+  });
+
 });

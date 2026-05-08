@@ -64,7 +64,7 @@ const URL_KEY_MAP: Array<{ pattern: RegExp; envKey: string }> = [
 ];
 
 function isCustomProvider(provider: string): boolean {
-  return LOCAL_PROVIDERS.has(provider) || provider.startsWith("custom:");
+  return provider === "custom" || LOCAL_PROVIDERS.has(provider) || provider.startsWith("custom:");
 }
 
 function resolveApiKeyForBaseUrl(

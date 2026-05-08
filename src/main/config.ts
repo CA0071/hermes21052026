@@ -202,10 +202,11 @@ export function getModelConfig(profile?: string): {
   if (!existsSync(configFile)) return defaults;
 
   const content = readFileSync(configFile, "utf-8");
+  const modelBlock = content.match(/^model:\s*\n((?:[ \t]+.*(?:\n|$))*)/m)?.[1] || "";
 
-  const providerMatch = content.match(/^\s*provider:\s*["']?([^"'\n#]+)["']?/m);
-  const modelMatch = content.match(/^\s*default:\s*["']?([^"'\n#]+)["']?/m);
-  const baseUrlMatch = content.match(/^\s*base_url:\s*["']?([^"'\n#]+)["']?/m);
+  const providerMatch = modelBlock.match(/^\s*provider:\s*["']?([^"'\n#]+)["']?/m);
+  const modelMatch = modelBlock.match(/^\s*default:\s*["']?([^"'\n#]+)["']?/m);
+  const baseUrlMatch = modelBlock.match(/^\s*base_url:\s*["']?([^"'\n#]+)["']?/m);
 
   const result = {
     provider: providerMatch ? providerMatch[1].trim() : defaults.provider,
@@ -245,7 +246,13 @@ export function setModelConfig(
 ): void {
   invalidateCache(`mc:${profile || "default"}`);
   const { configFile } = profilePaths(profile);
-  if (!existsSync(configFile)) return;
+  if (!existsSync(configFile)) {
+    safeWriteFile(
+      configFile,
+      `model:\n  provider: "${provider.replace(/"/g, '\\"')}"\n  default: "${model.replace(/"/g, '\\"')}"\n  base_url: "${baseUrl.replace(/"/g, '\\"')}"\n`,
+    );
+    return;
+  }
 
   let content = readFileSync(configFile, "utf-8");
 

@@ -52,13 +52,15 @@ describe("model configuration routing", () => {
 
 
 
-  function readProfileConfigContent(content: string): { model: string; provider: string } {
+  function readProfileConfigContent(content: string): { model: string; provider: string; baseUrl: string } {
     const modelBlock = content.match(/^model:\s*\n((?:[ \t]+.+\n?)*)/m)?.[1] || "";
     const modelMatch = modelBlock.match(/^\s*default:\s*["']?([^"'\n#]+)["']?/m);
     const providerMatch = modelBlock.match(/^\s*provider:\s*["']?([^"'\n#]+)["']?/m);
+    const baseUrlMatch = modelBlock.match(/^\s*base_url:\s*["']?([^"'\n#]+)["']?/m);
     return {
       model: modelMatch ? modelMatch[1].trim() : "",
       provider: providerMatch ? providerMatch[1].trim() : "auto",
+      baseUrl: baseUrlMatch ? baseUrlMatch[1].trim() : "",
     };
   }
 
@@ -154,6 +156,27 @@ model:
     expect(readProfileConfigContent(config)).toEqual({
       provider: "custom",
       model: "deepseek-chat",
+      baseUrl: "https://api.deepseek.com/v1",
+    });
+  });
+
+
+  it("reads model config only from the model block even when auxiliary defaults exist", () => {
+    const config = `model:
+  provider: "custom"
+  default: "gpt-4o-mini"
+  base_url: "https://relay.example/v1"
+auxiliary:
+  vision:
+    provider: auto
+    default: ""
+    base_url: ""
+`;
+
+    expect(readProfileConfigContent(config)).toEqual({
+      provider: "custom",
+      model: "gpt-4o-mini",
+      baseUrl: "https://relay.example/v1",
     });
   });
 
@@ -167,6 +190,7 @@ model:
     expect(readProfileConfigContent(config)).toEqual({
       provider: "auto",
       model: "",
+      baseUrl: "",
     });
   });
 
