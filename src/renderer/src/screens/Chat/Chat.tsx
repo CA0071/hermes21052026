@@ -246,6 +246,7 @@ function Chat({
   const userScrolledUpRef = useRef(false);
   const activeRequestIdRef = useRef<string | null>(null);
   const requestConversationMapRef = useRef<Map<string, string>>(new Map());
+  const conversationRequestMapRef = useRef<Map<string, string>>(new Map());
 
   // Model picker state
   const [currentModel, setCurrentModel] = useState("");
@@ -271,7 +272,9 @@ function Chat({
     setInput("");
     setToolProgress(null);
     setUsage(null);
-    setIsLoading(Boolean(activeRequestIdRef.current));
+    const requestId = conversationRequestMapRef.current.get(conversationId);
+    activeRequestIdRef.current = requestId || null;
+    setIsLoading(Boolean(requestId));
   }, [conversationId, sessionId]);
 
   // Filtered slash commands based on current input
@@ -427,7 +430,11 @@ function Chat({
   // IPC listeners — stable callback refs, registered once
   useEffect(() => {
     const cleanupChunk = window.hermesAPI.onChatChunk((chunk, requestId) => {
-      if (requestId && requestId !== activeRequestIdRef.current) return;
+      if (
+        requestId &&
+        requestId !== activeRequestIdRef.current &&
+        !requestConversationMapRef.current.has(requestId)
+      ) return;
       updateMessagesForRequest((prev) => {
         const last = prev[prev.length - 1];
         // Append to existing agent message
@@ -447,7 +454,11 @@ function Chat({
     });
 
     const cleanupDone = window.hermesAPI.onChatDone((sessionId, requestId) => {
-      if (requestId && requestId !== activeRequestIdRef.current) return;
+      if (
+        requestId &&
+        requestId !== activeRequestIdRef.current &&
+        !requestConversationMapRef.current.has(requestId)
+      ) return;
       const targetConversationId = requestId
         ? requestConversationMapRef.current.get(requestId) || conversationId
         : conversationId;
@@ -455,15 +466,24 @@ function Chat({
         setHermesSessionId(sessionId);
         onSessionIdChange?.(sessionId, targetConversationId);
       }
-      if (requestId) requestConversationMapRef.current.delete(requestId);
+      if (requestId) {
+        requestConversationMapRef.current.delete(requestId);
+        conversationRequestMapRef.current.delete(targetConversationId);
+      }
       if (!requestId || requestId === activeRequestIdRef.current) activeRequestIdRef.current = null;
-      setToolProgress(null);
-      setIsLoading(false);
+      if (targetConversationId === conversationId) {
+        setToolProgress(null);
+        setIsLoading(false);
+      }
       onRunningChange?.(false, targetConversationId);
     });
 
     const cleanupError = window.hermesAPI.onChatError((error, requestId) => {
-      if (requestId && requestId !== activeRequestIdRef.current) return;
+      if (
+        requestId &&
+        requestId !== activeRequestIdRef.current &&
+        !requestConversationMapRef.current.has(requestId)
+      ) return;
       updateMessagesForRequest((prev) => [
         ...prev,
         {
@@ -475,20 +495,33 @@ function Chat({
       const targetConversationId = requestId
         ? requestConversationMapRef.current.get(requestId) || conversationId
         : conversationId;
-      if (requestId) requestConversationMapRef.current.delete(requestId);
+      if (requestId) {
+        requestConversationMapRef.current.delete(requestId);
+        conversationRequestMapRef.current.delete(targetConversationId);
+      }
       if (!requestId || requestId === activeRequestIdRef.current) activeRequestIdRef.current = null;
-      setToolProgress(null);
-      setIsLoading(false);
+      if (targetConversationId === conversationId) {
+        setToolProgress(null);
+        setIsLoading(false);
+      }
       onRunningChange?.(false, targetConversationId);
     });
 
     const cleanupToolProgress = window.hermesAPI.onChatToolProgress((tool, requestId) => {
-      if (requestId && requestId !== activeRequestIdRef.current) return;
+      if (
+        requestId &&
+        requestId !== activeRequestIdRef.current &&
+        !requestConversationMapRef.current.has(requestId)
+      ) return;
       setToolProgress(tool);
     });
 
     const cleanupUsage = window.hermesAPI.onChatUsage((u, requestId) => {
-      if (requestId && requestId !== activeRequestIdRef.current) return;
+      if (
+        requestId &&
+        requestId !== activeRequestIdRef.current &&
+        !requestConversationMapRef.current.has(requestId)
+      ) return;
       setUsage((prev) => ({
         promptTokens: (prev?.promptTokens || 0) + u.promptTokens,
         completionTokens: (prev?.completionTokens || 0) + u.completionTokens,
@@ -575,6 +608,7 @@ function Chat({
     const requestId = `${conversationId}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
     activeRequestIdRef.current = requestId;
     requestConversationMapRef.current.set(requestId, conversationId);
+    conversationRequestMapRef.current.set(conversationId, requestId);
     setIsLoading(true);
     onRunningChange?.(true, conversationId);
     setMessages((prev) => [
@@ -594,6 +628,7 @@ function Chat({
     } catch {
       activeRequestIdRef.current = null;
       requestConversationMapRef.current.delete(requestId);
+      conversationRequestMapRef.current.delete(conversationId);
       setIsLoading(false);
       onRunningChange?.(false, conversationId);
       // Error already handled by onChatError IPC listener — avoid duplicate
@@ -609,6 +644,7 @@ function Chat({
     const requestId = `${conversationId}-btw-${Date.now()}-${Math.random().toString(16).slice(2)}`;
     activeRequestIdRef.current = requestId;
     requestConversationMapRef.current.set(requestId, conversationId);
+    conversationRequestMapRef.current.set(conversationId, requestId);
     setIsLoading(true);
     onRunningChange?.(true, conversationId);
     setMessages((prev) => [
@@ -626,6 +662,7 @@ function Chat({
     } catch {
       activeRequestIdRef.current = null;
       requestConversationMapRef.current.delete(requestId);
+      conversationRequestMapRef.current.delete(conversationId);
       setIsLoading(false);
       onRunningChange?.(false, conversationId);
       // Error already handled by onChatError IPC listener — avoid duplicate
@@ -882,6 +919,7 @@ function Chat({
     const requestId = activeRequestIdRef.current || undefined;
     window.hermesAPI.abortChat(requestId);
     if (requestId) requestConversationMapRef.current.delete(requestId);
+    conversationRequestMapRef.current.delete(conversationId);
     activeRequestIdRef.current = null;
     setIsLoading(false);
     onRunningChange?.(false, conversationId);
@@ -911,6 +949,7 @@ function Chat({
     const requestId = `${conversationId}-approve-${Date.now()}-${Math.random().toString(16).slice(2)}`;
     activeRequestIdRef.current = requestId;
     requestConversationMapRef.current.set(requestId, conversationId);
+    conversationRequestMapRef.current.set(conversationId, requestId);
     setIsLoading(true);
     onRunningChange?.(true, conversationId);
     setMessages((prev) => [
@@ -933,6 +972,7 @@ function Chat({
     const requestId = `${conversationId}-deny-${Date.now()}-${Math.random().toString(16).slice(2)}`;
     activeRequestIdRef.current = requestId;
     requestConversationMapRef.current.set(requestId, conversationId);
+    conversationRequestMapRef.current.set(conversationId, requestId);
     setIsLoading(true);
     onRunningChange?.(true, conversationId);
     setMessages((prev) => [

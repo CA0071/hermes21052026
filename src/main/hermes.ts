@@ -680,16 +680,27 @@ export async function sendMessage(
     return sendMessageViaApi(message, cb, profile, resumeSessionId);
   }
 
-  // Check API server availability (cache the result, re-check periodically)
-  if (apiServerAvailable === null || apiServerAvailable === false) {
-    apiServerAvailable = await isApiServerReady();
+  // Fast path: avoid spawning the CLI when the bundled API server is still warming up.
+  if (apiServerAvailable !== true && !isGatewayRunning()) {
+    startGateway(profile);
+  }
+
+  const firstProbe = await probeApiServer();
+  apiServerAvailable = firstProbe.ready;
+  if (!apiServerAvailable && isGatewayRunning()) {
+    const deadline = Date.now() + 12000;
+    while (!apiServerAvailable && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 350));
+      const probe = await probeApiServer();
+      apiServerAvailable = probe.ready;
+    }
   }
 
   if (apiServerAvailable) {
     return sendMessageViaApi(message, cb, profile, resumeSessionId, history);
   }
 
-  // Fallback to CLI
+  // Last resort only: CLI fallback is much slower because it spawns a fresh process.
   return sendMessageViaCli(message, cb, profile, resumeSessionId);
 }
 
@@ -880,7 +891,13 @@ export async function warmupEngine(profile?: string): Promise<EngineStatus> {
   if (!isRemoteMode() && !isGatewayRunning()) {
     startGateway(profile);
   }
-  return getEngineStatus();
+  const deadline = Date.now() + 9000;
+  let status = await getEngineStatus();
+  while (!isRemoteMode() && status.state === "starting" && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    status = await getEngineStatus();
+  }
+  return status;
 }
 
 export async function runEngineBenchmark(): Promise<EngineBenchmark> {
