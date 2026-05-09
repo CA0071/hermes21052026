@@ -207,8 +207,12 @@ interface ChatProps {
   profile?: string;
   onSessionStarted?: () => void;
   onNewChat?: () => void;
-  onRunningChange?: (running: boolean) => void;
-  onSessionIdChange?: (sessionId: string | null) => void;
+  onRunningChange?: (running: boolean, conversationId?: string) => void;
+  onSessionIdChange?: (sessionId: string | null, conversationId?: string) => void;
+  onThreadMessagesChange?: (
+    conversationId: string,
+    value: React.SetStateAction<ChatMessage[]>,
+  ) => void;
 }
 
 function Chat({
@@ -221,6 +225,7 @@ function Chat({
   onNewChat,
   onRunningChange,
   onSessionIdChange,
+  onThreadMessagesChange,
 }: ChatProps): React.JSX.Element {
   const { t } = useI18n();
   const [input, setInput] = useState("");
@@ -240,6 +245,7 @@ function Chat({
   const isLoadingRef = useRef(false);
   const userScrolledUpRef = useRef(false);
   const activeRequestIdRef = useRef<string | null>(null);
+  const requestConversationMapRef = useRef<Map<string, string>>(new Map());
 
   // Model picker state
   const [currentModel, setCurrentModel] = useState("");
@@ -404,11 +410,25 @@ function Chat({
     );
   }
 
+  const updateMessagesForRequest = useCallback(
+    (value: React.SetStateAction<ChatMessage[]>, requestId?: string) => {
+      const targetConversationId = requestId
+        ? requestConversationMapRef.current.get(requestId) || null
+        : null;
+      if (targetConversationId && onThreadMessagesChange) {
+        onThreadMessagesChange(targetConversationId, value);
+        return;
+      }
+      setMessages(value);
+    },
+    [onThreadMessagesChange, setMessages],
+  );
+
   // IPC listeners — stable callback refs, registered once
   useEffect(() => {
     const cleanupChunk = window.hermesAPI.onChatChunk((chunk, requestId) => {
       if (requestId && requestId !== activeRequestIdRef.current) return;
-      setMessages((prev) => {
+      updateMessagesForRequest((prev) => {
         const last = prev[prev.length - 1];
         // Append to existing agent message
         if (last && last.role === "agent") {
@@ -428,19 +448,23 @@ function Chat({
 
     const cleanupDone = window.hermesAPI.onChatDone((sessionId, requestId) => {
       if (requestId && requestId !== activeRequestIdRef.current) return;
+      const targetConversationId = requestId
+        ? requestConversationMapRef.current.get(requestId) || conversationId
+        : conversationId;
       if (sessionId) {
         setHermesSessionId(sessionId);
-        onSessionIdChange?.(sessionId);
+        onSessionIdChange?.(sessionId, targetConversationId);
       }
-      activeRequestIdRef.current = null;
+      if (requestId) requestConversationMapRef.current.delete(requestId);
+      if (!requestId || requestId === activeRequestIdRef.current) activeRequestIdRef.current = null;
       setToolProgress(null);
       setIsLoading(false);
-      onRunningChange?.(false);
+      onRunningChange?.(false, targetConversationId);
     });
 
     const cleanupError = window.hermesAPI.onChatError((error, requestId) => {
       if (requestId && requestId !== activeRequestIdRef.current) return;
-      setMessages((prev) => [
+      updateMessagesForRequest((prev) => [
         ...prev,
         {
           id: `error-${Date.now()}`,
@@ -448,10 +472,14 @@ function Chat({
           content: `Error: ${error}`,
         },
       ]);
-      activeRequestIdRef.current = null;
+      const targetConversationId = requestId
+        ? requestConversationMapRef.current.get(requestId) || conversationId
+        : conversationId;
+      if (requestId) requestConversationMapRef.current.delete(requestId);
+      if (!requestId || requestId === activeRequestIdRef.current) activeRequestIdRef.current = null;
       setToolProgress(null);
       setIsLoading(false);
-      onRunningChange?.(false);
+      onRunningChange?.(false, targetConversationId);
     });
 
     const cleanupToolProgress = window.hermesAPI.onChatToolProgress((tool, requestId) => {
@@ -476,7 +504,7 @@ function Chat({
       cleanupToolProgress();
       cleanupUsage();
     };
-  }, [setMessages, onRunningChange, onSessionIdChange]);
+  }, [conversationId, updateMessagesForRequest, onRunningChange, onSessionIdChange]);
 
   useEffect(() => {
     scrollToBottom();
@@ -546,8 +574,9 @@ function Chat({
 
     const requestId = `${conversationId}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
     activeRequestIdRef.current = requestId;
+    requestConversationMapRef.current.set(requestId, conversationId);
     setIsLoading(true);
-    onRunningChange?.(true);
+    onRunningChange?.(true, conversationId);
     setMessages((prev) => [
       ...prev,
       { id: `user-${Date.now()}`, role: "user", content: text },
@@ -564,8 +593,9 @@ function Chat({
       );
     } catch {
       activeRequestIdRef.current = null;
+      requestConversationMapRef.current.delete(requestId);
       setIsLoading(false);
-      onRunningChange?.(false);
+      onRunningChange?.(false, conversationId);
       // Error already handled by onChatError IPC listener — avoid duplicate
     }
   }
@@ -578,8 +608,9 @@ function Chat({
     if (inputRef.current) inputRef.current.style.height = "auto";
     const requestId = `${conversationId}-btw-${Date.now()}-${Math.random().toString(16).slice(2)}`;
     activeRequestIdRef.current = requestId;
+    requestConversationMapRef.current.set(requestId, conversationId);
     setIsLoading(true);
-    onRunningChange?.(true);
+    onRunningChange?.(true, conversationId);
     setMessages((prev) => [
       ...prev,
       { id: `user-btw-${Date.now()}`, role: "user", content: `💭 ${text}` },
@@ -594,8 +625,9 @@ function Chat({
       );
     } catch {
       activeRequestIdRef.current = null;
+      requestConversationMapRef.current.delete(requestId);
       setIsLoading(false);
-      onRunningChange?.(false);
+      onRunningChange?.(false, conversationId);
       // Error already handled by onChatError IPC listener — avoid duplicate
     }
   }
@@ -847,10 +879,12 @@ function Chat({
   }
 
   function handleAbort(): void {
-    window.hermesAPI.abortChat(activeRequestIdRef.current || undefined);
+    const requestId = activeRequestIdRef.current || undefined;
+    window.hermesAPI.abortChat(requestId);
+    if (requestId) requestConversationMapRef.current.delete(requestId);
     activeRequestIdRef.current = null;
     setIsLoading(false);
-    onRunningChange?.(false);
+    onRunningChange?.(false, conversationId);
     // Refocus input after aborting
     setTimeout(() => inputRef.current?.focus(), 50);
   }
@@ -858,14 +892,16 @@ function Chat({
   function handleClear(): void {
     // Abort any in-flight request before clearing
     if (isLoading) {
-      window.hermesAPI.abortChat(activeRequestIdRef.current || undefined);
+      const requestId = activeRequestIdRef.current || undefined;
+      window.hermesAPI.abortChat(requestId);
+      if (requestId) requestConversationMapRef.current.delete(requestId);
       activeRequestIdRef.current = null;
       setIsLoading(false);
-      onRunningChange?.(false);
+      onRunningChange?.(false, conversationId);
     }
     setMessages([]);
     setHermesSessionId(null);
-    onSessionIdChange?.(null);
+    onSessionIdChange?.(null, conversationId);
     setUsage(null);
     setToolProgress(null);
   }
@@ -874,8 +910,9 @@ function Chat({
     setInput("");
     const requestId = `${conversationId}-approve-${Date.now()}-${Math.random().toString(16).slice(2)}`;
     activeRequestIdRef.current = requestId;
+    requestConversationMapRef.current.set(requestId, conversationId);
     setIsLoading(true);
-    onRunningChange?.(true);
+    onRunningChange?.(true, conversationId);
     setMessages((prev) => [
       ...prev,
       { id: `user-approve-${Date.now()}`, role: "user", content: "/approve" },
@@ -885,8 +922,9 @@ function Chat({
       .sendMessage("/approve", profile, hermesSessionId || undefined, history, requestId)
       .catch(() => {
         activeRequestIdRef.current = null;
+        requestConversationMapRef.current.delete(requestId);
         setIsLoading(false);
-        onRunningChange?.(false);
+        onRunningChange?.(false, conversationId);
       });
   }, [conversationId, profile, hermesSessionId, setMessages, messages, onRunningChange]);
 
@@ -894,8 +932,9 @@ function Chat({
     setInput("");
     const requestId = `${conversationId}-deny-${Date.now()}-${Math.random().toString(16).slice(2)}`;
     activeRequestIdRef.current = requestId;
+    requestConversationMapRef.current.set(requestId, conversationId);
     setIsLoading(true);
-    onRunningChange?.(true);
+    onRunningChange?.(true, conversationId);
     setMessages((prev) => [
       ...prev,
       { id: `user-deny-${Date.now()}`, role: "user", content: "/deny" },
@@ -905,8 +944,9 @@ function Chat({
       .sendMessage("/deny", profile, hermesSessionId || undefined, history, requestId)
       .catch(() => {
         activeRequestIdRef.current = null;
+        requestConversationMapRef.current.delete(requestId);
         setIsLoading(false);
-        onRunningChange?.(false);
+        onRunningChange?.(false, conversationId);
       });
   }, [conversationId, profile, hermesSessionId, setMessages, messages, onRunningChange]);
 

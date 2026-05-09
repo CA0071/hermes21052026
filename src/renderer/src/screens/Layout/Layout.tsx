@@ -69,6 +69,7 @@ type View =
 type ChatThread = {
   id: string;
   title: string;
+  titleEdited?: boolean;
   messages: ChatMessage[];
   sessionId: string | null;
   profile: string;
@@ -96,6 +97,7 @@ function getThreadPreview(thread: ChatThread): string {
 }
 
 function getThreadTitle(thread: ChatThread): string {
+  if (thread.titleEdited || thread.title !== "新对话") return thread.title;
   const firstUser = thread.messages.find((m) => m.role === "user" && m.content.trim());
   if (!firstUser) return thread.title;
   return firstUser.content.replace(/\s+/g, " ").slice(0, 18);
@@ -241,48 +243,50 @@ function Layout(): React.JSX.Element {
   }
 
 
-  const updateActiveThread = useCallback(
-    (updater: (thread: ChatThread) => ChatThread) => {
+  const updateThreadById = useCallback(
+    (threadId: string, updater: (thread: ChatThread) => ChatThread) => {
       setThreads((prev) =>
-        prev.map((thread) =>
-          thread.id === activeThreadId ? updater(thread) : thread,
-        ),
+        prev.map((thread) => (thread.id === threadId ? updater(thread) : thread)),
       );
     },
-    [activeThreadId],
+    [],
   );
 
-  const setActiveMessages = useCallback(
-    (value: React.SetStateAction<ChatMessage[]>) => {
-      updateActiveThread((thread) => {
+  const setThreadMessages = useCallback(
+    (threadId: string, value: React.SetStateAction<ChatMessage[]>) => {
+      updateThreadById(threadId, (thread) => {
         const nextMessages =
           typeof value === "function" ? value(thread.messages) : value;
         return {
           ...thread,
-          title: thread.title === "新对话" ? getThreadTitle({ ...thread, messages: nextMessages }) : thread.title,
+          title: thread.titleEdited ? thread.title : getThreadTitle({ ...thread, messages: nextMessages }),
           messages: nextMessages,
           updatedAt: Date.now(),
         };
       });
     },
-    [updateActiveThread],
+    [updateThreadById],
   );
 
-  const handleThreadRunningChange = useCallback((running: boolean) => {
-    setThreads((prev) =>
-      prev.map((thread) =>
-        thread.id === activeThreadId ? { ...thread, running, updatedAt: Date.now() } : thread,
-      ),
-    );
-  }, [activeThreadId]);
+  const setActiveMessages = useCallback(
+    (value: React.SetStateAction<ChatMessage[]>) => {
+      if (!activeThreadId) return;
+      setThreadMessages(activeThreadId, value);
+    },
+    [activeThreadId, setThreadMessages],
+  );
 
-  const handleThreadSessionChange = useCallback((sessionId: string | null) => {
-    setThreads((prev) =>
-      prev.map((thread) =>
-        thread.id === activeThreadId ? { ...thread, sessionId, updatedAt: Date.now() } : thread,
-      ),
-    );
-  }, [activeThreadId]);
+  const handleThreadRunningChange = useCallback((running: boolean, threadId?: string) => {
+    const targetId = threadId || activeThreadId;
+    if (!targetId) return;
+    updateThreadById(targetId, (thread) => ({ ...thread, running, updatedAt: Date.now() }));
+  }, [activeThreadId, updateThreadById]);
+
+  const handleThreadSessionChange = useCallback((sessionId: string | null, threadId?: string) => {
+    const targetId = threadId || activeThreadId;
+    if (!targetId) return;
+    updateThreadById(targetId, (thread) => ({ ...thread, sessionId, updatedAt: Date.now() }));
+  }, [activeThreadId, updateThreadById]);
 
   const handleCommitThreadTitle = useCallback(async (threadId: string, rawTitle: string) => {
     const title = rawTitle.trim().slice(0, 40) || "新对话";
@@ -291,7 +295,7 @@ function Layout(): React.JSX.Element {
       prev.map((thread) => {
         if (thread.id !== threadId) return thread;
         sessionId = thread.sessionId;
-        return { ...thread, title, updatedAt: Date.now() };
+        return { ...thread, title, titleEdited: true, updatedAt: Date.now() };
       }),
     );
     setEditingThreadId(null);
@@ -526,6 +530,7 @@ function Layout(): React.JSX.Element {
             onNewChat={handleNewChat}
             onRunningChange={handleThreadRunningChange}
             onSessionIdChange={handleThreadSessionChange}
+            onThreadMessagesChange={setThreadMessages}
           />
         </div>
         {view === "sessions" &&

@@ -11,14 +11,13 @@ function HermesLogo({ size = 32, className = "" }: HermesLogoProps): React.JSX.E
   } as CSSProperties;
 
   return (
-    <div
+    <img
       className={`yat-logo ${className}`.trim()}
       style={style}
+      src="./assets/yat-icon.png"
+      alt="Yat Studio"
       aria-label="Yat Studio"
-      role="img"
-    >
-      <span className="yat-logo-word">Yat Studio</span>
-    </div>
+    />
   );
 }
 

@@ -44,14 +44,18 @@ function persistPreference(preference: LocalePreference): void {
 }
 
 const initialPreference = readStoredPreference();
-setSharedLocale(DEFAULT_ACTIVE_LOCALE);
+const browserLocale = typeof navigator !== "undefined" ? navigator.language : "";
+const initialActiveLocale: AppLocale = browserLocale.toLowerCase().startsWith("zh")
+  ? "zh-CN"
+  : DEFAULT_ACTIVE_LOCALE;
+setSharedLocale(initialActiveLocale);
 
 export function I18nProvider({
   children,
 }: {
   children: React.ReactNode;
 }): React.JSX.Element {
-  const [locale, setLocaleState] = useState<AppLocale>(DEFAULT_ACTIVE_LOCALE);
+  const [locale, setLocaleState] = useState<AppLocale>(initialActiveLocale);
   const [localePreference, setLocalePreferenceState] =
     useState<LocalePreference>(initialPreference);
 
@@ -59,8 +63,8 @@ export function I18nProvider({
     let mounted = true;
     const api = window.hermesAPI;
     if (!api?.setLocale) {
-      setSharedLocale(DEFAULT_ACTIVE_LOCALE);
-      setLocaleState(DEFAULT_ACTIVE_LOCALE);
+      setSharedLocale(initialActiveLocale);
+      setLocaleState(initialActiveLocale);
       return () => {
         mounted = false;
       };
@@ -75,8 +79,8 @@ export function I18nProvider({
       })
       .catch(() => {
         if (!mounted) return;
-        setSharedLocale(DEFAULT_ACTIVE_LOCALE);
-        setLocaleState(DEFAULT_ACTIVE_LOCALE);
+        setSharedLocale(initialActiveLocale);
+        setLocaleState(initialActiveLocale);
       });
     return () => {
       mounted = false;
@@ -88,7 +92,10 @@ export function I18nProvider({
     persistPreference(next);
     const api = window.hermesAPI;
     if (!api?.setLocale) {
-      if (next !== "system") {
+      if (next === "system") {
+        setSharedLocale(initialActiveLocale);
+        setLocaleState(initialActiveLocale);
+      } else {
         setSharedLocale(next);
         setLocaleState(next);
       }

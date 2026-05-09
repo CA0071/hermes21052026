@@ -1,5 +1,5 @@
 Yat Studio 0.3.2 macOS release manifest
-Generated: 2026-05-08
+Generated: 2026-05-09
 
 Source repo:
   https://github.com/fathah/hermes-desktop.git
@@ -13,15 +13,15 @@ Application identity:
 
 Artifacts:
   dist/mac-arm64/Yat Studio.app
-    size: 510M
+    size: 511M
 
   dist/yat-studio-0.3.2.dmg
     size: 192M
-    sha256: c02c012c8634cfd6f9424f6596108eaa711f387312bba50cdb57c2df45475943
+    sha256: 6b4d0506b6e97ccb9ae8878aaa81e2dc09c3d4f7f7026220622c56faeda88b84
 
   dist/Yat Studio-0.3.2-arm64-mac.zip
     size: 193M
-    sha256: 676f424df8f5dab69136f22102d3c61bfd373bd806c10d48b1f4770b82a0ad44
+    sha256: d6bfa624594cf8ddc34ada08d401379739c93992f2ea47ea2197ce026cc432e7
 
 Bundled Hermes Agent:
   bundle path: resources/hermes-agent-bundle
@@ -31,7 +31,7 @@ Bundled Hermes Agent:
   commit: 54e78cadb2e6d16a4f82185b2dc81c9dc176a813
   short commit: 54e78cadb2e6
   ref: v2026.4.30-393-g54e78cadb-dirty
-  metadata sha256: 6f7f9e2d4ade30faa43a78ccfca4e3bb9ac066c3d550937b343c01ea6be1391e
+  metadata sha256: f1f5164fde7d414beb1c28a9a340ba2b82ff13272c1dce703c4de2324043e60f
 
 Verification already performed:
   npm run typecheck
@@ -49,16 +49,16 @@ Mounted DMG verification:
   mountpoint contained Yat Studio.app and Applications symlink
   mounted app CFBundleDisplayName: Yat Studio
   mounted app CFBundleIdentifier: studio.yat.desktop
-  mounted app size: 510M
+  mounted app size: 511M
   mounted Hermes bundle size: 83M
   mounted app codesign verification: valid on disk, satisfies designated requirement
 
 ZIP verification:
   unzip test result: No errors detected in compressed data
   entries: 7386
-  zip file size: 197777893 bytes
-  uncompressed total: 506796860 bytes
-  compressed total: 195439339 bytes
+  zip file size: 197896147 bytes
+  uncompressed total: 506927105 bytes
+  compressed total: 195557593 bytes
   compression ratio: 61.4%
   required entries found:
     Yat Studio.app/Contents/Info.plist
