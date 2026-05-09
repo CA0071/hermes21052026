@@ -626,11 +626,7 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
                 className={`settings-theme-option ${theme === opt.value ? "active" : ""}`}
                 onClick={() => setTheme(opt.value)}
               >
-                {opt.value === "system"
-                  ? t("settings.theme.system")
-                  : opt.value === "light"
-                    ? t("settings.theme.light")
-                    : t("settings.theme.dark")}
+                {t(opt.label)}
               </button>
             ))}
           </div>

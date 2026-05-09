@@ -6,7 +6,7 @@ export default {
     credentialPool: "Credential Pool",
   },
   theme: {
-    label: "Theme",
+    label: "Interface style",
     system: "System",
     light: "Light",
     dark: "Dark",
@@ -69,7 +69,7 @@ export default {
   migrating: "Migrating...",
   migrateToHermes: "Migrate to Hermes",
   skip: "Skip",
-  appearanceHint: "Choose your preferred interface appearance",
+  appearanceHint: "Choose a chat interface style: WeChat, DingTalk, WhatsApp, or LINE. Language follows the OS by default.",
   apiKeyPlaceholder: "API Key",
   labelPlaceholder: "Label ({{optional}})",
   connectionSection: "Connection",

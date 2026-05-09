@@ -358,9 +358,10 @@ export const OPENAI_COMPATIBLE_MODEL_PRESETS: OpenAICompatibleModelPreset[] = [
 // ── Theme ───────────────────────────────────────────────
 
 export const THEME_OPTIONS = [
-  { value: "system" as const, label: "constants.themeSystem" },
-  { value: "light" as const, label: "constants.themeLight" },
-  { value: "dark" as const, label: "constants.themeDark" },
+  { value: "wechat" as const, label: "constants.themeWechat" },
+  { value: "dingtalk" as const, label: "constants.themeDingtalk" },
+  { value: "whatsapp" as const, label: "constants.themeWhatsapp" },
+  { value: "line" as const, label: "constants.themeLine" },
 ];
 
 export const THEME_STORAGE_KEY = "hermes-theme";

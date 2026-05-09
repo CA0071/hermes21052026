@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 
-type Theme = "light" | "dark" | "system";
-type ResolvedTheme = "light" | "dark";
+export type Theme = "wechat" | "dingtalk" | "whatsapp" | "line";
+type ResolvedTheme = Theme;
 
 interface ThemeContextValue {
   theme: Theme;
@@ -10,21 +10,15 @@ interface ThemeContextValue {
 }
 
 const ThemeContext = createContext<ThemeContextValue>({
-  theme: "system",
-  resolved: "dark",
+  theme: "whatsapp",
+  resolved: "whatsapp",
   setTheme: () => {},
 });
 
 import { THEME_STORAGE_KEY as STORAGE_KEY } from "../constants";
 
-function getSystemTheme(): ResolvedTheme {
-  return window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
-}
-
 function resolve(theme: Theme): ResolvedTheme {
-  return theme === "system" ? getSystemTheme() : theme;
+  return theme;
 }
 
 export function ThemeProvider({
@@ -34,9 +28,15 @@ export function ThemeProvider({
 }): React.JSX.Element {
   const [theme, setThemeState] = useState<Theme>(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === "light" || stored === "dark" || stored === "system")
+    if (
+      stored === "wechat" ||
+      stored === "dingtalk" ||
+      stored === "whatsapp" ||
+      stored === "line"
+    ) {
       return stored;
-    return "system";
+    }
+    return "whatsapp";
   });
   const [resolved, setResolved] = useState<ResolvedTheme>(() => resolve(theme));
 
@@ -45,26 +45,15 @@ export function ThemeProvider({
     localStorage.setItem(STORAGE_KEY, next);
   }
 
-  // Listen for system preference changes
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    function onChange(): void {
-      if (theme === "system") {
-        setResolved(getSystemTheme());
-      }
-    }
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, [theme]);
-
   // Update resolved whenever theme changes
   useEffect(() => {
     setResolved(resolve(theme));
   }, [theme]);
 
-  // Apply data-theme attribute to <html>
+  // Apply both a product style and a light base theme to <html>.
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", resolved);
+    document.documentElement.setAttribute("data-product-theme", resolved);
   }, [resolved]);
 
   return (

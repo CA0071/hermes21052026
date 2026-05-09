@@ -6,7 +6,7 @@ export default {
     credentialPool: "凭据池",
   },
   theme: {
-    label: "主题",
+    label: "界面风格",
     system: "跟随系统",
     light: "浅色",
     dark: "深色",
@@ -69,7 +69,7 @@ export default {
   migrating: "迁移中...",
   migrateToHermes: "迁移到 Hermes",
   skip: "跳过",
-  appearanceHint: "选择你偏好的界面外观",
+  appearanceHint: "选择聊天界面风格：微信、钉钉、WhatsApp 或 LINE。语言默认跟随系统。",
   apiKeyPlaceholder: "API Key",
   labelPlaceholder: "标签({{optional}})",
   connectionSection: "连接",

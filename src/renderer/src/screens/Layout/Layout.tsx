@@ -204,6 +204,45 @@ function Layout(): React.JSX.Element {
     };
   }, [activeProfile]);
 
+  const engineStatusLabel = useMemo(() => {
+    if (engineStatus?.state === "ready") return t("common.engineReady");
+    if (engineStatus?.state === "starting") return t("common.engineStarting");
+    if (engineStatus?.state === "fallback") return t("common.engineFallback");
+    if (engineStatus?.state === "offline") return t("common.engineOffline");
+    return t("common.engineStarting");
+  }, [engineStatus?.state, t]);
+
+  const engineStatusTitle = useMemo(() => {
+    if (benchmark?.error) return benchmark.error;
+    if (engineStatus?.state === "ready") {
+      return t("common.engineReadyTooltip", {
+        path: engineStatus.path,
+        latency: engineStatus.latencyMs !== undefined ? ` · ${engineStatus.latencyMs}ms` : "",
+      });
+    }
+    if (engineStatus?.state === "fallback") return t("common.engineFallbackTooltip");
+    if (engineStatus?.state === "offline") return t("common.engineOfflineTooltip");
+    return t("common.engineStartingTooltip");
+  }, [benchmark?.error, engineStatus, t]);
+
+  const updateStatusLabel = useMemo(() => {
+    if (updateState === "available") return t("common.updateAvailable", { version: updateVersion });
+    if (updateState === "ready") return t("common.restartToUpdate");
+    if (updateState === "downloading") return t("common.downloading", { percent: downloadPercent });
+    if (updateState === "checking") return t("common.checkingUpdates");
+    if (updateState === "error") return t("common.updateCheckFailed");
+    return t("common.updateIdle");
+  }, [downloadPercent, t, updateState, updateVersion]);
+
+  const updateStatusTitle = useMemo(() => {
+    if (updateState === "available") return t("common.updateAvailableTooltip", { version: updateVersion });
+    if (updateState === "ready") return t("common.updateReadyTooltip");
+    if (updateState === "downloading") return t("common.updateDownloadingTooltip", { percent: downloadPercent });
+    if (updateState === "checking") return t("common.updateCheckingTooltip");
+    if (updateState === "error") return t("common.updateErrorTooltip");
+    return `${t("common.updateIdle")} · ${t("settings.version", { version: appVersion || "—" })}`;
+  }, [appVersion, downloadPercent, t, updateState, updateVersion]);
+
   async function handleEngineBenchmark(): Promise<void> {
     try {
       const result = await window.hermesAPI.engineBenchmark();
@@ -402,47 +441,23 @@ function Layout(): React.JSX.Element {
           <button
             className={`sidebar-engine-btn engine-${engineStatus?.state || "offline"}`}
             onClick={handleEngineBenchmark}
-            title={benchmark?.error || t("common.engineBenchmark")}
+            title={engineStatusTitle}
           >
             <span className="sidebar-engine-status" />
             <span className="sidebar-engine-copy">
               <span className="sidebar-engine-title">{t("common.engine")}</span>
-              <span className="sidebar-engine-meta">
-                {engineStatus?.state === "ready" &&
-                  `${t("common.engineReady")} · ${engineStatus.path}${
-                    engineStatus.latencyMs !== undefined ? ` · ${engineStatus.latencyMs}ms` : ""
-                  }`}
-                {engineStatus?.state === "starting" && t("common.engineStarting")}
-                {engineStatus?.state === "fallback" && t("common.engineFallback")}
-                {engineStatus?.state === "offline" && t("common.engineOffline")}
-                {!engineStatus && t("common.engineStarting")}
-              </span>
+              <span className="sidebar-engine-meta">{engineStatusLabel}</span>
             </span>
           </button>
           <button
             className={`sidebar-version-btn update-${updateState}`}
             onClick={handleUpdate}
-            title={
-              updateState === "available"
-                ? t("common.updateAvailable", { version: updateVersion })
-                : updateState === "ready"
-                  ? t("common.restartToUpdate")
-                  : t("common.checkForUpdates")
-            }
+            title={updateStatusTitle}
           >
             <span className="sidebar-version-status" />
             <span className="sidebar-version-copy">
-              <span className="sidebar-version-title">Yat Studio</span>
-              <span className="sidebar-version-meta">
-                {updateState === "checking" && t("common.checkingUpdates")}
-                {updateState === "available" &&
-                  t("common.updateAvailable", { version: updateVersion })}
-                {updateState === "downloading" &&
-                  t("common.downloading", { percent: downloadPercent })}
-                {updateState === "ready" && t("common.restartToUpdate")}
-                {updateState === "error" && t("common.updateCheckFailed")}
-                {updateState === "idle" && `${t("settings.version", { version: appVersion || "—" })}`}
-              </span>
+              <span className="sidebar-version-title">{t("common.checkForUpdates")}</span>
+              <span className="sidebar-version-meta">{updateStatusLabel}</span>
             </span>
             {updateState === "available" || updateState === "ready" ? (
               <Download size={14} />

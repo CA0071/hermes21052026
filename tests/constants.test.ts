@@ -207,8 +207,8 @@ describe("LOCAL_PRESETS", () => {
 });
 
 describe("THEME_OPTIONS", () => {
-  it("has system, light, dark", () => {
+  it("has chat interface style choices", () => {
     const values = THEME_OPTIONS.map((t) => t.value);
-    expect(values).toEqual(["system", "light", "dark"]);
+    expect(values).toEqual(["wechat", "dingtalk", "whatsapp", "line"]);
   });
 });
