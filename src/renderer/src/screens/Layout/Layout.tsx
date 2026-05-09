@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import Chat, { ChatMessage } from "../Chat/Chat";
 import Sessions from "../Sessions/Sessions";
 import Agents from "../Agents/Agents";
@@ -144,6 +144,7 @@ function Layout(): React.JSX.Element {
   const [benchmark, setBenchmark] = useState<EngineBenchmark | null>(null);
   const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
+  const [threadQuery, setThreadQuery] = useState("");
 
   useEffect(() => {
     window.hermesAPI.getAppVersion().then(setAppVersion).catch(() => setAppVersion(""));
@@ -336,6 +337,16 @@ function Layout(): React.JSX.Element {
     setActiveThreadId(thread.id);
   }, []);
 
+  const filteredThreads = useMemo(() => {
+    const query = threadQuery.trim().toLowerCase();
+    if (!query) return threads;
+    return threads.filter((thread) => {
+      const title = getThreadTitle(thread).toLowerCase();
+      const preview = getThreadPreview(thread).toLowerCase();
+      return title.includes(query) || preview.includes(query);
+    });
+  }, [threadQuery, threads]);
+
   const handleResumeSession = useCallback(async (sessionId: string) => {
     const dbMessages = await window.hermesAPI.getSessionMessages(sessionId);
     const chatMessages: ChatMessage[] = dbMessages.map((m) => ({
@@ -449,15 +460,24 @@ function Layout(): React.JSX.Element {
         <section className="wechat-thread-pane">
           <div className="wechat-thread-head">
             <div>
-              <div className="wechat-thread-title">对话</div>
-              <div className="wechat-thread-count">{threads.length} 个窗口</div>
+              <div className="wechat-thread-title">Yat Studio</div>
+              <div className="wechat-thread-count">{threads.length} 个对话</div>
             </div>
             <button className="wechat-thread-new" onClick={handleNewChat} title={t("chat.newChat")}>
               <Plus size={16} />
             </button>
           </div>
+          <div className="wechat-thread-search-wrap">
+            <input
+              className="wechat-thread-search"
+              value={threadQuery}
+              onChange={(event) => setThreadQuery(event.target.value)}
+              placeholder="搜索或新建对话"
+              aria-label="搜索对话"
+            />
+          </div>
           <div className="wechat-thread-list">
-            {threads.map((thread) => {
+            {filteredThreads.map((thread) => {
               const isEditing = editingThreadId === thread.id;
               return (
                 <button
@@ -474,7 +494,7 @@ function Layout(): React.JSX.Element {
                   }}
                   title="双击重命名"
                 >
-                  <span className="wechat-thread-avatar">Y</span>
+                  <span className="wechat-thread-avatar">{thread.running ? "···" : "Y"}</span>
                   <span className="wechat-thread-copy">
                     {isEditing ? (
                       <input
