@@ -105,6 +105,17 @@ const hermesAPI = {
   ): Promise<boolean> =>
     ipcRenderer.invoke("set-connection-config", mode, remoteUrl, apiKey),
 
+  getLocalCliConfig: (
+    profile?: string,
+  ): Promise<{ preset: "codex" | "custom"; command: string }> =>
+    ipcRenderer.invoke("get-local-cli-config", profile),
+
+  setLocalCliConfig: (
+    config: { preset: "codex" | "custom"; command: string },
+    profile?: string,
+  ): Promise<boolean> =>
+    ipcRenderer.invoke("set-local-cli-config", config, profile),
+
   testRemoteConnection: (url: string, apiKey?: string): Promise<boolean> =>
     ipcRenderer.invoke("test-remote-connection", url, apiKey),
 

@@ -9,6 +9,8 @@ export default {
   anthropicDesc: "Claude 模型",
   openaiName: "OpenAI",
   openaiDesc: "GPT 和 Codex 模型",
+  localCliName: "Local CLI",
+  localCliDesc: "本地 AI 命令",
   googleName: "Google AI Studio",
   googleDesc: "Gemini 模型",
   xaiName: "xAI (Grok)",

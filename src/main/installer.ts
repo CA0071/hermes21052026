@@ -11,7 +11,27 @@ export const HERMES_HOME =
   process.env.HERMES_HOME?.trim() || join(homedir(), ".hermes");
 export const HERMES_REPO = join(HERMES_HOME, "hermes-agent");
 export const HERMES_VENV = join(HERMES_REPO, "venv");
-export const HERMES_PYTHON = join(HERMES_VENV, "bin", "python");
+export function resolveHermesPython(
+  venvPath = HERMES_VENV,
+  platform = process.platform,
+  fileExists: (path: string) => boolean = existsSync,
+): string {
+  const candidates =
+    platform === "win32"
+      ? [
+          join(venvPath, "Scripts", "python.exe"),
+          join(venvPath, "bin", "python.exe"),
+          join(venvPath, "bin", "python"),
+        ]
+      : [
+          join(venvPath, "bin", "python"),
+          join(venvPath, "Scripts", "python.exe"),
+        ];
+
+  return candidates.find(fileExists) || candidates[0];
+}
+
+export const HERMES_PYTHON = resolveHermesPython();
 export const HERMES_SCRIPT = join(HERMES_REPO, "hermes");
 export const HERMES_ENV_FILE = join(HERMES_HOME, ".env");
 export const HERMES_CONFIG_FILE = join(HERMES_HOME, "config.yaml");
@@ -104,7 +124,14 @@ export function checkInstallStatus(): InstallStatus {
   // Local/custom providers don't need an API key
   try {
     const mc = getModelConfig();
-    const localProviders = ["custom", "lmstudio", "ollama", "vllm", "llamacpp"];
+    const localProviders = [
+      "custom",
+      "lmstudio",
+      "ollama",
+      "vllm",
+      "llamacpp",
+      "cli",
+    ];
     if (localProviders.includes(mc.provider)) {
       hasApiKey = true;
     }

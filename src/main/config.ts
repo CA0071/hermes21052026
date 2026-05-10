@@ -11,6 +11,44 @@ export interface ConnectionConfig {
   apiKey: string;
 }
 
+export type LocalCliPreset = "codex" | "custom";
+
+export interface LocalCliConfig {
+  preset: LocalCliPreset;
+  command: string;
+}
+
+const DEFAULT_LOCAL_CLI_CONFIG: LocalCliConfig = {
+  preset: "codex",
+  command: "codex",
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function normalizeLocalCliPreset(value: unknown): LocalCliPreset {
+  return value === "custom" ? "custom" : DEFAULT_LOCAL_CLI_CONFIG.preset;
+}
+
+function defaultLocalCliCommand(preset: LocalCliPreset): string {
+  return preset === DEFAULT_LOCAL_CLI_CONFIG.preset
+    ? DEFAULT_LOCAL_CLI_CONFIG.command
+    : "";
+}
+
+export function normalizeLocalCliConfig(
+  config?: Partial<LocalCliConfig> | null,
+): LocalCliConfig {
+  const preset = normalizeLocalCliPreset(config?.preset);
+  const command =
+    typeof config?.command === "string" && config.command.trim()
+      ? config.command.trim()
+      : defaultLocalCliCommand(preset);
+
+  return { preset, command };
+}
+
 // Lazy getter — avoids circular dependency with installer.ts
 // (HERMES_HOME may not be assigned yet when this module first loads)
 function desktopConfigFile(): string {
@@ -48,6 +86,41 @@ export function setConnectionConfig(config: ConnectionConfig): void {
   data.connectionMode = config.mode;
   data.remoteUrl = config.remoteUrl;
   data.remoteApiKey = config.apiKey;
+  writeDesktopConfig(data);
+}
+
+export function getLocalCliConfig(profile?: string): LocalCliConfig {
+  const data = readDesktopConfig();
+  const localCli = isRecord(data.localCli) ? data.localCli : {};
+  const rawDefault = isRecord(localCli.default) ? localCli.default : localCli;
+  const profiles = isRecord(localCli.profiles) ? localCli.profiles : {};
+  const rawProfile =
+    profile && isRecord(profiles[profile]) ? profiles[profile] : undefined;
+
+  return normalizeLocalCliConfig(
+    (rawProfile || rawDefault) as Partial<LocalCliConfig>,
+  );
+}
+
+export function setLocalCliConfig(
+  config: LocalCliConfig,
+  profile?: string,
+): void {
+  const data = readDesktopConfig();
+  const localCli = isRecord(data.localCli) ? { ...data.localCli } : {};
+  const normalized = normalizeLocalCliConfig(config);
+
+  if (profile) {
+    const profiles = isRecord(localCli.profiles)
+      ? { ...localCli.profiles }
+      : {};
+    profiles[profile] = normalized;
+    localCli.profiles = profiles;
+  } else {
+    localCli.default = normalized;
+  }
+
+  data.localCli = localCli;
   writeDesktopConfig(data);
 }
 
@@ -194,7 +267,11 @@ export function getModelConfig(profile?: string): {
   baseUrl: string;
 } {
   const cacheKey = `mc:${profile || "default"}`;
-  const cached = getCached<{ provider: string; model: string; baseUrl: string }>(cacheKey);
+  const cached = getCached<{
+    provider: string;
+    model: string;
+    baseUrl: string;
+  }>(cacheKey);
   if (cached) return cached;
 
   const { configFile } = profilePaths(profile);
@@ -272,7 +349,13 @@ export function getHermesHome(profile?: string): string {
 
 // ── Platform enabled/disabled in config.yaml ────────────
 
-const SUPPORTED_PLATFORMS = ["telegram", "discord", "slack", "whatsapp", "signal"];
+const SUPPORTED_PLATFORMS = [
+  "telegram",
+  "discord",
+  "slack",
+  "whatsapp",
+  "signal",
+];
 
 export function getPlatformEnabled(profile?: string): Record<string, boolean> {
   const { configFile } = profilePaths(profile);

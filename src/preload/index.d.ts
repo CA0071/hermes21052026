@@ -66,6 +66,13 @@ interface HermesAPI {
     remoteUrl: string,
     apiKey?: string,
   ) => Promise<boolean>;
+  getLocalCliConfig: (
+    profile?: string,
+  ) => Promise<{ preset: "codex" | "custom"; command: string }>;
+  setLocalCliConfig: (
+    config: { preset: "codex" | "custom"; command: string },
+    profile?: string,
+  ) => Promise<boolean>;
   testRemoteConnection: (url: string, apiKey?: string) => Promise<boolean>;
 
   // Chat

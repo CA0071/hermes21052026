@@ -26,6 +26,11 @@ export default {
   proxyPlaceholder: "例如:socks5://127.0.0.1:1080 或 http://proxy:8080",
   modelNamePlaceholder: "例如:anthropic/claude-opus-4.6",
   modelBaseUrlPlaceholder: "http://localhost:1234/v1",
+  localCliModelPlaceholder: "可选模型名",
+  cliCommand: "CLI 命令",
+  cliCommandPlaceholder: "codex",
+  cliCommandHint:
+    "仅填写命令名或完整路径。codex 命令使用 Codex 适配器；其他命令通过 stdin 接收提示并返回 stdout。",
   networkSection: "网络",
   forceIpv4: "强制 IPv4",
   forceIpv4Hint: "禁用 IPv6 以解决某些网络上的连接超时问题",
@@ -34,9 +39,14 @@ export default {
   saved: "已保存",
   providerHint: "选择推理提供商,或根据 API Key 自动识别",
   customProviderHint: "使用任何兼容 OpenAI 的接口(LM Studio、Ollama、vLLM 等)",
+  localCliHint:
+    "运行使用自身登录和配置的本地 AI CLI。不需要 Hermes API Key 或 Base URL。",
   modelHint: "默认模型名(留空则使用提供商默认值)",
+  localCliModelHint:
+    "可选模型会传给支持模型选择的 CLI 预设。留空则使用 CLI 默认值。",
   customBaseUrlHint: "兼容 OpenAI 的 API 地址",
-  poolHint: "为同一提供商添加多个 API Key,以便自动轮换和负载均衡。Hermes 会在它们之间轮流使用。",
+  poolHint:
+    "为同一提供商添加多个 API Key,以便自动轮换和负载均衡。Hermes 会在它们之间轮流使用。",
   add: "添加",
   remove: "移除",
   keyLabel: "密钥",
@@ -58,7 +68,8 @@ export default {
   running: "运行中...",
   debugDump: "调试转储",
   migrationDetected: "检测到 OpenClaw 安装",
-  migrationDesc: "在 <code>{{path}}</code> 发现 OpenClaw。你可以将配置、API Key、会话和技能迁移到 Hermes。",
+  migrationDesc:
+    "在 <code>{{path}}</code> 发现 OpenClaw。你可以将配置、API Key、会话和技能迁移到 Hermes。",
   migrationDismiss: "不再显示",
   migrating: "迁移中...",
   migrateToHermes: "迁移到 Hermes",
@@ -72,14 +83,17 @@ export default {
   modeLocalHint: "使用本机安装的 Hermes",
   modeRemoteHint: "连接到网络或云服务器上的 Hermes API",
   remoteUrl: "远程服务器地址",
-  remoteUrlHint: "Hermes API 服务器地址（需开放 /health 和 /v1/chat/completions）",
+  remoteUrlHint:
+    "Hermes API 服务器地址（需开放 /health 和 /v1/chat/completions）",
   remoteApiKey: "API 密钥",
-  remoteApiKeyHint: "与远程主机上的 API_SERVER_KEY 匹配。如果服务器接受未认证的请求，可以留空。",
+  remoteApiKeyHint:
+    "与远程主机上的 API_SERVER_KEY 匹配。如果服务器接受未认证的请求，可以留空。",
   testingConnection: "测试中...",
   testConnection: "测试连接",
   save: "保存",
   serverConfigTitle: "服务器配置",
-  serverConfigHint: "你已连接到远程 Hermes 服务器。模型选择、提供商 API Key 和凭据均在服务器的 <code>~/.hermes/.env</code> 和 <code>config.yaml</code> 中管理。请在主机上编辑（例如 <code>docker exec -it hermes vi /opt/data/.env</code>）然后重启容器。",
+  serverConfigHint:
+    "你已连接到远程 Hermes 服务器。模型选择、提供商 API Key 和凭据均在服务器的 <code>~/.hermes/.env</code> 和 <code>config.yaml</code> 中管理。请在主机上编辑（例如 <code>docker exec -it hermes vi /opt/data/.env</code>）然后重启容器。",
   connectionMode: "模式",
   switchedToLocal: "已切换到本地模式",
 } as const;

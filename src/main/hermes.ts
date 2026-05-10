@@ -11,8 +11,14 @@ import {
   HERMES_SCRIPT,
   getEnhancedPath,
 } from "./installer";
-import { getModelConfig, readEnv, getConnectionConfig } from "./config";
+import {
+  getModelConfig,
+  readEnv,
+  getConnectionConfig,
+  getLocalCliConfig,
+} from "./config";
 import { stripAnsi } from "./utils";
+import { LOCAL_CLI_PROVIDER, sendMessageViaLocalCli } from "./local-cli";
 
 const LOCAL_API_URL = "http://127.0.0.1:8642";
 
@@ -594,12 +600,22 @@ export async function sendMessage(
   resumeSessionId?: string,
   history?: Array<{ role: string; content: string }>,
 ): Promise<ChatHandle> {
-  ensureInitialized();
-
   // Remote mode: always use API, no CLI fallback
   if (isRemoteMode()) {
+    ensureInitialized();
     return sendMessageViaApi(message, cb, profile, resumeSessionId);
   }
+
+  const mc = getModelConfig(profile);
+  if (mc.provider === LOCAL_CLI_PROVIDER) {
+    return sendMessageViaLocalCli(message, cb, {
+      config: getLocalCliConfig(profile),
+      model: mc.model,
+      history,
+    });
+  }
+
+  ensureInitialized();
 
   // Check API server availability (cache the result, re-check periodically)
   if (apiServerAvailable === null || apiServerAvailable === false) {

@@ -2,6 +2,18 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { SETTINGS_SECTIONS, PROVIDERS } from "../../constants";
 import { useI18n } from "../../components/useI18n";
 
+function inferLocalCliPreset(command: string): "codex" | "custom" {
+  const executable =
+    command
+      .trim()
+      .split(/[\\/]/)
+      .pop()
+      ?.replace(/\.(exe|cmd|bat)$/i, "")
+      .toLowerCase() || "";
+
+  return executable === "codex" ? "codex" : "custom";
+}
+
 function Providers({
   profile,
   visible,
@@ -21,6 +33,7 @@ function Providers({
   const [modelName, setModelName] = useState("");
   const [modelBaseUrl, setModelBaseUrl] = useState("");
   const [modelSaved, setModelSaved] = useState(false);
+  const [cliCommand, setCliCommand] = useState("codex");
   const modelLoaded = useRef(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -33,15 +46,17 @@ function Providers({
   const [poolNewLabel, setPoolNewLabel] = useState("");
 
   const loadConfig = useCallback(async (): Promise<void> => {
-    const [envData, mc, pool] = await Promise.all([
+    const [envData, mc, cliConfig, pool] = await Promise.all([
       window.hermesAPI.getEnv(profile),
       window.hermesAPI.getModelConfig(profile),
+      window.hermesAPI.getLocalCliConfig(profile),
       window.hermesAPI.getCredentialPool(),
     ]);
     setEnv(envData);
     setModelProvider(mc.provider);
     setModelName(mc.model);
     setModelBaseUrl(mc.baseUrl);
+    setCliCommand(cliConfig.command);
     setCredPool(pool);
 
     requestAnimationFrame(() => {
@@ -51,7 +66,10 @@ function Providers({
 
   useEffect(() => {
     modelLoaded.current = false;
-    loadConfig();
+    const frameId = requestAnimationFrame(() => {
+      void loadConfig();
+    });
+    return () => cancelAnimationFrame(frameId);
   }, [loadConfig]);
 
   // Refresh model config when the screen becomes visible
@@ -59,10 +77,12 @@ function Providers({
     if (!visible) return;
     (async (): Promise<void> => {
       const mc = await window.hermesAPI.getModelConfig(profile);
+      const cliConfig = await window.hermesAPI.getLocalCliConfig(profile);
       modelLoaded.current = false;
       setModelProvider(mc.provider);
       setModelName(mc.model);
       setModelBaseUrl(mc.baseUrl);
+      setCliCommand(cliConfig.command);
       requestAnimationFrame(() => {
         modelLoaded.current = true;
       });
@@ -72,24 +92,31 @@ function Providers({
   // Auto-save model config when values change (debounced)
   const saveModelConfig = useCallback(async () => {
     if (!modelLoaded.current) return;
+    const trimmedModel = modelName.trim();
     await window.hermesAPI.setModelConfig(
       modelProvider,
       modelName,
       modelBaseUrl,
       profile,
     );
-    if (modelName.trim()) {
-      const displayName = modelName.split("/").pop() || modelName;
+    if (modelProvider === "cli") {
+      await window.hermesAPI.setLocalCliConfig(
+        { preset: inferLocalCliPreset(cliCommand), command: cliCommand },
+        profile,
+      );
+    }
+    if (trimmedModel && trimmedModel.toLowerCase() !== "codex") {
+      const displayName = trimmedModel.split("/").pop() || trimmedModel;
       await window.hermesAPI.addModel(
         displayName,
         modelProvider,
-        modelName,
+        trimmedModel,
         modelBaseUrl,
       );
     }
     setModelSaved(true);
     setTimeout(() => setModelSaved(false), 2000);
-  }, [modelProvider, modelName, modelBaseUrl, profile]);
+  }, [modelProvider, modelName, modelBaseUrl, cliCommand, profile]);
 
   useEffect(() => {
     if (!modelLoaded.current) return;
@@ -100,7 +127,7 @@ function Providers({
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [modelProvider, modelName, modelBaseUrl, saveModelConfig]);
+  }, [modelProvider, modelName, modelBaseUrl, cliCommand, saveModelConfig]);
 
   async function handleBlur(key: string): Promise<void> {
     const value = env[key] || "";
@@ -149,6 +176,7 @@ function Providers({
   }
 
   const isCustomProvider = modelProvider === "custom";
+  const isCliProvider = modelProvider === "cli";
 
   return (
     <div className="settings-container">
@@ -177,6 +205,14 @@ function Providers({
               setModelProvider(v);
               if (v === "custom" && !modelBaseUrl) {
                 setModelBaseUrl("http://localhost:1234/v1");
+              } else if (v === "cli") {
+                setModelBaseUrl("");
+                if (modelName.trim().toLowerCase() === "codex") {
+                  setModelName("");
+                }
+                if (!cliCommand.trim()) {
+                  setCliCommand("codex");
+                }
               }
             }}
           >
@@ -187,11 +223,31 @@ function Providers({
             ))}
           </select>
           <div className="settings-field-hint">
-            {isCustomProvider
-              ? t("settings.customProviderHint")
-              : t("settings.providerHint")}
+            {isCliProvider
+              ? t("settings.localCliHint")
+              : isCustomProvider
+                ? t("settings.customProviderHint")
+                : t("settings.providerHint")}
           </div>
         </div>
+
+        {isCliProvider && (
+          <div className="settings-field">
+            <label className="settings-field-label">
+              {t("settings.cliCommand")}
+            </label>
+            <input
+              className="input"
+              type="text"
+              value={cliCommand}
+              onChange={(e) => setCliCommand(e.target.value)}
+              placeholder={t("settings.cliCommandPlaceholder")}
+            />
+            <div className="settings-field-hint">
+              {t("settings.cliCommandHint")}
+            </div>
+          </div>
+        )}
 
         <div className="settings-field">
           <label className="settings-field-label">{t("common.model")}</label>
@@ -200,9 +256,17 @@ function Providers({
             type="text"
             value={modelName}
             onChange={(e) => setModelName(e.target.value)}
-            placeholder={t("settings.modelNamePlaceholder")}
+            placeholder={
+              isCliProvider
+                ? t("settings.localCliModelPlaceholder")
+                : t("settings.modelNamePlaceholder")
+            }
           />
-          <div className="settings-field-hint">{t("settings.modelHint")}</div>
+          <div className="settings-field-hint">
+            {isCliProvider
+              ? t("settings.localCliModelHint")
+              : t("settings.modelHint")}
+          </div>
         </div>
 
         {isCustomProvider && (
@@ -241,7 +305,7 @@ function Providers({
             >
               <option value="">{t("common.provider")}</option>
               {PROVIDERS.options
-                .filter((p) => p.value !== "auto")
+                .filter((p) => p.value !== "auto" && p.value !== "cli")
                 .map((p) => (
                   <option key={p.value} value={p.value}>
                     {t(p.label)}

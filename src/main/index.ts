@@ -66,6 +66,8 @@ import {
   setCredentialPool,
   getConnectionConfig,
   setConnectionConfig,
+  getLocalCliConfig,
+  setLocalCliConfig,
   getPlatformEnabled,
   setPlatformEnabled,
 } from "./config";
@@ -308,6 +310,22 @@ function setupIPC(): void {
     "set-connection-config",
     (_event, mode: "local" | "remote", remoteUrl: string, apiKey?: string) => {
       setConnectionConfig({ mode, remoteUrl, apiKey: apiKey || "" });
+      return true;
+    },
+  );
+
+  ipcMain.handle("get-local-cli-config", (_event, profile?: string) =>
+    getLocalCliConfig(profile),
+  );
+
+  ipcMain.handle(
+    "set-local-cli-config",
+    (
+      _event,
+      config: { preset: "codex" | "custom"; command: string },
+      profile?: string,
+    ) => {
+      setLocalCliConfig(config, profile);
       return true;
     },
   );
