@@ -114,27 +114,16 @@ export function useHermesReadiness({
         credentialPool: credentialPool as CredentialPoolSnapshot,
         providerAuth,
         gatewayRunning: gateway,
-        connMode:
-          connectionMode ?? connection?.mode ?? prev.connMode ?? "local",
-        connRemoteUrl:
-          remoteUrl ?? connection?.remoteUrl ?? prev.connRemoteUrl ?? "",
-        hermesVersion: hasVersionOverride
-          ? (hermesVersion ?? null)
-          : (version ?? prev.hermesVersion),
+        connMode: connection?.mode ?? prev.connMode ?? "local",
+        connRemoteUrl: connection?.remoteUrl ?? prev.connRemoteUrl ?? "",
+        hermesVersion: version ?? prev.hermesVersion,
       }));
     } finally {
       if (requestIdRef.current === requestId) {
         setLoading(false);
       }
     }
-  }, [
-    connectionMode,
-    hasConnectionOverride,
-    hasVersionOverride,
-    hermesVersion,
-    profile,
-    remoteUrl,
-  ]);
+  }, [hasConnectionOverride, hasVersionOverride, profile]);
 
   useEffect(() => {
     let cancelled = false;
