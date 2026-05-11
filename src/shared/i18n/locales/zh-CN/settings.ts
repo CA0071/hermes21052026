@@ -90,6 +90,7 @@ export default {
   connectionSection: "连接",
   modeLocal: "本地",
   modeRemote: "远程",
+  modeSsh: "SSH 隧道",
   modeLocalHint: "使用本机安装的 Hermes",
   modeRemoteHint: "连接到网络或云服务器上的 Hermes API",
   remoteUrl: "远程服务器地址",

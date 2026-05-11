@@ -11,6 +11,7 @@ export type ReadinessViewTarget =
   | "providers"
   | "gateway"
   | "settings";
+export type ConnectionMode = "local" | "remote" | "ssh";
 
 export type InstallStatusSnapshot = {
   installed: boolean;
@@ -69,7 +70,7 @@ export type ReadinessSource = {
   credentialPool: CredentialPoolSnapshot;
   providerAuth: ProviderAuthStatusMap;
   gatewayRunning: boolean | null;
-  connMode: "local" | "remote";
+  connMode: ConnectionMode;
   connRemoteUrl: string;
   hermesVersion: string | null;
 };
@@ -160,6 +161,8 @@ export function createHermesReadinessSnapshot(
   const currentProviderAuth = source.providerAuth[currentProvider];
   const profileGatewayRunning =
     activeProfile?.gatewayRunning ?? source.gatewayRunning ?? false;
+  const remoteLikeConnection =
+    source.connMode === "remote" || source.connMode === "ssh";
   const currentModelConfig = {
     provider: currentProvider,
     model: currentModel,
@@ -173,8 +176,9 @@ export function createHermesReadinessSnapshot(
       providerAuth: source.providerAuth,
     }),
   );
-  const providerReady =
-    source.connMode === "remote" ? true : Boolean(currentProviderStatus?.ready);
+  const providerReady = remoteLikeConnection
+    ? true
+    : Boolean(currentProviderStatus?.ready);
   const providerChecking =
     BROWSER_AUTH_PROVIDER_IDS.has(currentProvider) && !currentProviderAuth;
 
@@ -233,10 +237,13 @@ export function createHermesReadinessSnapshot(
   })();
 
   const providerOverview = (() => {
-    if (source.connMode === "remote") {
+    if (remoteLikeConnection) {
       return {
         value: t(currentProviderLabelKey),
-        badge: t("settings.modeRemote"),
+        badge:
+          source.connMode === "ssh"
+            ? t("settings.modeSsh")
+            : t("settings.modeRemote"),
         tone: "neutral" as ReadinessTone,
       };
     }
@@ -296,11 +303,15 @@ export function createHermesReadinessSnapshot(
       value:
         source.connMode === "remote"
           ? t("settings.modeRemote")
-          : t("settings.modeLocal"),
+          : source.connMode === "ssh"
+            ? t("settings.modeSsh")
+            : t("settings.modeLocal"),
       badge:
         source.connMode === "remote"
           ? source.connRemoteUrl || t("settings.modeRemote")
-          : t("settings.modeLocal"),
+          : source.connMode === "ssh"
+            ? t("settings.modeSsh")
+            : t("settings.modeLocal"),
       tone: "neutral",
     },
     {

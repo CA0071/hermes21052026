@@ -88,6 +88,28 @@ describe("Hermes readiness snapshot", () => {
     expect(snapshot.chatIssue?.target).toBe("settings");
   });
 
+  it("treats SSH mode as remote without requiring a remote URL", () => {
+    const snapshot = createHermesReadinessSnapshot(
+      source({
+        connMode: "ssh",
+        connRemoteUrl: "",
+        env: {},
+        modelConfig: {
+          provider: "openrouter",
+          model: "openai/gpt-4.1",
+          baseUrl: "",
+        },
+      }),
+      t,
+    );
+
+    expect(snapshot.ready).toBe(true);
+    expect(snapshot.chatIssue).toBeNull();
+    expect(
+      snapshot.overviewItems.find((item) => item.id === "connection")?.value,
+    ).toBe("settings.modeSsh");
+  });
+
   it("tolerates sparse persisted config values", () => {
     const snapshot = createHermesReadinessSnapshot(
       source({

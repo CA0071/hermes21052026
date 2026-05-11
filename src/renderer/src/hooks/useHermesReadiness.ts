@@ -3,6 +3,7 @@ import { useI18n } from "../components/useI18n";
 import { SUBSCRIPTION_PROVIDERS } from "../constants";
 import {
   createHermesReadinessSnapshot,
+  type ConnectionMode,
   type CredentialPoolSnapshot,
   type InstallStatusSnapshot,
   type ModelConfigSnapshot,
@@ -13,7 +14,7 @@ import {
 
 type UseHermesReadinessOptions = {
   profile?: string;
-  connectionMode?: "local" | "remote";
+  connectionMode?: ConnectionMode;
   remoteUrl?: string;
   hermesVersion?: string | null;
 };
@@ -22,7 +23,7 @@ type ReadinessData = Omit<
   ReadinessSource,
   "profile" | "connMode" | "connRemoteUrl" | "hermesVersion"
 > & {
-  connMode: "local" | "remote";
+  connMode: ConnectionMode;
   connRemoteUrl: string;
   hermesVersion: string | null;
 };

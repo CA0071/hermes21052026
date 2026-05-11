@@ -96,6 +96,7 @@ export default {
   connectionSection: "Connection",
   modeLocal: "Local",
   modeRemote: "Remote",
+  modeSsh: "SSH Tunnel",
   modeLocalHint: "Using Hermes installed on this device",
   modeRemoteHint: "Connect to a Hermes API server on your network or cloud",
   remoteUrl: "Remote URL",
