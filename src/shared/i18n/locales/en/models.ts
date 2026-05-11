@@ -44,4 +44,8 @@ export default {
   apiKeyLabel: "API Key",
   apiKeyHint:
     "Stored as an environment variable. Picks the matching env key based on the URL, or CUSTOM_API_KEY otherwise.",
+  providerStatusTitle: "Provider readiness",
+  providerStatusMeta: "{{count}} ready providers. Current route: {{selected}}",
+  providerStatusSelected: "Selected",
+  noReadyProviderStatus: "No configured providers are ready for model fetch.",
 } as const;

@@ -43,4 +43,8 @@ export default {
   apiKeyLabel: "API Key",
   apiKeyHint:
     "保存为环境变量。会按 URL 匹配对应的环境变量名,否则使用 CUSTOM_API_KEY。",
+  providerStatusTitle: "提供商就绪状态",
+  providerStatusMeta: "{{count}} 个提供商已就绪。当前路由：{{selected}}",
+  providerStatusSelected: "已选择",
+  noReadyProviderStatus: "没有已配置的提供商可用于获取模型。",
 } as const;

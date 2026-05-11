@@ -2273,6 +2273,47 @@ body {
   font-size: 11px;
 }
 
+.provider-status-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.provider-status-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.provider-status-current {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.provider-status-current strong {
+  color: var(--text-primary);
+}
+
+.provider-status-current em {
+  color: var(--text-muted);
+  font-style: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 360px;
+}
+
+.provider-status-hint {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
 .settings-pool-add {
   display: flex;
   gap: 8px;
@@ -4564,6 +4605,65 @@ body {
   font-size: 13px;
   color: var(--text-secondary);
   margin: 0;
+}
+
+.models-provider-status-panel {
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+}
+
+.models-provider-status-summary {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.models-provider-status-title {
+  margin: 0 0 4px;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.models-provider-status-meta,
+.models-provider-status-empty {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.models-provider-status-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.models-provider-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-height: 26px;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.models-provider-status-chip strong {
+  color: inherit;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.models-provider-status-chip em {
+  color: inherit;
+  opacity: 0.72;
+  font-size: 11px;
+  font-style: normal;
 }
 
 .models-loading {

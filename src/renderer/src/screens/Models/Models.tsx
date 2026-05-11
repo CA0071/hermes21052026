@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Check,
   Plus,
@@ -10,6 +10,12 @@ import {
 } from "../../assets/icons";
 import { PROVIDERS } from "../../constants";
 import { useI18n } from "../../components/useI18n";
+import { useHermesReadiness } from "../../hooks/useHermesReadiness";
+import {
+  createProviderModelStatusItems,
+  readyProviderStatuses,
+  selectedProviderStatus,
+} from "../../lib/providerModelStatus";
 
 interface SavedModel {
   id: string;
@@ -73,6 +79,7 @@ function Models({ profile }: { profile?: string }): React.JSX.Element {
   const [catalogSearch, setCatalogSearch] = useState("");
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [catalogError, setCatalogError] = useState("");
+  const readiness = useHermesReadiness({ profile });
 
   // Modal state
   const [showModal, setShowModal] = useState(false);
@@ -293,6 +300,30 @@ function Models({ profile }: { profile?: string }): React.JSX.Element {
     (model) =>
       !savedKeys.has(modelKey(model.provider, model.model, model.baseUrl)),
   ).length;
+  const providerStatusItems = useMemo(
+    () =>
+      createProviderModelStatusItems({
+        modelConfig: readiness.source.modelConfig,
+        env: readiness.source.env,
+        credentialPool: readiness.source.credentialPool,
+        providerAuth: readiness.source.providerAuth
+          ? { "openai-codex": readiness.source.providerAuth }
+          : {},
+      }),
+    [
+      readiness.source.credentialPool,
+      readiness.source.env,
+      readiness.source.modelConfig,
+      readiness.source.providerAuth,
+    ],
+  );
+  const readyStatuses = readyProviderStatuses(providerStatusItems);
+  const selectedStatus = selectedProviderStatus(providerStatusItems);
+  const visibleProviderStatuses = providerStatusItems.filter((item) => {
+    return item.provider === "auto"
+      ? item.selected
+      : item.ready || item.selected;
+  });
 
   if (loading) {
     return (
@@ -335,6 +366,58 @@ function Models({ profile }: { profile?: string }): React.JSX.Element {
           </button>
         </div>
       </div>
+
+      <section className="models-provider-status-panel">
+        <div className="models-provider-status-summary">
+          <div>
+            <h2 className="models-provider-status-title">
+              {t("models.providerStatusTitle")}
+            </h2>
+            <div className="models-provider-status-meta">
+              {t("models.providerStatusMeta", {
+                count: readyStatuses.length,
+                selected: selectedStatus
+                  ? t(selectedStatus.labelKey)
+                  : t("constants.autoDetect"),
+              })}
+            </div>
+          </div>
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={() => void readiness.refresh()}
+            disabled={readiness.loading}
+            type="button"
+          >
+            {readiness.loading ? (
+              <Spinner className="models-fetch-spin" size={14} />
+            ) : (
+              <Refresh size={14} />
+            )}
+            {t("common.refresh")}
+          </button>
+        </div>
+        <div className="models-provider-status-list">
+          {visibleProviderStatuses.length === 0 ? (
+            <span className="models-provider-status-empty">
+              {t("models.noReadyProviderStatus")}
+            </span>
+          ) : (
+            visibleProviderStatuses.map((item) => (
+              <span
+                className={`models-provider-status-chip settings-status-${item.tone}`}
+                key={item.provider}
+                title={t(item.sourceLabelKey)}
+              >
+                {item.selected && (
+                  <strong>{t("models.providerStatusSelected")}</strong>
+                )}
+                {t(item.labelKey)}
+                <em>{t(item.sourceLabelKey)}</em>
+              </span>
+            ))
+          )}
+        </div>
+      </section>
 
       {(catalogs.length > 0 || catalogError) && (
         <section className="models-discovery-panel">

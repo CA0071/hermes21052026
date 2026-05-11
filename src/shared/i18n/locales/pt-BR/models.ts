@@ -45,4 +45,9 @@ export default {
   apiKeyLabel: "Chave da API",
   apiKeyHint:
     "Armazenada como uma variável de ambiente. Escolhe a chave correspondente com base na URL ou CUSTOM_API_KEY caso contrário.",
+  providerStatusTitle: "Prontidão dos provedores",
+  providerStatusMeta: "{{count}} provedores prontos. Rota atual: {{selected}}",
+  providerStatusSelected: "Selecionado",
+  noReadyProviderStatus:
+    "Nenhum provedor configurado está pronto para buscar modelos.",
 } as const;

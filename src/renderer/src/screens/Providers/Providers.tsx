@@ -1,7 +1,12 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Check, ExternalLink, Refresh, Spinner } from "../../assets/icons";
 import { SETTINGS_SECTIONS, PROVIDERS } from "../../constants";
 import { useI18n } from "../../components/useI18n";
+import {
+  createProviderModelStatusItems,
+  readyProviderStatuses,
+  selectedProviderStatus,
+} from "../../lib/providerModelStatus";
 
 type ProviderLoginProgress = {
   provider: string;
@@ -234,6 +239,28 @@ function Providers({
     };
   }, [modelProvider, modelName, modelBaseUrl, saveModelConfig]);
 
+  const providerStatusItems = useMemo(
+    () =>
+      createProviderModelStatusItems({
+        modelConfig: {
+          provider: modelProvider,
+          model: modelName,
+          baseUrl: modelBaseUrl,
+        },
+        env,
+        credentialPool: credPool,
+        providerAuth: authStatuses,
+      }),
+    [authStatuses, credPool, env, modelBaseUrl, modelName, modelProvider],
+  );
+  const readyStatuses = readyProviderStatuses(providerStatusItems);
+  const selectedStatus = selectedProviderStatus(providerStatusItems);
+  const visibleProviderStatuses = providerStatusItems.filter((item) => {
+    return item.provider === "auto"
+      ? item.selected
+      : item.ready || item.selected;
+  });
+
   async function handleBlur(key: string): Promise<void> {
     const value = env[key] || "";
     await window.hermesAPI.setEnv(key, value, profile);
@@ -382,6 +409,50 @@ function Providers({
       <p className="models-subtitle" style={{ marginBottom: 16 }}>
         {t("providers.subtitle")}
       </p>
+
+      <div className="settings-section provider-status-section">
+        <div className="settings-section-title">
+          {t("providers.statusOverview")}
+        </div>
+        <div className="provider-status-summary">
+          <div className="provider-status-current">
+            <span>{t("providers.currentRouting")}</span>
+            <strong>
+              {selectedStatus
+                ? t(selectedStatus.labelKey)
+                : t("constants.autoDetect")}
+            </strong>
+            <em>{modelName || t("providers.providerDefaultModel")}</em>
+          </div>
+          <span
+            className={`settings-status-badge settings-status-${
+              selectedStatus?.tone || "neutral"
+            }`}
+          >
+            {selectedStatus
+              ? t(selectedStatus.statusLabelKey)
+              : t("providers.statusNeedsSetup")}
+          </span>
+        </div>
+        <div className="provider-status-hint">
+          {t("providers.statusHint", { count: readyStatuses.length })}
+        </div>
+        <div className="models-provider-status-list">
+          {visibleProviderStatuses.map((item) => (
+            <span
+              className={`models-provider-status-chip settings-status-${item.tone}`}
+              key={item.provider}
+              title={t(item.sourceLabelKey)}
+            >
+              {item.selected && (
+                <strong>{t("providers.statusSelected")}</strong>
+              )}
+              {t(item.labelKey)}
+              <em>{t(item.sourceLabelKey)}</em>
+            </span>
+          ))}
+        </div>
+      </div>
 
       <div className="settings-section">
         <div className="settings-section-title">

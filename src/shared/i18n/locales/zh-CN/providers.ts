@@ -1,4 +1,18 @@
 export default {
   title: "提供商",
   subtitle: "配置 LLM 提供商、API 密钥和凭据池",
+  statusOverview: "提供商状态",
+  statusHint: "{{count}} 个提供商已可用于模型发现和聊天路由。",
+  currentRouting: "当前路由",
+  providerDefaultModel: "提供商默认模型",
+  statusSelected: "已选择",
+  statusReady: "就绪",
+  statusNeedsSetup: "需要设置",
+  authSourceApiKey: "API Key",
+  authSourceCredentialPool: "凭据池",
+  authSourceBrowserAuth: "已登录",
+  authSourceIncluded: "内置",
+  authSourceCustom: "自定义端点",
+  authSourceAuto: "自动检测",
+  authSourceMissing: "缺少凭据",
 } as const;
