@@ -4,10 +4,10 @@ import { join } from "path";
 import { homedir } from "os";
 import {
   HERMES_HOME,
-  HERMES_PYTHON,
   HERMES_SCRIPT,
   HERMES_REPO,
   getEnhancedPath,
+  getHermesPython,
 } from "./installer";
 import { profileHome } from "./utils";
 
@@ -136,7 +136,7 @@ export function getSkillContent(skillPath: string): string {
 export function searchSkills(query: string): SkillSearchResult[] {
   try {
     const output = execFileSync(
-      HERMES_PYTHON,
+      getHermesPython(),
       [HERMES_SCRIPT, "skills", "browse", "--query", query, "--json"],
       {
         cwd: HERMES_REPO,
@@ -243,7 +243,7 @@ export function installSkill(
       args.splice(1, 0, "-p", profile);
     }
 
-    execFileSync(HERMES_PYTHON, args, {
+    execFileSync(getHermesPython(), args, {
       cwd: HERMES_REPO,
       env: {
         ...process.env,
@@ -272,7 +272,7 @@ export function uninstallSkill(
       args.splice(1, 0, "-p", profile);
     }
 
-    execFileSync(HERMES_PYTHON, args, {
+    execFileSync(getHermesPython(), args, {
       cwd: HERMES_REPO,
       env: {
         ...process.env,

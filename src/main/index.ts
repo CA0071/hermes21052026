@@ -86,6 +86,7 @@ import {
   updateSessionTitle,
 } from "./session-cache";
 import { listModels, addModel, removeModel, updateModel } from "./models";
+import { discoverModels } from "./modelDiscovery";
 import {
   listProfiles,
   createProfile,
@@ -838,6 +839,13 @@ function setupIPC(): void {
     if (conn.mode === "ssh" && conn.ssh) return sshListModels(conn.ssh);
     return listModels();
   });
+  ipcMain.handle(
+    "discover-models",
+    (
+      _event,
+      options?: { provider?: string; profile?: string; baseUrl?: string },
+    ) => discoverModels(options),
+  );
   ipcMain.handle(
     "add-model",
     (_event, name: string, provider: string, model: string, baseUrl: string) =>

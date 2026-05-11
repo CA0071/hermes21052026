@@ -3,10 +3,10 @@ import { homedir } from "os";
 import { shell } from "electron";
 import {
   HERMES_HOME,
-  HERMES_PYTHON,
   HERMES_REPO,
   HERMES_SCRIPT,
   getEnhancedPath,
+  getHermesPython,
 } from "./installer";
 import { stripAnsi } from "./utils";
 
@@ -74,6 +74,30 @@ export function isProviderAuthenticated(detail: string): boolean {
   return /^[^:\n]+:\s*logged in\b/im.test(stripAnsi(detail));
 }
 
+export function getProviderLoginArgs(provider: string): string[] {
+  return [
+    HERMES_SCRIPT,
+    "auth",
+    "add",
+    provider,
+    "--type",
+    "oauth",
+    "--no-browser",
+  ];
+}
+
+export function mergeProviderLoginProgress(
+  current: ProviderLoginProgress,
+  update: Partial<ProviderLoginProgress>,
+): ProviderLoginProgress {
+  const next = { ...current, ...update };
+  if (update.status === "success" || update.status === "error") {
+    delete next.verificationUrl;
+    delete next.userCode;
+  }
+  return next;
+}
+
 export async function getProviderAuthStatus(
   provider: string,
 ): Promise<ProviderAuthStatus> {
@@ -87,7 +111,7 @@ export async function getProviderAuthStatus(
 
   return new Promise((resolve) => {
     execFile(
-      HERMES_PYTHON,
+      getHermesPython(),
       [HERMES_SCRIPT, "auth", "status", provider],
       {
         cwd: HERMES_REPO,
@@ -127,7 +151,7 @@ export async function startProviderLogin(
   providerLoginCancelled = false;
 
   function emit(update: Partial<ProviderLoginProgress>): void {
-    current = { ...current, ...update };
+    current = mergeProviderLoginProgress(current, update);
     onProgress(current);
   }
 
@@ -155,14 +179,8 @@ export async function startProviderLogin(
   emit(current);
 
   await new Promise<void>((resolve, reject) => {
-    const args = [
-      HERMES_SCRIPT,
-      "login",
-      "--provider",
-      provider,
-      "--no-browser",
-    ];
-    const proc = spawn(HERMES_PYTHON, args, {
+    const args = getProviderLoginArgs(provider);
+    const proc = spawn(getHermesPython(), args, {
       cwd: HERMES_REPO,
       env: hermesEnv(),
       stdio: ["ignore", "pipe", "pipe"],

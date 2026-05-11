@@ -476,6 +476,27 @@ const hermesAPI = {
     }>
   > => ipcRenderer.invoke("list-models"),
 
+  discoverModels: (options?: {
+    provider?: string;
+    profile?: string;
+    baseUrl?: string;
+  }): Promise<
+    Array<{
+      provider: string;
+      active: boolean;
+      authSource: string;
+      source: "live" | "models.dev" | "endpoint" | "none";
+      models: Array<{
+        provider: string;
+        model: string;
+        name: string;
+        baseUrl: string;
+        source: "live" | "models.dev" | "endpoint";
+      }>;
+      error?: string;
+    }>
+  > => ipcRenderer.invoke("discover-models", options),
+
   addModel: (
     name: string,
     provider: string,

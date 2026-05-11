@@ -1,27 +1,168 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { join } from "path";
-import { mkdirSync, rmSync, existsSync } from "fs";
+import { closeSync, existsSync, mkdirSync, openSync, rmSync } from "fs";
 
 // vi.hoisted runs before module imports, so we can't reference imported
 // helpers here — use the bare Node modules via require.
-const { TEST_HOME } = vi.hoisted(() => {
+const { TEST_HOME, resetDatabaseStore, FakeDatabase } = vi.hoisted(() => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const path = require("path");
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const os = require("os");
+  type FakeStore = {
+    sessions: Map<
+      string,
+      {
+        id: string;
+        source: string;
+        started_at: number;
+        ended_at: number | null;
+        message_count: number;
+        model: string;
+        title: string | null;
+      }
+    >;
+    messages: Array<{
+      id: number;
+      session_id: string;
+      role: string;
+      content: string | null;
+      timestamp: number;
+    }>;
+    nextMessageId: number;
+  };
+  const databaseStores = new Map<string, FakeStore>();
+
+  function getStore(dbPath: string): FakeStore {
+    let store = databaseStores.get(dbPath);
+    if (!store) {
+      store = {
+        sessions: new Map(),
+        messages: [],
+        nextMessageId: 1,
+      };
+      databaseStores.set(dbPath, store);
+    }
+    return store;
+  }
+
+  class FakeStatement {
+    private sql: string;
+    private store: ReturnType<typeof getStore>;
+
+    constructor(sql: string, store: ReturnType<typeof getStore>) {
+      this.sql = sql;
+      this.store = store;
+    }
+
+    run(...params: unknown[]): void {
+      if (this.sql.includes("INSERT OR REPLACE INTO sessions")) {
+        const [id, source, startedAt, messageCount, model, title] = params;
+        this.store.sessions.set(String(id), {
+          id: String(id),
+          source: String(source),
+          started_at: Number(startedAt),
+          ended_at: null,
+          message_count: Number(messageCount),
+          model: String(model),
+          title: title === null || title === undefined ? null : String(title),
+        });
+        return;
+      }
+
+      if (this.sql.includes("INSERT INTO messages")) {
+        const [sessionId, role, content, timestamp] = params;
+        this.store.messages.push({
+          id: this.store.nextMessageId++,
+          session_id: String(sessionId),
+          role: String(role),
+          content:
+            content === null || content === undefined ? null : String(content),
+          timestamp: Number(timestamp),
+        });
+      }
+    }
+
+    all(threshold: number): unknown[] {
+      if (
+        this.sql.includes("FROM sessions s") &&
+        this.sql.includes("WHERE s.started_at > ?")
+      ) {
+        return [...this.store.sessions.values()]
+          .filter((session) => session.started_at > threshold)
+          .sort((a, b) => b.started_at - a.started_at)
+          .map((session) => ({
+            id: session.id,
+            started_at: session.started_at,
+            source: session.source,
+            message_count: session.message_count,
+            model: session.model,
+            title: session.title,
+          }));
+      }
+      return [];
+    }
+
+    get(sessionId: string): unknown {
+      if (
+        this.sql.includes("FROM messages") &&
+        this.sql.includes("session_id = ?")
+      ) {
+        return this.store.messages
+          .filter(
+            (message) =>
+              message.session_id === sessionId &&
+              message.role === "user" &&
+              message.content !== null,
+          )
+          .sort((a, b) => a.timestamp - b.timestamp || a.id - b.id)
+          .map((message) => ({ content: message.content }))
+          .at(0);
+      }
+      return undefined;
+    }
+  }
+
+  class FakeDatabase {
+    private store: ReturnType<typeof getStore>;
+
+    constructor(dbPath: string) {
+      this.store = getStore(dbPath);
+    }
+
+    exec(): void {
+      // Schema setup is implicit in the in-memory store.
+    }
+
+    prepare(sql: string): FakeStatement {
+      return new FakeStatement(sql, this.store);
+    }
+
+    close(): void {
+      // No resources to release.
+    }
+  }
+
   return {
     TEST_HOME: path.join(
       os.tmpdir(),
       `hermes-session-cache-test-${Date.now()}`,
     ),
+    resetDatabaseStore: () => databaseStores.clear(),
+    FakeDatabase,
   };
 });
+
+vi.mock("better-sqlite3", () => ({
+  default: FakeDatabase,
+}));
 
 vi.mock("../src/main/installer", () => ({
   HERMES_HOME: TEST_HOME,
   HERMES_PYTHON: "/usr/bin/python3",
   HERMES_SCRIPT: "/dev/null",
   getEnhancedPath: () => process.env.PATH || "",
+  getHermesPython: () => "/usr/bin/python3",
 }));
 
 // Stub the i18n + locale modules so the cache code doesn't need the
@@ -50,6 +191,7 @@ function seedDb(
     firstUserMessage?: string;
   }>,
 ): void {
+  closeSync(openSync(DB_PATH, "a"));
   const db = new Database(DB_PATH);
   db.exec(`
     CREATE TABLE IF NOT EXISTS sessions (
@@ -93,6 +235,7 @@ function seedDb(
 }
 
 beforeEach(() => {
+  resetDatabaseStore();
   mkdirSync(TEST_HOME, { recursive: true });
 });
 

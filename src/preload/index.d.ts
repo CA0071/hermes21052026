@@ -25,6 +25,23 @@ interface ProviderLoginProgress {
   userCode?: string;
 }
 
+interface DiscoveredModel {
+  provider: string;
+  model: string;
+  name: string;
+  baseUrl: string;
+  source: "live" | "models.dev" | "endpoint";
+}
+
+interface ProviderModelCatalog {
+  provider: string;
+  active: boolean;
+  authSource: string;
+  source: "live" | "models.dev" | "endpoint" | "none";
+  models: DiscoveredModel[];
+  error?: string;
+}
+
 interface HermesAPI {
   // Installation
   checkInstall: () => Promise<InstallStatus>;
@@ -327,6 +344,11 @@ interface HermesAPI {
       createdAt: number;
     }>
   >;
+  discoverModels: (options?: {
+    provider?: string;
+    profile?: string;
+    baseUrl?: string;
+  }) => Promise<ProviderModelCatalog[]>;
   addModel: (
     name: string,
     provider: string,

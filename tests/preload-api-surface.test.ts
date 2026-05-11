@@ -4,7 +4,10 @@ import { join } from "path";
 
 const ROOT = join(__dirname, "..");
 const preloadSrc = readFileSync(join(ROOT, "src/preload/index.ts"), "utf-8");
-const preloadTypes = readFileSync(join(ROOT, "src/preload/index.d.ts"), "utf-8");
+const preloadTypes = readFileSync(
+  join(ROOT, "src/preload/index.d.ts"),
+  "utf-8",
+);
 
 /**
  * Extract method names from the hermesAPI object in preload/index.ts.
@@ -26,9 +29,7 @@ function extractPreloadMethods(src: string): string[] {
 function extractTypeMethods(src: string): string[] {
   const methods: string[] = [];
   // Match lines inside `interface HermesAPI { ... }`
-  const interfaceMatch = src.match(
-    /interface\s+HermesAPI\s*\{([\s\S]*?)^\}/m,
-  );
+  const interfaceMatch = src.match(/interface\s+HermesAPI\s*\{([\s\S]*?)^\}/m);
   if (!interfaceMatch) return [];
   const body = interfaceMatch[1];
   const re = /^\s{2}(\w+)\s*[:(]/gm;
@@ -102,6 +103,11 @@ describe("New APIs from v0.8/v0.9 features", () => {
     expect(typeMethods).toContain("cancelProviderLogin");
     expect(typeMethods).toContain("onProviderLoginProgress");
   });
+
+  it("has dynamic model discovery API", () => {
+    expect(preloadMethods).toContain("discoverModels");
+    expect(typeMethods).toContain("discoverModels");
+  });
 });
 
 // ─── Legacy APIs still present ──────────────────────────
@@ -172,6 +178,7 @@ describe("Legacy APIs preserved (backward compat)", () => {
     "uninstallSkill",
     // Models
     "listModels",
+    "discoverModels",
     "addModel",
     "removeModel",
     "updateModel",
@@ -207,8 +214,9 @@ describe("Legacy APIs preserved (backward compat)", () => {
 
 describe("IPC channel consistency", () => {
   it("preload invoke calls use quoted string channel names", () => {
-    const invokeChannels = [...preloadSrc.matchAll(/ipcRenderer\.invoke\(\s*["']([^"']+)["']/g)]
-      .map((m) => m[1]);
+    const invokeChannels = [
+      ...preloadSrc.matchAll(/ipcRenderer\.invoke\(\s*["']([^"']+)["']/g),
+    ].map((m) => m[1]);
     expect(invokeChannels.length).toBeGreaterThan(30);
     // Every channel should be kebab-case
     for (const ch of invokeChannels) {
@@ -217,8 +225,9 @@ describe("IPC channel consistency", () => {
   });
 
   it("preload on/removeListener calls use quoted string channel names", () => {
-    const onChannels = [...preloadSrc.matchAll(/ipcRenderer\.on\(\s*["']([^"']+)["']/g)]
-      .map((m) => m[1]);
+    const onChannels = [
+      ...preloadSrc.matchAll(/ipcRenderer\.on\(\s*["']([^"']+)["']/g),
+    ].map((m) => m[1]);
     expect(onChannels.length).toBeGreaterThan(0);
     for (const ch of onChannels) {
       expect(ch).toMatch(/^[a-z][a-z0-9-]*$/);

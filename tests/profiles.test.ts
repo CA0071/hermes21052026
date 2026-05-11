@@ -22,6 +22,7 @@ vi.mock("../src/main/installer", () => ({
   HERMES_PYTHON: "/usr/bin/python3",
   HERMES_SCRIPT: "/dev/null",
   getEnhancedPath: () => process.env.PATH || "",
+  getHermesPython: () => "/usr/bin/python3",
 }));
 
 // Import AFTER the mock so PROFILES_DIR is resolved against TEST_HOME.

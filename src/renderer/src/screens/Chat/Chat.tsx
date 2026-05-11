@@ -198,6 +198,7 @@ interface ModelGroup {
 
 import { PROVIDERS } from "../../constants";
 import { useI18n } from "../../components/useI18n";
+import { modelSupportsFastMode } from "../../../../shared/modelCapabilities";
 
 interface ChatProps {
   messages: ChatMessage[];
@@ -239,6 +240,7 @@ function Chat({
   const [currentProvider, setCurrentProvider] = useState("auto");
   const [currentBaseUrl, setCurrentBaseUrl] = useState("");
   const [modelGroups, setModelGroups] = useState<ModelGroup[]>([]);
+  const [modelConfigLoaded, setModelConfigLoaded] = useState(false);
   const [showModelPicker, setShowModelPicker] = useState(false);
   const [customModelInput, setCustomModelInput] = useState("");
   const pickerRef = useRef<HTMLDivElement>(null);
@@ -261,6 +263,11 @@ function Chat({
           )
         : [],
     [slashMenuOpen, slashFilter],
+  );
+
+  const fastModeSupported = useMemo(
+    () => modelSupportsFastMode(currentModel),
+    [currentModel],
   );
 
   const scrollToBottom = useCallback((force?: boolean) => {
@@ -289,6 +296,7 @@ function Chat({
   }, [messages]);
 
   const loadModelConfig = useCallback(async (): Promise<void> => {
+    setModelConfigLoaded(false);
     const [mc, savedModels] = await Promise.all([
       window.hermesAPI.getModelConfig(profile),
       window.hermesAPI.listModels(),
@@ -315,6 +323,7 @@ function Chat({
       });
     }
     setModelGroups(Array.from(groupMap.values()));
+    setModelConfigLoaded(true);
   }, [profile]);
 
   // Load model config and build available models list
@@ -328,6 +337,12 @@ function Chat({
       setFastMode(val === "fast" || val === "priority");
     });
   }, [profile]);
+
+  useEffect(() => {
+    if (!modelConfigLoaded || !fastMode || fastModeSupported) return;
+    setFastMode(false);
+    void window.hermesAPI.setConfig("agent.service_tier", "normal", profile);
+  }, [fastMode, fastModeSupported, modelConfigLoaded, profile]);
 
   // Close picker on click outside
   useEffect(() => {
@@ -371,6 +386,10 @@ function Chat({
     baseUrl: string,
   ): Promise<void> {
     await window.hermesAPI.setModelConfig(provider, model, baseUrl, profile);
+    if (fastMode && !modelSupportsFastMode(model)) {
+      setFastMode(false);
+      await window.hermesAPI.setConfig("agent.service_tier", "normal", profile);
+    }
     setCurrentModel(model);
     setCurrentProvider(provider);
     setCurrentBaseUrl(baseUrl);
@@ -385,6 +404,22 @@ function Chat({
       currentProvider === "auto" ? "auto" : currentProvider,
       model,
       currentBaseUrl,
+    );
+  }
+
+  async function toggleFastMode(): Promise<void> {
+    if (!fastModeSupported) {
+      setFastMode(false);
+      await window.hermesAPI.setConfig("agent.service_tier", "normal", profile);
+      return;
+    }
+
+    const next = !fastMode;
+    setFastMode(next);
+    await window.hermesAPI.setConfig(
+      "agent.service_tier",
+      next ? "fast" : "normal",
+      profile,
     );
   }
 
@@ -716,6 +751,17 @@ function Chat({
       }
 
       case "/fast": {
+        if (!fastModeSupported) {
+          setFastMode(false);
+          await window.hermesAPI.setConfig(
+            "agent.service_tier",
+            "normal",
+            profile,
+          );
+          pushLocalResponse(t("chat.fastModeUnavailable"));
+          return true;
+        }
+
         const current = await window.hermesAPI.getConfig(
           "agent.service_tier",
           profile,
@@ -891,30 +937,6 @@ function Chat({
           )}
         </div>
         <div className="chat-header-actions">
-          <div className="chat-fast-wrapper">
-            <button
-              className={`btn-ghost chat-fast-btn ${fastMode ? "chat-fast-active" : ""}`}
-              onClick={async () => {
-                const next = !fastMode;
-                setFastMode(next);
-                await window.hermesAPI.setConfig(
-                  "agent.service_tier",
-                  next ? "fast" : "normal",
-                  profile,
-                );
-              }}
-            >
-              <Zap size={14} />
-            </button>
-            <div className="chat-fast-popover">
-              <strong>{fastMode ? t("chat.fastModeOn") : t("chat.fastMode")}</strong>
-              <span>
-                {fastMode
-                  ? t("chat.fastModeActive")
-                  : t("chat.fastModeInactive")}
-              </span>
-            </div>
-          </div>
           {onNewChat && (
             <button
               className="btn-ghost chat-clear-btn"
@@ -1126,6 +1148,30 @@ function Chat({
             <span className="chat-model-name">{displayModel}</span>
             <ChevronDown size={12} />
           </button>
+
+          {fastModeSupported && (
+            <div className="chat-fast-wrapper">
+              <button
+                className={`btn-ghost chat-fast-btn ${fastMode ? "chat-fast-active" : ""}`}
+                onClick={() => void toggleFastMode()}
+                title={fastMode ? t("chat.fastModeOn") : t("chat.fastMode")}
+                type="button"
+              >
+                <Zap size={13} />
+                <span>{t("chat.fastMode")}</span>
+              </button>
+              <div className="chat-fast-popover">
+                <strong>
+                  {fastMode ? t("chat.fastModeOn") : t("chat.fastMode")}
+                </strong>
+                <span>
+                  {fastMode
+                    ? t("chat.fastModeActive")
+                    : t("chat.fastModeInactive")}
+                </span>
+              </div>
+            </div>
+          )}
 
           {showModelPicker && (
             <div className="chat-model-dropdown">

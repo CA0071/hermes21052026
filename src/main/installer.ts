@@ -1,4 +1,4 @@
-import { spawn, execSync, execFile, execFileSync } from "child_process";
+import { spawn, execFile, execFileSync } from "child_process";
 import { existsSync, readFileSync, readdirSync } from "fs";
 import { delimiter, isAbsolute, join } from "path";
 import { homedir } from "os";
@@ -11,7 +11,6 @@ export const HERMES_HOME =
   process.env.HERMES_HOME?.trim() || join(homedir(), ".hermes");
 export const HERMES_REPO = join(HERMES_HOME, "hermes-agent");
 export const HERMES_VENV = join(HERMES_REPO, "venv");
-export const HERMES_PYTHON = resolveHermesPython();
 export const HERMES_SCRIPT = join(HERMES_REPO, "hermes");
 export const HERMES_ENV_FILE = join(HERMES_HOME, ".env");
 export const HERMES_CONFIG_FILE = join(HERMES_HOME, "config.yaml");
@@ -61,13 +60,41 @@ function findCommandOnPath(command: string): string | null {
   }
 }
 
-function resolveHermesPython(): string {
+function resolveWindowsPythonCandidates(home: string): string[] {
+  if (process.platform !== "win32") return [];
+
+  const candidates: string[] = [];
+  const localAppData =
+    process.env.LOCALAPPDATA || join(home, "AppData", "Local");
+  candidates.push(join(localAppData, "Python", "bin", "python.exe"));
+
+  const programsPython = join(localAppData, "Programs", "Python");
+  if (existsSync(programsPython)) {
+    try {
+      const versions = readdirSync(programsPython)
+        .filter((entry) => /^Python\d+/i.test(entry))
+        .sort()
+        .reverse();
+      for (const version of versions) {
+        candidates.push(join(programsPython, version, "python.exe"));
+      }
+    } catch {
+      /* non-fatal */
+    }
+  }
+
+  return candidates;
+}
+
+export function resolveHermesPython(): string {
+  const home = homedir();
   const candidates =
     process.platform === "win32"
       ? [
           join(HERMES_VENV, "Scripts", "python.exe"),
           join(HERMES_VENV, "bin", "python.exe"),
           join(HERMES_VENV, "bin", "python"),
+          ...resolveWindowsPythonCandidates(home),
         ]
       : [
           join(HERMES_VENV, "bin", "python3"),
@@ -87,6 +114,12 @@ function resolveHermesPython(): string {
   );
 }
 
+export function getHermesPython(): string {
+  return resolveHermesPython();
+}
+
+export const HERMES_PYTHON = getHermesPython();
+
 function executableAvailable(command: string): boolean {
   if (isAbsolute(command) || /[\\/]/.test(command)) {
     return existsSync(command);
@@ -95,7 +128,7 @@ function executableAvailable(command: string): boolean {
 }
 
 function hermesRuntimeAvailable(): boolean {
-  return existsSync(HERMES_SCRIPT) && executableAvailable(HERMES_PYTHON);
+  return existsSync(HERMES_SCRIPT) && executableAvailable(getHermesPython());
 }
 
 export function getEnhancedPath(): string {
@@ -114,6 +147,9 @@ export function getEnhancedPath(): string {
     join(home, ".local", "share", "fnm", "aliases", "default", "bin"),
     join(home, ".fnm", "aliases", "default", "bin"),
     ...resolveNvmBin(home),
+    ...resolveWindowsPythonCandidates(home).map((candidate) =>
+      candidate.replace(/[\\/][^\\/]+$/, ""),
+    ),
     "/usr/local/bin",
     "/opt/homebrew/bin",
     "/opt/homebrew/sbin",
@@ -245,12 +281,13 @@ const VERIFY_TTL_MS = 5 * 60 * 1000;
 
 export async function verifyInstall(): Promise<boolean> {
   if (!hermesRuntimeAvailable()) return false;
-  if (_verifyCache && Date.now() - _verifyCache.ts < VERIFY_TTL_MS) {
+  if (_verifyCache?.ok && Date.now() - _verifyCache.ts < VERIFY_TTL_MS) {
     return _verifyCache.ok;
   }
   return new Promise((resolve) => {
+    const hermesPython = getHermesPython();
     execFile(
-      HERMES_PYTHON,
+      hermesPython,
       [HERMES_SCRIPT, "--version"],
       {
         cwd: HERMES_REPO,
@@ -261,11 +298,13 @@ export async function verifyInstall(): Promise<boolean> {
           HERMES_HOME,
           PYTHONIOENCODING: "utf-8",
         },
-        timeout: 15000,
+        timeout: 30000,
       },
       (error) => {
         const ok = !error;
-        _verifyCache = { ok, ts: Date.now() };
+        if (ok) {
+          _verifyCache = { ok, ts: Date.now() };
+        }
         resolve(ok);
       },
     );
@@ -292,8 +331,9 @@ export async function getHermesVersion(): Promise<string | null> {
   }
   _versionFetching = true;
   return new Promise((resolve) => {
+    const hermesPython = getHermesPython();
     execFile(
-      HERMES_PYTHON,
+      hermesPython,
       [HERMES_SCRIPT, "--version"],
       {
         cwd: HERMES_REPO,
@@ -304,7 +344,7 @@ export async function getHermesVersion(): Promise<string | null> {
           HERMES_HOME,
           PYTHONIOENCODING: "utf-8",
         },
-        timeout: 15000,
+        timeout: 30000,
       },
       (error, stdout) => {
         _versionFetching = false;
@@ -328,7 +368,8 @@ export function runHermesDoctor(): string {
     return "Hermes is not installed.";
   }
   try {
-    const output = execSync(`"${HERMES_PYTHON}" "${HERMES_SCRIPT}" doctor`, {
+    const hermesPython = getHermesPython();
+    const output = execFileSync(hermesPython, [HERMES_SCRIPT, "doctor"], {
       cwd: HERMES_REPO,
       env: {
         ...process.env,
@@ -387,8 +428,9 @@ export async function runClawMigrate(
 
   return new Promise((resolve, reject) => {
     const args = [HERMES_SCRIPT, "claw", "migrate", "--preset", "full"];
+    const hermesPython = getHermesPython();
 
-    const proc = spawn(HERMES_PYTHON, args, {
+    const proc = spawn(hermesPython, args, {
       cwd: HERMES_REPO,
       env: {
         ...process.env,
@@ -446,7 +488,8 @@ export async function runHermesUpdate(
   emit("Running hermes update...\n");
 
   return new Promise((resolve, reject) => {
-    const proc = spawn(HERMES_PYTHON, [HERMES_SCRIPT, "update"], {
+    const hermesPython = getHermesPython();
+    const proc = spawn(hermesPython, [HERMES_SCRIPT, "update"], {
       cwd: HERMES_REPO,
       env: {
         ...process.env,
@@ -687,8 +730,9 @@ export async function runHermesBackup(
   if (profile && profile !== "default") args.push("-p", profile);
 
   return new Promise((resolve) => {
+    const hermesPython = getHermesPython();
     execFile(
-      HERMES_PYTHON,
+      hermesPython,
       args,
       {
         cwd: HERMES_REPO,
@@ -735,8 +779,9 @@ export async function runHermesImport(
   if (profile && profile !== "default") args.push("-p", profile);
 
   return new Promise((resolve) => {
+    const hermesPython = getHermesPython();
     execFile(
-      HERMES_PYTHON,
+      hermesPython,
       args,
       {
         cwd: HERMES_REPO,
@@ -773,8 +818,9 @@ export function runHermesDump(): Promise<string> {
     return Promise.resolve("Hermes is not installed.");
   }
   return new Promise((resolve) => {
+    const hermesPython = getHermesPython();
     execFile(
-      HERMES_PYTHON,
+      hermesPython,
       [HERMES_SCRIPT, "dump"],
       {
         cwd: HERMES_REPO,
