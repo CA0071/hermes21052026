@@ -934,20 +934,22 @@ function Chat({
   const routeStatusItems = useMemo(
     () =>
       createProviderModelStatusItems({
-        modelConfig: readiness.source.modelConfig,
+        modelConfig: {
+          provider: readiness.snapshot.currentProvider,
+          model: readiness.snapshot.currentModel,
+          baseUrl: readiness.source.modelConfig?.baseUrl || "",
+        },
         env: readiness.source.env,
         credentialPool: readiness.source.credentialPool,
-        providerAuth:
-          readiness.source.modelConfig?.provider === "openai-codex" &&
-          readiness.source.providerAuth
-            ? { "openai-codex": readiness.source.providerAuth }
-            : {},
+        providerAuth: readiness.source.providerAuth,
       }),
     [
       readiness.source.credentialPool,
       readiness.source.env,
-      readiness.source.modelConfig,
+      readiness.source.modelConfig?.baseUrl,
       readiness.source.providerAuth,
+      readiness.snapshot.currentModel,
+      readiness.snapshot.currentProvider,
     ],
   );
   const routeStatus = selectedProviderStatus(routeStatusItems);

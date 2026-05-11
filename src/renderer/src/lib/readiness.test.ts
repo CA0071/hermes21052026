@@ -148,8 +148,8 @@ describe("Hermes readiness snapshot", () => {
         },
         env: {},
         modelConfig: {
-          provider: "auto",
-          model: "",
+          provider: "openrouter",
+          model: "openai/gpt-4.1",
           baseUrl: "",
         },
       }),
