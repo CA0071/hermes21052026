@@ -195,6 +195,9 @@ function sendMessageViaApi(
     "Content-Type": "application/json",
     ...getRemoteAuthHeader(),
   };
+  if (_resumeSessionId) {
+    headers["X-Hermes-Session-Id"] = _resumeSessionId;
+  }
 
   let sessionId = _resumeSessionId || "";
   let hasContent = false;
@@ -226,10 +229,7 @@ function sendMessageViaApi(
       probeUrl,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...getRemoteAuthHeader(),
-        },
+        headers,
       },
       (res) => {
         let raw = "";
@@ -633,7 +633,7 @@ export async function sendMessage(
 
   // Remote mode: always use API, no CLI fallback
   if (isRemoteMode()) {
-    return sendMessageViaApi(message, cb, profile, resumeSessionId);
+    return sendMessageViaApi(message, cb, profile, resumeSessionId, history);
   }
 
   // Check API server availability (cache the result, re-check periodically)
