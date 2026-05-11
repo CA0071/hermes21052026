@@ -3,13 +3,23 @@ import { useTheme } from "../../components/ThemeProvider";
 import { THEME_OPTIONS } from "../../constants";
 import { useI18n } from "../../components/useI18n";
 import { APP_LOCALES, type AppLocale } from "../../../../shared/i18n";
-import { Download, Upload, FileText } from "lucide-react";
+import { ArrowRight, Download, Upload, FileText } from "lucide-react";
+import { useHermesReadiness } from "../../hooks/useHermesReadiness";
+import {
+  parseHermesVersion,
+  type ReadinessViewTarget,
+} from "../../lib/readiness";
 
 const LANGUAGE_LABEL_KEYS: Record<AppLocale, string> = {
   en: "settings.language.english",
   es: "settings.language.spanish",
   "pt-BR": "settings.language.portuguese",
   "zh-CN": "settings.language.chinese",
+};
+
+type SettingsProps = {
+  profile?: string;
+  onNavigate?: (view: ReadinessViewTarget) => void;
 };
 
 // Read cached values from localStorage for instant display
@@ -30,7 +40,7 @@ function getCachedOpenClaw(): { found: boolean; path: string | null } | null {
   }
 }
 
-function Settings({ profile }: { profile?: string }): React.JSX.Element {
+function Settings({ profile, onNavigate }: SettingsProps): React.JSX.Element {
   const { t, locale, setLocale } = useI18n();
   const [hermesHome, setHermesHome] = useState("");
   const { theme, setTheme } = useTheme();
@@ -103,6 +113,13 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
   const [dumpOutput, setDumpOutput] = useState<string | null>(null);
   const [dumpRunning, setDumpRunning] = useState(false);
 
+  const readiness = useHermesReadiness({
+    profile,
+    connectionMode: connMode,
+    remoteUrl: connRemoteUrl,
+    hermesVersion,
+  });
+
   const loadConfig = useCallback(async (): Promise<void> => {
     // Load fast config first (cached in main process)
     const [home, aVersion, conn] = await Promise.all([
@@ -156,7 +173,15 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
   }, [profile]);
 
   useEffect(() => {
-    loadConfig();
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) {
+        void loadConfig();
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [loadConfig]);
 
   async function handleMigrate(): Promise<void> {
@@ -244,6 +269,7 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
     setConnRemoteUrl("");
     setConnApiKey("");
     await window.hermesAPI.setConnectionConfig("local", "", "");
+    void readiness.refresh();
     setConnStatus(t("settings.switchedToLocal"));
     setTimeout(() => setConnStatus(null), 2000);
   }
@@ -315,27 +341,18 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
     const result = await window.hermesAPI.runHermesUpdate();
     setUpdating(false);
     if (result.success) {
-      setUpdateResult(t("settings.updateSuccess"));
+      setUpdateResult(t("settings.updatedSuccessfully"));
       setUpdateResultType("success");
       refreshVersion();
+      void readiness.refresh();
     } else {
       setUpdateResult(result.error || t("settings.updateFailed"));
       setUpdateResultType("error");
     }
   }
 
-  // Parse "Hermes Agent v0.7.0 (2026.4.3) Project: ... Python: 3.11.15 OpenAI SDK: 2.30.0 Update available: ..."
-  const parsedVersion = (() => {
-    if (!hermesVersion) return null;
-    const v = hermesVersion;
-    const version = v.match(/v([\d.]+)/)?.[1] || "";
-    const date = v.match(/\(([\d.]+)\)/)?.[1] || "";
-    const python = v.match(/Python:\s*([\d.]+)/)?.[1] || "";
-    const sdk = v.match(/OpenAI SDK:\s*([\d.]+)/)?.[1] || "";
-    const updateMatch = v.match(/Update available:\s*(.+?)(?:\s*—|$)/);
-    const updateInfo = updateMatch?.[1]?.trim() || null;
-    return { version, date, python, sdk, updateInfo };
-  })();
+  const parsedVersion = parseHermesVersion(hermesVersion);
+  const overviewItems = readiness.snapshot.overviewItems;
 
   return (
     <div className="settings-container">
@@ -471,6 +488,40 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
           {dumpOutput && (
             <pre className="settings-hermes-doctor">{dumpOutput}</pre>
           )}
+        </div>
+      </div>
+
+      <div className="settings-section">
+        <div className="settings-section-title">
+          {t("settings.sections.statusOverview")}
+        </div>
+        <div className="settings-overview-list">
+          {overviewItems.map((item) => (
+            <div key={item.label} className="settings-overview-item">
+              <div className="settings-overview-main">
+                <span className="settings-overview-label">{item.label}</span>
+                <span className="settings-overview-value">{item.value}</span>
+              </div>
+              <div className="settings-overview-meta">
+                {item.badge && (
+                  <span
+                    className={`settings-status-badge settings-status-${item.tone}`}
+                  >
+                    {item.badge}
+                  </span>
+                )}
+                {item.target && onNavigate && (
+                  <button
+                    className="btn btn-secondary btn-sm settings-overview-action"
+                    onClick={() => item.target && onNavigate(item.target)}
+                  >
+                    {item.actionLabel}
+                    <ArrowRight size={13} />
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 

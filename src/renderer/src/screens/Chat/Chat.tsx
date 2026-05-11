@@ -15,6 +15,8 @@ import {
   Bell,
   Slash,
   Zap,
+  AlertTriangle,
+  RefreshCw,
 } from "lucide-react";
 
 // ── Slash Commands ──────────────────────────────────────
@@ -199,6 +201,8 @@ interface ModelGroup {
 import { PROVIDERS } from "../../constants";
 import { useI18n } from "../../components/useI18n";
 import { modelSupportsFastMode } from "../../../../shared/modelCapabilities";
+import { useHermesReadiness } from "../../hooks/useHermesReadiness";
+import type { ReadinessViewTarget } from "../../lib/readiness";
 
 interface ChatProps {
   messages: ChatMessage[];
@@ -207,6 +211,7 @@ interface ChatProps {
   profile?: string;
   onSessionStarted?: () => void;
   onNewChat?: () => void;
+  onNavigate?: (view: ReadinessViewTarget) => void;
 }
 
 function Chat({
@@ -216,6 +221,7 @@ function Chat({
   profile,
   onSessionStarted,
   onNewChat,
+  onNavigate,
 }: ChatProps): React.JSX.Element {
   const { t } = useI18n();
   const [input, setInput] = useState("");
@@ -244,6 +250,7 @@ function Chat({
   const [showModelPicker, setShowModelPicker] = useState(false);
   const [customModelInput, setCustomModelInput] = useState("");
   const pickerRef = useRef<HTMLDivElement>(null);
+  const readiness = useHermesReadiness({ profile });
 
   // Slash command menu state
   const [slashMenuOpen, setSlashMenuOpen] = useState(false);
@@ -395,6 +402,7 @@ function Chat({
     setCurrentBaseUrl(baseUrl);
     setShowModelPicker(false);
     setCustomModelInput("");
+    void readiness.refresh();
   }
 
   async function handleCustomModelSubmit(): Promise<void> {
@@ -551,6 +559,8 @@ function Chat({
       }
     }
 
+    if (readiness.snapshot.chatIssue?.blocking) return;
+
     setIsLoading(true);
     setMessages((prev) => [
       ...prev,
@@ -573,6 +583,7 @@ function Chat({
   async function handleQuickAsk(): Promise<void> {
     const text = input.trim();
     if (!text || isLoading) return;
+    if (readiness.snapshot.chatIssue?.blocking) return;
     // /btw sends an ephemeral side question that doesn't pollute conversation context
     setInput("");
     if (inputRef.current) inputRef.current.style.height = "auto";
@@ -914,6 +925,7 @@ function Chat({
     () => messages.length > 0 && messages[messages.length - 1].role === "agent",
     [messages],
   );
+  const chatIssue = readiness.snapshot.chatIssue;
 
   return (
     <div className="chat-container">
@@ -957,6 +969,34 @@ function Chat({
           )}
         </div>
       </div>
+
+      {chatIssue && (
+        <div className={`chat-readiness chat-readiness-${chatIssue.tone}`}>
+          <AlertTriangle size={16} />
+          <div className="chat-readiness-copy">
+            <strong>{chatIssue.title}</strong>
+            <span>{chatIssue.message}</span>
+          </div>
+          <div className="chat-readiness-actions">
+            {onNavigate && (
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => onNavigate(chatIssue.target)}
+              >
+                {chatIssue.actionLabel}
+              </button>
+            )}
+            <button
+              className="btn-ghost chat-readiness-refresh"
+              onClick={() => void readiness.refresh()}
+              title={t("chat.readinessRefresh")}
+              type="button"
+            >
+              <RefreshCw size={14} />
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="chat-messages" ref={messagesContainerRef}>
         {messages.length === 0 ? (
@@ -1128,7 +1168,9 @@ function Chat({
               <button
                 className="chat-send-btn"
                 onClick={handleSend}
-                disabled={!input.trim()}
+                disabled={
+                  !input.trim() || !!readiness.snapshot.chatIssue?.blocking
+                }
                 title={t("chat.send")}
               >
                 <Send size={16} />

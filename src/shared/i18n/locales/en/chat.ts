@@ -30,6 +30,22 @@ export default {
     "Enable priority processing for lower latency on supported OpenAI GPT/o-series and Claude models.",
   fastModeUnavailable:
     "Fast Mode is only available for supported OpenAI GPT/o-series and Claude models.",
+  readinessInstallMissingTitle: "Hermes needs installation",
+  readinessInstallMissingMessage:
+    "Install Hermes before sending messages from Chat.",
+  readinessInstallRepairTitle: "Hermes needs repair",
+  readinessInstallRepairMessage:
+    "The local engine is installed but failed verification.",
+  readinessProviderSignInTitle: "Provider sign-in required",
+  readinessProviderSignInMessage:
+    "Sign in with ChatGPT to use your OpenAI Codex subscription.",
+  readinessProviderSetupTitle: "Provider needs setup",
+  readinessProviderSetupMessage:
+    "Choose an active provider or add credentials before sending messages.",
+  readinessRemoteTitle: "Remote connection missing",
+  readinessRemoteMessage:
+    "Add a remote URL or switch back to local mode before sending messages.",
+  readinessRefresh: "Check again",
   availableCommands: "Available Commands",
   categoryChat: "Chat",
   categoryAgent: "Agent",

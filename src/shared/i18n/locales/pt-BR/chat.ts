@@ -31,6 +31,22 @@ export default {
     "Ative o processamento prioritário para menor latência em modelos OpenAI GPT/o-series e Claude suportados.",
   fastModeUnavailable:
     "O Modo Rápido só está disponível para modelos OpenAI GPT/o-series e Claude suportados.",
+  readinessInstallMissingTitle: "O Hermes precisa ser instalado",
+  readinessInstallMissingMessage:
+    "Instale o Hermes antes de enviar mensagens pelo chat.",
+  readinessInstallRepairTitle: "O Hermes precisa de reparo",
+  readinessInstallRepairMessage:
+    "O motor local está instalado, mas falhou na verificação.",
+  readinessProviderSignInTitle: "Login do provedor necessário",
+  readinessProviderSignInMessage:
+    "Entre com o ChatGPT para usar sua assinatura OpenAI Codex.",
+  readinessProviderSetupTitle: "O provedor precisa de configuração",
+  readinessProviderSetupMessage:
+    "Escolha um provedor ativo ou adicione credenciais antes de enviar mensagens.",
+  readinessRemoteTitle: "Conexão remota ausente",
+  readinessRemoteMessage:
+    "Adicione uma URL remota ou volte ao modo local antes de enviar mensagens.",
+  readinessRefresh: "Verificar novamente",
   availableCommands: "Comandos Disponíveis",
   categoryChat: "Chat",
   categoryAgent: "Agente",

@@ -28,6 +28,19 @@ export default {
     "为支持的 OpenAI GPT/o 系列和 Claude 模型启用优先处理以降低延迟。",
   fastModeUnavailable:
     "快速模式仅适用于支持的 OpenAI GPT/o 系列和 Claude 模型。",
+  readinessInstallMissingTitle: "需要安装 Hermes",
+  readinessInstallMissingMessage: "请先安装 Hermes，然后再从聊天发送消息。",
+  readinessInstallRepairTitle: "Hermes 需要修复",
+  readinessInstallRepairMessage: "本地引擎已安装，但验证失败。",
+  readinessProviderSignInTitle: "需要登录提供商",
+  readinessProviderSignInMessage:
+    "请使用 ChatGPT 登录以使用你的 OpenAI Codex 订阅。",
+  readinessProviderSetupTitle: "需要配置提供商",
+  readinessProviderSetupMessage:
+    "请先选择可用提供商或添加凭据，然后再发送消息。",
+  readinessRemoteTitle: "缺少远程连接",
+  readinessRemoteMessage: "请先添加远程 URL 或切回本地模式，然后再发送消息。",
+  readinessRefresh: "重新检查",
   availableCommands: "可用命令",
   categoryChat: "聊天",
   categoryAgent: "代理",

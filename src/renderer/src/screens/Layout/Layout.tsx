@@ -219,6 +219,7 @@ function Layout(): React.JSX.Element {
             sessionId={currentSessionId}
             profile={activeProfile}
             onNewChat={handleNewChat}
+            onNavigate={setView}
           />
         </div>
         {view === "sessions" &&
@@ -310,7 +311,7 @@ function Layout(): React.JSX.Element {
             overflow: "hidden",
           }}
         >
-          <Settings profile={activeProfile} />
+          <Settings profile={activeProfile} onNavigate={setView} />
         </div>
       </main>
     </div>
