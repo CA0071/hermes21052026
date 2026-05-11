@@ -1,4 +1,8 @@
 import { BROWSER_AUTH_PROVIDER_IDS, PROVIDERS } from "../constants";
+import {
+  createProviderModelStatusItems,
+  selectedProviderStatus,
+} from "./providerModelStatus";
 
 export type ReadinessTone = "ok" | "warning" | "error" | "neutral";
 export type ReadinessViewTarget =
@@ -139,29 +143,6 @@ export function providerLabelKey(provider: string): string {
   );
 }
 
-function providerConfiguredFromEnv(
-  provider: string,
-  env: Record<string, string>,
-): boolean | null {
-  if (provider === "custom") return true;
-
-  const setup = PROVIDERS.setup.find((item) => {
-    return item.configProvider === provider || item.id === provider;
-  });
-  if (!setup) return null;
-  if (!setup.needsKey) return true;
-  if (!setup.envKey) return null;
-
-  return hasText(env[setup.envKey]);
-}
-
-function providerConfiguredFromPool(
-  provider: string,
-  pool: CredentialPoolSnapshot,
-): boolean {
-  return (pool[provider] || []).some((entry) => hasText(entry.key));
-}
-
 export function createHermesReadinessSnapshot(
   source: ReadinessSource,
   t: Translate,
@@ -179,6 +160,23 @@ export function createHermesReadinessSnapshot(
   const currentProviderAuth = source.providerAuth[currentProvider];
   const profileGatewayRunning =
     activeProfile?.gatewayRunning ?? source.gatewayRunning ?? false;
+  const currentModelConfig = {
+    provider: currentProvider,
+    model: currentModel,
+    baseUrl: source.modelConfig?.baseUrl || "",
+  };
+  const currentProviderStatus = selectedProviderStatus(
+    createProviderModelStatusItems({
+      modelConfig: currentModelConfig,
+      env: source.env,
+      credentialPool: source.credentialPool,
+      providerAuth: source.providerAuth,
+    }),
+  );
+  const providerReady =
+    source.connMode === "remote" ? true : Boolean(currentProviderStatus?.ready);
+  const providerChecking =
+    BROWSER_AUTH_PROVIDER_IDS.has(currentProvider) && !currentProviderAuth;
 
   const installOverview = (() => {
     if (source.installStatus === null) {
@@ -234,32 +232,6 @@ export function createHermesReadinessSnapshot(
     };
   })();
 
-  const providerEnvConfigured = providerConfiguredFromEnv(
-    currentProvider,
-    source.env,
-  );
-  const providerPoolConfigured = providerConfiguredFromPool(
-    currentProvider,
-    source.credentialPool,
-  );
-  const providerConfigured =
-    currentProvider === "custom" ||
-    providerEnvConfigured === true ||
-    providerPoolConfigured ||
-    (providerEnvConfigured === null &&
-      (!!activeProfile?.hasEnv ||
-        !!source.installStatus?.configured ||
-        !!source.installStatus?.hasApiKey));
-  const autoProviderConfigured =
-    currentProvider === "auto" &&
-    (!!activeProfile?.hasEnv ||
-      Object.values(source.env).some(hasText) ||
-      Object.values(source.credentialPool).some((entries) => {
-        return entries.some((entry) => hasText(entry.key));
-      }) ||
-      !!source.installStatus?.configured ||
-      !!source.installStatus?.hasApiKey);
-
   const providerOverview = (() => {
     if (source.connMode === "remote") {
       return {
@@ -295,10 +267,10 @@ export function createHermesReadinessSnapshot(
     }
     return {
       value: t(currentProviderLabelKey),
-      badge: providerConfigured
+      badge: providerReady
         ? t("settings.statusConfigured")
         : t("settings.statusNeedsSetup"),
-      tone: providerConfigured
+      tone: providerReady
         ? ("ok" as ReadinessTone)
         : ("warning" as ReadinessTone),
     };
@@ -425,19 +397,18 @@ export function createHermesReadinessSnapshot(
         blocking: true,
       };
     }
-    if (
-      source.connMode === "local" &&
-      currentProvider !== "custom" &&
-      !BROWSER_AUTH_PROVIDER_IDS.has(currentProvider) &&
-      !(currentProvider === "auto"
-        ? autoProviderConfigured
-        : providerConfigured)
-    ) {
+    if (source.connMode === "local" && !providerChecking && !providerReady) {
       return {
-        id: "provider-setup" as const,
+        id: BROWSER_AUTH_PROVIDER_IDS.has(currentProvider)
+          ? ("provider-signin" as const)
+          : ("provider-setup" as const),
         tone: "warning" as const,
-        title: t("chat.readinessProviderSetupTitle"),
-        message: t("chat.readinessProviderSetupMessage"),
+        title: BROWSER_AUTH_PROVIDER_IDS.has(currentProvider)
+          ? t("chat.readinessProviderSignInTitle")
+          : t("chat.readinessProviderSetupTitle"),
+        message: BROWSER_AUTH_PROVIDER_IDS.has(currentProvider)
+          ? t("chat.readinessProviderSignInMessage")
+          : t("chat.readinessProviderSetupMessage"),
         actionLabel: t("navigation.providers"),
         target: "providers" as const,
         blocking: true,

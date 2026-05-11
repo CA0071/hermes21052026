@@ -1916,6 +1916,32 @@ body {
   left: 0;
 }
 
+.chat-route-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 24px;
+  max-width: 260px;
+  padding: 3px 7px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: default;
+}
+
+.chat-route-status strong,
+.chat-route-status span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-route-status span {
+  opacity: 0.75;
+  font-weight: 500;
+}
+
 .chat-model-trigger {
   display: flex;
   align-items: center;
@@ -1999,6 +2025,39 @@ body {
 .chat-model-option.active {
   background: var(--accent-subtle);
   color: var(--accent-text);
+}
+
+.chat-model-fetch {
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 8px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+}
+
+.chat-model-fetch svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--accent-text);
+}
+
+.chat-model-fetch-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chat-model-fetch-title {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.chat-model-fetch-hint {
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.3;
 }
 
 .chat-model-option-label {

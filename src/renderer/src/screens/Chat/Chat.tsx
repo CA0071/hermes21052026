@@ -203,6 +203,10 @@ import { useI18n } from "../../components/useI18n";
 import { modelSupportsFastMode } from "../../../../shared/modelCapabilities";
 import { useHermesReadiness } from "../../hooks/useHermesReadiness";
 import type { ReadinessViewTarget } from "../../lib/readiness";
+import {
+  createProviderModelStatusItems,
+  selectedProviderStatus,
+} from "../../lib/providerModelStatus";
 
 interface ChatProps {
   messages: ChatMessage[];
@@ -559,7 +563,7 @@ function Chat({
       }
     }
 
-    if (readiness.snapshot.chatIssue?.blocking) return;
+    if (chatBlocked) return;
 
     setIsLoading(true);
     setMessages((prev) => [
@@ -583,7 +587,7 @@ function Chat({
   async function handleQuickAsk(): Promise<void> {
     const text = input.trim();
     if (!text || isLoading) return;
-    if (readiness.snapshot.chatIssue?.blocking) return;
+    if (chatBlocked) return;
     // /btw sends an ephemeral side question that doesn't pollute conversation context
     setInput("");
     if (inputRef.current) inputRef.current.style.height = "auto";
@@ -926,6 +930,38 @@ function Chat({
     [messages],
   );
   const chatIssue = readiness.snapshot.chatIssue;
+  const chatBlocked = readiness.loading || Boolean(chatIssue?.blocking);
+  const routeStatusItems = useMemo(
+    () =>
+      createProviderModelStatusItems({
+        modelConfig: readiness.source.modelConfig,
+        env: readiness.source.env,
+        credentialPool: readiness.source.credentialPool,
+        providerAuth:
+          readiness.source.modelConfig?.provider === "openai-codex" &&
+          readiness.source.providerAuth
+            ? { "openai-codex": readiness.source.providerAuth }
+            : {},
+      }),
+    [
+      readiness.source.credentialPool,
+      readiness.source.env,
+      readiness.source.modelConfig,
+      readiness.source.providerAuth,
+    ],
+  );
+  const routeStatus = selectedProviderStatus(routeStatusItems);
+  const routeStatusTone = readiness.loading
+    ? "neutral"
+    : (routeStatus?.tone ?? "neutral");
+  const routeStatusProvider = routeStatus
+    ? t(routeStatus.labelKey)
+    : t("constants.autoDetect");
+  const routeStatusLabel = readiness.loading
+    ? t("settings.statusChecking")
+    : routeStatus
+      ? t(routeStatus.sourceLabelKey)
+      : t("providers.statusNeedsSetup");
 
   return (
     <div className="chat-container">
@@ -1168,9 +1204,7 @@ function Chat({
               <button
                 className="chat-send-btn"
                 onClick={handleSend}
-                disabled={
-                  !input.trim() || !!readiness.snapshot.chatIssue?.blocking
-                }
+                disabled={!input.trim() || chatBlocked}
                 title={t("chat.send")}
               >
                 <Send size={16} />
@@ -1190,6 +1224,14 @@ function Chat({
             <span className="chat-model-name">{displayModel}</span>
             <ChevronDown size={12} />
           </button>
+
+          <span
+            className={`chat-route-status settings-status-${routeStatusTone}`}
+            title={`${routeStatusProvider}: ${routeStatusLabel}`}
+          >
+            <strong>{routeStatusProvider}</strong>
+            <span>{routeStatusLabel}</span>
+          </span>
 
           {fastModeSupported && (
             <div className="chat-fast-wrapper">
@@ -1217,6 +1259,26 @@ function Chat({
 
           {showModelPicker && (
             <div className="chat-model-dropdown">
+              {onNavigate && (
+                <button
+                  className="chat-model-option chat-model-fetch"
+                  onClick={() => {
+                    setShowModelPicker(false);
+                    onNavigate("models");
+                  }}
+                  type="button"
+                >
+                  <RefreshCw size={13} />
+                  <span className="chat-model-fetch-copy">
+                    <span className="chat-model-fetch-title">
+                      {t("chat.fetchModels")}
+                    </span>
+                    <span className="chat-model-fetch-hint">
+                      {t("chat.fetchModelsHint")}
+                    </span>
+                  </span>
+                </button>
+              )}
               {modelGroups.map((group) => (
                 <div key={group.provider} className="chat-model-group">
                   <div className="chat-model-group-label">

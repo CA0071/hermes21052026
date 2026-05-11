@@ -136,4 +136,61 @@ describe("Hermes readiness snapshot", () => {
     expect(snapshot.ready).toBe(false);
     expect(snapshot.chatIssue?.id).toBe("provider-setup");
   });
+
+  it("does not treat generic install credentials as auto provider readiness", () => {
+    const snapshot = createHermesReadinessSnapshot(
+      source({
+        installStatus: {
+          installed: true,
+          configured: true,
+          hasApiKey: true,
+          verified: true,
+        },
+        env: {},
+        modelConfig: {
+          provider: "auto",
+          model: "",
+          baseUrl: "",
+        },
+      }),
+      t,
+    );
+
+    expect(snapshot.ready).toBe(false);
+    expect(snapshot.chatIssue?.id).toBe("provider-setup");
+  });
+
+  it("allows selected included providers without API keys", () => {
+    const snapshot = createHermesReadinessSnapshot(
+      source({
+        env: {},
+        modelConfig: {
+          provider: "nous",
+          model: "",
+          baseUrl: "",
+        },
+      }),
+      t,
+    );
+
+    expect(snapshot.ready).toBe(true);
+    expect(snapshot.chatIssue).toBeNull();
+  });
+
+  it("requires a base URL for custom providers", () => {
+    const snapshot = createHermesReadinessSnapshot(
+      source({
+        env: {},
+        modelConfig: {
+          provider: "custom",
+          model: "",
+          baseUrl: "",
+        },
+      }),
+      t,
+    );
+
+    expect(snapshot.ready).toBe(false);
+    expect(snapshot.chatIssue?.id).toBe("provider-setup");
+  });
 });

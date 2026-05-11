@@ -10,6 +10,8 @@ export default {
   send: "Enviar",
   custom: "Personalizado",
   typeModelName: "Escribe el nombre del modelo...",
+  fetchModels: "Obtener modelos",
+  fetchModelsHint: "Buscar modelos disponibles para proveedores listos",
   emptyTitle: "¿Cómo puedo ayudarte hoy?",
   emptyHint:
     "Pídeme que escriba código, responda preguntas, busque en la web y más",
