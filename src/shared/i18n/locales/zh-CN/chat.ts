@@ -30,6 +30,13 @@ export default {
     "为支持的 OpenAI GPT/o 系列和 Claude 模型启用优先处理以降低延迟。",
   fastModeUnavailable:
     "快速模式仅适用于支持的 OpenAI GPT/o 系列和 Claude 模型。",
+  effortTitle: "推理强度",
+  effortNone: "关闭",
+  effortMinimal: "最低",
+  effortLow: "低",
+  effortMedium: "中",
+  effortHigh: "高",
+  effortXhigh: "最高",
   readinessInstallMissingTitle: "需要安装 Hermes",
   readinessInstallMissingMessage: "请先安装 Hermes，然后再从聊天发送消息。",
   readinessInstallRepairTitle: "Hermes 需要修复",

@@ -134,6 +134,90 @@ function scalarSectionValue(content: string, section: string): string | null {
   return value || null;
 }
 
+function topLevelValue(content: string, key: string): string | null {
+  const regex = new RegExp(
+    `^\\s*${escapeRegex(key)}:\\s*["']?([^"'\\n#]*)["']?`,
+    "m",
+  );
+  const match = content.match(regex);
+  const value = match?.[1]?.trim();
+  return match ? value || "" : null;
+}
+
+function upsertFlatConfigValue(
+  content: string,
+  key: string,
+  value: string,
+): string {
+  const regex = new RegExp(
+    `^(\\s*#?\\s*${escapeRegex(key)}:\\s*)["']?[^"'\\n#]*["']?`,
+    "m",
+  );
+
+  if (regex.test(content)) {
+    return content.replace(regex, `$1${yamlQuote(value)}`);
+  }
+
+  const prefix = content.trimEnd();
+  return `${prefix}${prefix ? "\n" : ""}${key}: ${yamlQuote(value)}\n`;
+}
+
+function upsertSectionConfigValue(
+  content: string,
+  section: string,
+  key: string,
+  value: string,
+): string {
+  const blockRe = new RegExp(
+    `^${escapeRegex(section)}:[ \\t]*\\n((?:[ \\t]+.*(?:\\r?\\n|$))*)`,
+    "m",
+  );
+  const blockMatch = content.match(blockRe);
+
+  if (blockMatch) {
+    const blockStart = blockMatch.index ?? 0;
+    const block = blockMatch[1];
+    const lineRe = new RegExp(
+      `^([ \\t]*${escapeRegex(key)}:[ \\t]*)["']?[^"'\\n#]*["']?`,
+      "m",
+    );
+    const nextBlock = lineRe.test(block)
+      ? block.replace(lineRe, `$1${yamlQuote(value)}`)
+      : `${block}${block.endsWith("\n") || block.length === 0 ? "" : "\n"}  ${key}: ${yamlQuote(value)}\n`;
+
+    return (
+      content.slice(0, blockStart) +
+      `${section}:\n${nextBlock}` +
+      content.slice(blockStart + blockMatch[0].length)
+    );
+  }
+
+  const scalarRe = new RegExp(
+    `^${escapeRegex(section)}:[ \\t]*["']?[^"'\\n#]*["']?.*$`,
+    "m",
+  );
+  const sectionBlock = `${section}:\n  ${key}: ${yamlQuote(value)}`;
+  if (scalarRe.test(content)) {
+    return content.replace(scalarRe, sectionBlock);
+  }
+
+  const prefix = content.trimEnd();
+  return `${prefix}${prefix ? "\n\n" : ""}${sectionBlock}\n`;
+}
+
+function upsertConfigValue(
+  content: string,
+  key: string,
+  value: string,
+): string {
+  const [section, nestedKey, ...rest] = key.split(".");
+  if (section && nestedKey && rest.length === 0) {
+    return upsertSectionConfigValue(content, section, nestedKey, value);
+  }
+
+  return upsertFlatConfigValue(content, key, value);
+}
+
 function upsertModelSection(
   content: string,
   provider: string,
@@ -267,12 +351,14 @@ export function getConfigValue(key: string, profile?: string): string | null {
   if (!existsSync(configFile)) return null;
 
   const content = readFileSync(configFile, "utf-8");
-  const regex = new RegExp(
-    `^\\s*${escapeRegex(key)}:\\s*["']?([^"'\\n#]+)["']?`,
-    "m",
-  );
-  const match = content.match(regex);
-  return match ? match[1].trim() : null;
+  const [section, nestedKey, ...rest] = key.split(".");
+  if (section && nestedKey && rest.length === 0) {
+    return (
+      sectionValue(content, section, nestedKey) ?? topLevelValue(content, key)
+    );
+  }
+
+  return topLevelValue(content, key);
 }
 
 export function setConfigValue(
@@ -281,17 +367,9 @@ export function setConfigValue(
   profile?: string,
 ): void {
   const { configFile } = profilePaths(profile);
-  if (!existsSync(configFile)) return;
+  let content = existsSync(configFile) ? readFileSync(configFile, "utf-8") : "";
 
-  let content = readFileSync(configFile, "utf-8");
-  const regex = new RegExp(
-    `^(\\s*#?\\s*${escapeRegex(key)}:\\s*)["']?[^"'\\n#]*["']?`,
-    "m",
-  );
-
-  if (regex.test(content)) {
-    content = content.replace(regex, `$1"${value}"`);
-  }
+  content = upsertConfigValue(content, key, value);
 
   safeWriteFile(configFile, content);
 }

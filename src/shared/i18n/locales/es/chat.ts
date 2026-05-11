@@ -33,6 +33,13 @@ export default {
     "Activa el procesamiento prioritario para reducir la latencia en modelos OpenAI GPT/o-series y Claude compatibles.",
   fastModeUnavailable:
     "El modo rápido solo está disponible para modelos OpenAI GPT/o-series y Claude compatibles.",
+  effortTitle: "Esfuerzo de razonamiento",
+  effortNone: "Desactivado",
+  effortMinimal: "Mínimo",
+  effortLow: "Bajo",
+  effortMedium: "Medio",
+  effortHigh: "Alto",
+  effortXhigh: "Máximo",
   readinessInstallMissingTitle: "Hermes necesita instalación",
   readinessInstallMissingMessage:
     "Instala Hermes antes de enviar mensajes desde el chat.",

@@ -15,6 +15,7 @@ import {
   Bell,
   Slash,
   Zap,
+  Brain,
   AlertTriangle,
   RefreshCw,
 } from "lucide-react";
@@ -200,13 +201,28 @@ interface ModelGroup {
 
 import { PROVIDERS } from "../../constants";
 import { useI18n } from "../../components/useI18n";
-import { modelSupportsFastMode } from "../../../../shared/modelCapabilities";
+import {
+  modelDefaultReasoningEffort,
+  modelReasoningEffortOptions,
+  modelSupportsFastMode,
+  normalizeReasoningEffort,
+  type ReasoningEffort,
+} from "../../../../shared/modelCapabilities";
 import { useHermesReadiness } from "../../hooks/useHermesReadiness";
 import type { ReadinessViewTarget } from "../../lib/readiness";
 import {
   createProviderModelStatusItems,
   selectedProviderStatus,
 } from "../../lib/providerModelStatus";
+
+const REASONING_EFFORT_LABEL_KEYS: Record<ReasoningEffort, string> = {
+  none: "chat.effortNone",
+  minimal: "chat.effortMinimal",
+  low: "chat.effortLow",
+  medium: "chat.effortMedium",
+  high: "chat.effortHigh",
+  xhigh: "chat.effortXhigh",
+};
 
 interface ChatProps {
   messages: ChatMessage[];
@@ -239,6 +255,8 @@ function Chat({
     cost?: number;
   } | null>(null);
   const [fastMode, setFastMode] = useState(false);
+  const [reasoningEffort, setReasoningEffort] =
+    useState<ReasoningEffort>("medium");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -252,6 +270,7 @@ function Chat({
   const [modelGroups, setModelGroups] = useState<ModelGroup[]>([]);
   const [modelConfigLoaded, setModelConfigLoaded] = useState(false);
   const [showModelPicker, setShowModelPicker] = useState(false);
+  const [showEffortPicker, setShowEffortPicker] = useState(false);
   const [customModelInput, setCustomModelInput] = useState("");
   const pickerRef = useRef<HTMLDivElement>(null);
   const readiness = useHermesReadiness({ profile });
@@ -280,6 +299,15 @@ function Chat({
     () => modelSupportsFastMode(currentModel),
     [currentModel],
   );
+
+  const reasoningEffortOptions = useMemo(
+    () => modelReasoningEffortOptions(currentModel, currentProvider),
+    [currentModel, currentProvider],
+  );
+  const effortSelectionSupported = reasoningEffortOptions.length > 0;
+  const activeReasoningEffort = reasoningEffortOptions.includes(reasoningEffort)
+    ? reasoningEffort
+    : modelDefaultReasoningEffort(currentModel, currentProvider);
 
   const scrollToBottom = useCallback((force?: boolean) => {
     if (!force && userScrolledUpRef.current) return;
@@ -349,23 +377,58 @@ function Chat({
     });
   }, [profile]);
 
+  // Load reasoning effort state from config
+  useEffect(() => {
+    let cancelled = false;
+    window.hermesAPI
+      .getConfig("agent.reasoning_effort", profile)
+      .then((val) => {
+        if (!cancelled) setReasoningEffort(normalizeReasoningEffort(val));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [profile]);
+
   useEffect(() => {
     if (!modelConfigLoaded || !fastMode || fastModeSupported) return;
     setFastMode(false);
     void window.hermesAPI.setConfig("agent.service_tier", "normal", profile);
   }, [fastMode, fastModeSupported, modelConfigLoaded, profile]);
 
+  useEffect(() => {
+    if (!modelConfigLoaded) return;
+    if (!effortSelectionSupported) {
+      setShowEffortPicker(false);
+      return;
+    }
+    if (reasoningEffortOptions.includes(reasoningEffort)) return;
+
+    const next = modelDefaultReasoningEffort(currentModel, currentProvider);
+    setReasoningEffort(next);
+    void window.hermesAPI.setConfig("agent.reasoning_effort", next, profile);
+  }, [
+    currentModel,
+    currentProvider,
+    effortSelectionSupported,
+    modelConfigLoaded,
+    profile,
+    reasoningEffort,
+    reasoningEffortOptions,
+  ]);
+
   // Close picker on click outside
   useEffect(() => {
-    if (!showModelPicker) return;
+    if (!showModelPicker && !showEffortPicker) return;
     function handleClickOutside(e: MouseEvent): void {
       if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
         setShowModelPicker(false);
+        setShowEffortPicker(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [showModelPicker]);
+  }, [showEffortPicker, showModelPicker]);
 
   // Close slash menu on click outside
   useEffect(() => {
@@ -401,10 +464,24 @@ function Chat({
       setFastMode(false);
       await window.hermesAPI.setConfig("agent.service_tier", "normal", profile);
     }
+    const nextEffortOptions = modelReasoningEffortOptions(model, provider);
+    if (
+      nextEffortOptions.length > 0 &&
+      !nextEffortOptions.includes(reasoningEffort)
+    ) {
+      const nextEffort = modelDefaultReasoningEffort(model, provider);
+      setReasoningEffort(nextEffort);
+      await window.hermesAPI.setConfig(
+        "agent.reasoning_effort",
+        nextEffort,
+        profile,
+      );
+    }
     setCurrentModel(model);
     setCurrentProvider(provider);
     setCurrentBaseUrl(baseUrl);
     setShowModelPicker(false);
+    setShowEffortPicker(false);
     setCustomModelInput("");
     void readiness.refresh();
   }
@@ -433,6 +510,13 @@ function Chat({
       next ? "fast" : "normal",
       profile,
     );
+  }
+
+  async function selectReasoningEffort(effort: ReasoningEffort): Promise<void> {
+    if (!reasoningEffortOptions.includes(effort)) return;
+    setReasoningEffort(effort);
+    setShowEffortPicker(false);
+    await window.hermesAPI.setConfig("agent.reasoning_effort", effort, profile);
   }
 
   // IPC listeners — stable callback refs, registered once
@@ -1220,12 +1304,50 @@ function Chat({
             className="chat-model-trigger"
             onClick={() => {
               if (!showModelPicker) loadModelConfig();
+              setShowEffortPicker(false);
               setShowModelPicker(!showModelPicker);
             }}
           >
             <span className="chat-model-name">{displayModel}</span>
             <ChevronDown size={12} />
           </button>
+
+          {effortSelectionSupported && (
+            <div className="chat-effort-wrapper">
+              <button
+                className="btn-ghost chat-effort-btn"
+                onClick={() => {
+                  setShowModelPicker(false);
+                  setShowEffortPicker((open) => !open);
+                }}
+                title={t("chat.effortTitle")}
+                type="button"
+              >
+                <Brain size={13} />
+                <span>
+                  {t(REASONING_EFFORT_LABEL_KEYS[activeReasoningEffort])}
+                </span>
+                <ChevronDown size={10} />
+              </button>
+              {showEffortPicker && (
+                <div className="chat-effort-menu">
+                  <div className="chat-effort-menu-label">
+                    {t("chat.effortTitle")}
+                  </div>
+                  {reasoningEffortOptions.map((effort) => (
+                    <button
+                      key={effort}
+                      className={`chat-effort-option ${activeReasoningEffort === effort ? "active" : ""}`}
+                      onClick={() => void selectReasoningEffort(effort)}
+                      type="button"
+                    >
+                      {t(REASONING_EFFORT_LABEL_KEYS[effort])}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           <span
             className={`chat-route-status settings-status-${routeStatusTone}`}

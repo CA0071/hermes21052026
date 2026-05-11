@@ -383,6 +383,12 @@ function setupIPC(): void {
         return true;
       }
       setConfigValue(key, value, profile);
+      if (
+        isGatewayRunning() &&
+        (key === "agent.reasoning_effort" || key === "agent.service_tier")
+      ) {
+        restartGateway(profile);
+      }
       return true;
     },
   );
