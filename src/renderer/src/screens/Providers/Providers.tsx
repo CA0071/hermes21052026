@@ -1,6 +1,11 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Check, ExternalLink, Refresh, Spinner } from "../../assets/icons";
-import { SETTINGS_SECTIONS, PROVIDERS } from "../../constants";
+import {
+  SETTINGS_SECTIONS,
+  PROVIDERS,
+  SUBSCRIPTION_PROVIDERS,
+  type SubscriptionProviderId,
+} from "../../constants";
 import { useI18n } from "../../components/useI18n";
 import {
   createProviderModelStatusItems,
@@ -21,17 +26,6 @@ type ProviderAuthStatus = {
   authenticated: boolean;
   detail: string;
 };
-
-const SUBSCRIPTION_PROVIDERS = [
-  {
-    id: "openai-codex",
-    name: "constants.openaiCodexName",
-    hint: "setup.codexAuthHint",
-    command: "setup.codexAuthCommand",
-  },
-] as const;
-
-type SubscriptionProviderId = (typeof SUBSCRIPTION_PROVIDERS)[number]["id"];
 
 const INITIAL_AUTH_CHECKING = Object.fromEntries(
   SUBSCRIPTION_PROVIDERS.map((provider) => [provider.id, true]),
@@ -255,11 +249,9 @@ function Providers({
   );
   const readyStatuses = readyProviderStatuses(providerStatusItems);
   const selectedStatus = selectedProviderStatus(providerStatusItems);
-  const visibleProviderStatuses = providerStatusItems.filter((item) => {
-    return item.provider === "auto"
-      ? item.selected
-      : item.ready || item.selected;
-  });
+  const visibleProviderStatuses = providerStatusItems.filter(
+    (item) => item.selected || item.activeForFetch,
+  );
 
   async function handleBlur(key: string): Promise<void> {
     const value = env[key] || "";

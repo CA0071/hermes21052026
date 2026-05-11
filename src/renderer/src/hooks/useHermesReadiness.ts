@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "../components/useI18n";
+import { SUBSCRIPTION_PROVIDERS } from "../constants";
 import {
   createHermesReadinessSnapshot,
   type CredentialPoolSnapshot,
   type InstallStatusSnapshot,
   type ModelConfigSnapshot,
   type ProfileSnapshot,
-  type ProviderAuthSnapshot,
+  type ProviderAuthStatusMap,
   type ReadinessSource,
 } from "../lib/readiness";
 
@@ -32,7 +33,7 @@ const INITIAL_DATA: ReadinessData = {
   profiles: [],
   env: {},
   credentialPool: {},
-  providerAuth: null,
+  providerAuth: {},
   gatewayRunning: null,
   connMode: "local",
   connRemoteUrl: "",
@@ -72,6 +73,7 @@ export function useHermesReadiness({
         gateway,
         connection,
         version,
+        providerAuthEntries,
       ] = await Promise.all([
         window.hermesAPI.checkInstall().catch(() => null),
         window.hermesAPI.getModelConfig(profile).catch(() => null),
@@ -85,24 +87,34 @@ export function useHermesReadiness({
         hasVersionOverride
           ? Promise.resolve(null)
           : window.hermesAPI.getHermesVersion().catch(() => null),
+        Promise.all(
+          SUBSCRIPTION_PROVIDERS.map(async (provider) => {
+            try {
+              const auth = await window.hermesAPI.getProviderAuthStatus(
+                provider.id,
+              );
+              return [
+                provider.id,
+                {
+                  authenticated: auth.authenticated,
+                  detail: auth.detail,
+                },
+              ] as const;
+            } catch (err) {
+              return [
+                provider.id,
+                {
+                  authenticated: false,
+                  detail: (err as Error).message,
+                },
+              ] as const;
+            }
+          }),
+        ),
       ]);
-
-      let providerAuth: ProviderAuthSnapshot | null = null;
-      if (model?.provider === "openai-codex") {
-        try {
-          const auth =
-            await window.hermesAPI.getProviderAuthStatus("openai-codex");
-          providerAuth = {
-            authenticated: auth.authenticated,
-            detail: auth.detail,
-          };
-        } catch (err) {
-          providerAuth = {
-            authenticated: false,
-            detail: (err as Error).message,
-          };
-        }
-      }
+      const providerAuth = Object.fromEntries(
+        providerAuthEntries,
+      ) as ProviderAuthStatusMap;
 
       if (requestIdRef.current !== requestId) return;
 

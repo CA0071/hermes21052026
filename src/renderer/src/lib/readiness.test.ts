@@ -27,7 +27,7 @@ function source(overrides: Partial<ReadinessSource> = {}): ReadinessSource {
       OPENROUTER_API_KEY: "sk-test",
     },
     credentialPool: {},
-    providerAuth: null,
+    providerAuth: {},
     gatewayRunning: false,
     connMode: "local",
     connRemoteUrl: "",
@@ -60,8 +60,10 @@ describe("Hermes readiness snapshot", () => {
           baseUrl: "",
         },
         providerAuth: {
-          authenticated: false,
-          detail: "not signed in",
+          "openai-codex": {
+            authenticated: false,
+            detail: "not signed in",
+          },
         },
       }),
       t,

@@ -1,4 +1,4 @@
-import { PROVIDERS } from "../constants";
+import { BROWSER_AUTH_PROVIDER_IDS, PROVIDERS } from "../constants";
 
 export type ReadinessTone = "ok" | "warning" | "error" | "neutral";
 export type ReadinessViewTarget =
@@ -38,6 +38,11 @@ export type ProviderAuthSnapshot = {
   detail: string;
 };
 
+export type ProviderAuthStatusMap = Record<
+  string,
+  ProviderAuthSnapshot | null | undefined
+>;
+
 export type CredentialPoolSnapshot = Record<
   string,
   Array<{ key: string; label: string }>
@@ -58,7 +63,7 @@ export type ReadinessSource = {
   profiles: ProfileSnapshot[];
   env: Record<string, string>;
   credentialPool: CredentialPoolSnapshot;
-  providerAuth: ProviderAuthSnapshot | null;
+  providerAuth: ProviderAuthStatusMap;
   gatewayRunning: boolean | null;
   connMode: "local" | "remote";
   connRemoteUrl: string;
@@ -171,6 +176,7 @@ export function createHermesReadinessSnapshot(
     source.modelConfig?.provider || activeProfile?.provider || "auto";
   const currentModel = source.modelConfig?.model || activeProfile?.model || "";
   const currentProviderLabelKey = providerLabelKey(currentProvider);
+  const currentProviderAuth = source.providerAuth[currentProvider];
   const profileGatewayRunning =
     activeProfile?.gatewayRunning ?? source.gatewayRunning ?? false;
 
@@ -262,8 +268,8 @@ export function createHermesReadinessSnapshot(
         tone: "neutral" as ReadinessTone,
       };
     }
-    if (currentProvider === "openai-codex") {
-      if (source.providerAuth === null) {
+    if (BROWSER_AUTH_PROVIDER_IDS.has(currentProvider)) {
+      if (!currentProviderAuth) {
         return {
           value: t(currentProviderLabelKey),
           badge: t("settings.statusChecking"),
@@ -272,10 +278,10 @@ export function createHermesReadinessSnapshot(
       }
       return {
         value: t(currentProviderLabelKey),
-        badge: source.providerAuth.authenticated
+        badge: currentProviderAuth.authenticated
           ? t("settings.providerAuthSignedIn")
           : t("settings.providerAuthNotSignedIn"),
-        tone: source.providerAuth.authenticated
+        tone: currentProviderAuth.authenticated
           ? ("ok" as ReadinessTone)
           : ("warning" as ReadinessTone),
       };
@@ -405,9 +411,9 @@ export function createHermesReadinessSnapshot(
       };
     }
     if (
-      currentProvider === "openai-codex" &&
-      source.providerAuth &&
-      !source.providerAuth.authenticated
+      BROWSER_AUTH_PROVIDER_IDS.has(currentProvider) &&
+      currentProviderAuth &&
+      !currentProviderAuth.authenticated
     ) {
       return {
         id: "provider-signin" as const,
@@ -422,7 +428,7 @@ export function createHermesReadinessSnapshot(
     if (
       source.connMode === "local" &&
       currentProvider !== "custom" &&
-      currentProvider !== "openai-codex" &&
+      !BROWSER_AUTH_PROVIDER_IDS.has(currentProvider) &&
       !(currentProvider === "auto"
         ? autoProviderConfigured
         : providerConfigured)

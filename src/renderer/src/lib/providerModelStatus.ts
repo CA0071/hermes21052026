@@ -1,15 +1,10 @@
-import { PROVIDERS } from "../constants";
+import { BROWSER_AUTH_PROVIDER_IDS, PROVIDERS } from "../constants";
 import type {
   CredentialPoolSnapshot,
   ModelConfigSnapshot,
-  ProviderAuthSnapshot,
+  ProviderAuthStatusMap,
   ReadinessTone,
 } from "./readiness";
-
-export type ProviderAuthStatusMap = Record<
-  string,
-  ProviderAuthSnapshot | null | undefined
->;
 
 export type ProviderAuthSource =
   | "api-key"
@@ -51,8 +46,6 @@ const SOURCE_LABEL_KEYS: Record<ProviderAuthSource, string> = {
   missing: "providers.authSourceMissing",
 };
 
-const BROWSER_AUTH_PROVIDERS = new Set(["openai-codex"]);
-
 function hasText(value: unknown): boolean {
   return typeof value === "string" && value.trim().length > 0;
 }
@@ -90,7 +83,7 @@ function providerSource(
   }
 
   const auth = source.providerAuth?.[provider];
-  if (BROWSER_AUTH_PROVIDERS.has(provider)) {
+  if (BROWSER_AUTH_PROVIDER_IDS.has(provider)) {
     return auth?.authenticated ? "browser-auth" : "missing";
   }
 
@@ -103,7 +96,7 @@ function providerSource(
     return "api-key";
   }
 
-  if (setup && !setup.needsKey && selected) {
+  if (setup && !setup.needsKey) {
     return "included";
   }
 

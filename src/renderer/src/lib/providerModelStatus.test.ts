@@ -91,7 +91,7 @@ describe("provider model status", () => {
     ).toContain("anthropic");
   });
 
-  it("does not mark inactive no-key providers ready by default", () => {
+  it("marks included providers ready even when they are not selected", () => {
     const statusItems = items({
       modelConfig: {
         provider: "auto",
@@ -101,8 +101,23 @@ describe("provider model status", () => {
     });
 
     expect(selectedProviderStatus(statusItems)?.provider).toBe("auto");
-    expect(selectedProviderStatus(statusItems)?.ready).toBe(false);
-    expect(readyProviderStatuses(statusItems)).toEqual([]);
+    expect(selectedProviderStatus(statusItems)?.ready).toBe(true);
+    expect(
+      readyProviderStatuses(statusItems).map((item) => item.provider),
+    ).toContain("nous");
+  });
+
+  it("does not mark browser auth providers ready until authenticated", () => {
+    const status = items({
+      modelConfig: {
+        provider: "auto",
+        model: "",
+        baseUrl: "",
+      },
+    }).find((item) => item.provider === "openai-codex");
+
+    expect(status?.ready).toBe(false);
+    expect(status?.source).toBe("missing");
   });
 
   it("marks selected included providers ready", () => {

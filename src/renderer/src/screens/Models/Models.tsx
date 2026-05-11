@@ -306,9 +306,7 @@ function Models({ profile }: { profile?: string }): React.JSX.Element {
         modelConfig: readiness.source.modelConfig,
         env: readiness.source.env,
         credentialPool: readiness.source.credentialPool,
-        providerAuth: readiness.source.providerAuth
-          ? { "openai-codex": readiness.source.providerAuth }
-          : {},
+        providerAuth: readiness.source.providerAuth,
       }),
     [
       readiness.source.credentialPool,
@@ -319,11 +317,9 @@ function Models({ profile }: { profile?: string }): React.JSX.Element {
   );
   const readyStatuses = readyProviderStatuses(providerStatusItems);
   const selectedStatus = selectedProviderStatus(providerStatusItems);
-  const visibleProviderStatuses = providerStatusItems.filter((item) => {
-    return item.provider === "auto"
-      ? item.selected
-      : item.ready || item.selected;
-  });
+  const visibleProviderStatuses = providerStatusItems.filter(
+    (item) => item.selected || item.activeForFetch,
+  );
 
   if (loading) {
     return (

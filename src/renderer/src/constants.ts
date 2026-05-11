@@ -142,6 +142,22 @@ export const PROVIDERS = {
   ],
 };
 
+export const SUBSCRIPTION_PROVIDERS = [
+  {
+    id: "openai-codex",
+    name: "constants.openaiCodexName",
+    hint: "setup.codexAuthHint",
+    command: "setup.codexAuthCommand",
+  },
+] as const;
+
+export type SubscriptionProviderId =
+  (typeof SUBSCRIPTION_PROVIDERS)[number]["id"];
+
+export const BROWSER_AUTH_PROVIDER_IDS = new Set<string>(
+  SUBSCRIPTION_PROVIDERS.map((provider) => provider.id),
+);
+
 export interface LocalPreset {
   id: string;
   name: string;
