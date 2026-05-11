@@ -288,6 +288,10 @@ function Chat({
     }
   }, [messages]);
 
+  useEffect(() => {
+    setHermesSessionId(sessionId);
+  }, [sessionId]);
+
   const loadModelConfig = useCallback(async (): Promise<void> => {
     const [mc, savedModels] = await Promise.all([
       window.hermesAPI.getModelConfig(profile),

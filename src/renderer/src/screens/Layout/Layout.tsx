@@ -221,29 +221,23 @@ function Layout(): React.JSX.Element {
             onNewChat={handleNewChat}
           />
         </div>
-        {view === "sessions" &&
-          (remoteMode ? (
-            <RemoteNotice feature="Sessions" />
-          ) : (
-            <Sessions
-              onResumeSession={handleResumeSession}
-              onNewChat={handleNewChat}
-              currentSessionId={currentSessionId}
-            />
-          ))}
-        {view === "agents" &&
-          (remoteMode ? (
-            <RemoteNotice feature="Profiles" />
-          ) : (
-            <Agents
-              activeProfile={activeProfile}
-              onSelectProfile={handleSelectProfile}
-              onChatWith={(name: string) => {
-                handleSelectProfile(name);
-                setView("chat");
-              }}
-            />
-          ))}
+        {view === "sessions" && (
+          <Sessions
+            onResumeSession={handleResumeSession}
+            onNewChat={handleNewChat}
+            currentSessionId={currentSessionId}
+          />
+        )}
+        {view === "agents" && (
+          <Agents
+            activeProfile={activeProfile}
+            onSelectProfile={handleSelectProfile}
+            onChatWith={(name: string) => {
+              handleSelectProfile(name);
+              setView("chat");
+            }}
+          />
+        )}
         {officeVisited && (
           <div
             style={{
@@ -271,37 +265,12 @@ function Layout(): React.JSX.Element {
             <Providers profile={activeProfile} visible={view === "providers"} />
           )}
         </div>
-        {view === "skills" &&
-          (remoteMode ? (
-            <RemoteNotice feature="Skills" />
-          ) : (
-            <Skills profile={activeProfile} />
-          ))}
-        {view === "soul" &&
-          (remoteMode ? (
-            <RemoteNotice feature="Persona" />
-          ) : (
-            <Soul profile={activeProfile} />
-          ))}
-        {view === "memory" &&
-          (remoteMode ? (
-            <RemoteNotice feature="Memory" />
-          ) : (
-            <Memory profile={activeProfile} />
-          ))}
-        {view === "tools" &&
-          (remoteMode ? (
-            <RemoteNotice feature="Tools" />
-          ) : (
-            <Tools profile={activeProfile} />
-          ))}
+        {view === "skills" && <Skills profile={activeProfile} />}
+        {view === "soul" && <Soul profile={activeProfile} />}
+        {view === "memory" && <Memory profile={activeProfile} />}
+        {view === "tools" && <Tools profile={activeProfile} />}
         {view === "schedules" && <Schedules profile={activeProfile} />}
-        {view === "gateway" &&
-          (remoteMode ? (
-            <RemoteNotice feature="Gateway" />
-          ) : (
-            <Gateway profile={activeProfile} />
-          ))}
+        {view === "gateway" && <Gateway profile={activeProfile} />}
         <div
           style={{
             display: view === "settings" ? "flex" : "none",
