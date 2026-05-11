@@ -1,4 +1,5 @@
 const OPENAI_FAST_MODE_PREFIXES = ["gpt-", "o1", "o3", "o4"] as const;
+const OPENAI_REASONING_PREFIXES = ["gpt-5", "gpt-6", "o1", "o3", "o4"] as const;
 
 export type ReasoningEffort =
   | "none"
@@ -86,13 +87,7 @@ function supportsOpenAIReasoningEffort(
 ): boolean {
   const providerId = normalizedProvider(provider);
   if (providerId === "openai-codex" || base.includes("codex")) return true;
-  return (
-    base.startsWith("gpt-5") ||
-    base.startsWith("gpt-6") ||
-    base.startsWith("o1") ||
-    base.startsWith("o3") ||
-    base.startsWith("o4")
-  );
+  return OPENAI_REASONING_PREFIXES.some((prefix) => base.startsWith(prefix));
 }
 
 function supportsGrokReasoningEffort(base: string): boolean {

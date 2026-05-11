@@ -464,19 +464,6 @@ function Chat({
       setFastMode(false);
       await window.hermesAPI.setConfig("agent.service_tier", "normal", profile);
     }
-    const nextEffortOptions = modelReasoningEffortOptions(model, provider);
-    if (
-      nextEffortOptions.length > 0 &&
-      !nextEffortOptions.includes(reasoningEffort)
-    ) {
-      const nextEffort = modelDefaultReasoningEffort(model, provider);
-      setReasoningEffort(nextEffort);
-      await window.hermesAPI.setConfig(
-        "agent.reasoning_effort",
-        nextEffort,
-        profile,
-      );
-    }
     setCurrentModel(model);
     setCurrentProvider(provider);
     setCurrentBaseUrl(baseUrl);

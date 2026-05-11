@@ -180,6 +180,10 @@ process.on("unhandledRejection", (reason) => {
 
 let mainWindow: BrowserWindow | null = null;
 let currentChatAbort: (() => void) | null = null;
+const GATEWAY_RESTART_CONFIG_KEYS = new Set([
+  "agent.reasoning_effort",
+  "agent.service_tier",
+]);
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -383,10 +387,7 @@ function setupIPC(): void {
         return true;
       }
       setConfigValue(key, value, profile);
-      if (
-        isGatewayRunning() &&
-        (key === "agent.reasoning_effort" || key === "agent.service_tier")
-      ) {
+      if (isGatewayRunning() && GATEWAY_RESTART_CONFIG_KEYS.has(key)) {
         restartGateway(profile);
       }
       return true;
