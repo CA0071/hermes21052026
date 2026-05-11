@@ -1,5 +1,12 @@
-import { ElectronAPI } from "@electron-toolkit/preload";
 import type { AppLocale } from "../shared/i18n/types";
+
+interface ElectronAPI {
+  process: {
+    versions: NodeJS.ProcessVersions;
+    type: string | undefined;
+    platform: NodeJS.Platform;
+  };
+}
 
 interface InstallStatus {
   installed: boolean;
@@ -465,3 +472,5 @@ declare global {
     hermesAPI: HermesAPI;
   }
 }
+
+export {};

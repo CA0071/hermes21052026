@@ -7,6 +7,7 @@ import {
   Notification,
 } from "electron";
 import { join } from "path";
+import { URL as NodeURL } from "url";
 import { electronApp, optimizer, is } from "@electron-toolkit/utils";
 import type { AppUpdater } from "electron-updater";
 import icon from "../../resources/icon.png?asset";
@@ -163,6 +164,30 @@ import {
   sshDiscoverMemoryProviders,
 } from "./ssh-remote";
 
+/**
+ * [SECURITY FIX] Validate URLs before opening them externally.
+ * Only http:, https:, and mailto: protocols are allowed.
+ * Prevents abuse via file://, javascript:, or custom protocol handlers.
+ */
+const ALLOWED_EXTERNAL_PROTOCOLS = new Set(["http:", "https:", "mailto:"]);
+
+function safeOpenExternal(urlStr: string): boolean {
+  try {
+    const url = new NodeURL(urlStr);
+    if (!ALLOWED_EXTERNAL_PROTOCOLS.has(url.protocol)) {
+      console.warn(
+        `[SECURITY] Blocked openExternal for disallowed protocol: ${url.protocol} (${urlStr})`,
+      );
+      return false;
+    }
+    shell.openExternal(urlStr);
+    return true;
+  } catch {
+    console.warn(`[SECURITY] Blocked invalid URL for openExternal: ${urlStr}`);
+    return false;
+  }
+}
+
 process.on("uncaughtException", (err) => {
   console.error("[MAIN UNCAUGHT]", err);
 });
@@ -189,9 +214,26 @@ function createWindow(): void {
     ...(process.platform === "linux" ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, "../preload/index.js"),
-      sandbox: false,
+      sandbox: true,
       webviewTag: true,
     },
+  });
+
+  // [SECURITY FIX] Secure webview attachments
+  mainWindow.webContents.on("will-attach-webview", (event, webPreferences, params) => {
+    const url = new NodeURL(params.src);
+    // Only allow localhost/127.0.0.1 origins
+    if (url.hostname !== "localhost" && url.hostname !== "127.0.0.1") {
+      event.preventDefault();
+      return;
+    }
+    // Force security settings for the webview
+    webPreferences.nodeIntegration = false;
+    webPreferences.contextIsolation = true;
+    webPreferences.sandbox = true;
+    // Strip dangerous params
+    delete (webPreferences as any).preload;
+    delete (webPreferences as any).preloadURL;
   });
 
   mainWindow.on("ready-to-show", () => {
@@ -223,7 +265,8 @@ function createWindow(): void {
   );
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url);
+    // [SECURITY FIX] Validate URL protocol before opening externally
+    safeOpenExternal(details.url);
     return { action: "deny" };
   });
 
@@ -902,7 +945,8 @@ function setupIPC(): void {
 
   // Shell
   ipcMain.handle("open-external", (_event, url: string) => {
-    shell.openExternal(url);
+    // [SECURITY FIX] Validate URL protocol before opening
+    safeOpenExternal(url);
   });
 
   // Backup / Import
