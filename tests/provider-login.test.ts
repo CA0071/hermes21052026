@@ -5,7 +5,9 @@ vi.mock("electron", () => ({
 }));
 
 import {
+  getProviderLoginArgs,
   isProviderAuthenticated,
+  mergeProviderLoginProgress,
   parseProviderLoginOutput,
 } from "../src/main/providerLogin";
 
@@ -32,6 +34,38 @@ Waiting for sign-in... (press Ctrl+C to cancel)
 
   it("recognizes explicit provider logged-in status", () => {
     expect(isProviderAuthenticated("openai-codex: logged in")).toBe(true);
+  });
+
+  it("uses the current Hermes auth command for browser sign-in", () => {
+    expect(getProviderLoginArgs("openai-codex").slice(1)).toEqual([
+      "auth",
+      "add",
+      "openai-codex",
+      "--type",
+      "oauth",
+      "--no-browser",
+    ]);
+  });
+
+  it("clears stale device-code fields when sign-in finishes", () => {
+    const next = mergeProviderLoginProgress(
+      {
+        provider: "openai-codex",
+        status: "waiting",
+        detail: "Waiting for sign-in...",
+        log: "",
+        verificationUrl: "https://auth.openai.com/codex/device",
+        userCode: "ABCD-EFGH",
+      },
+      {
+        status: "success",
+        detail: "Signed in. You can continue.",
+      },
+    );
+
+    expect(next.status).toBe("success");
+    expect(next.verificationUrl).toBeUndefined();
+    expect(next.userCode).toBeUndefined();
   });
 
   it("does not treat logged-out or negative status as signed in", () => {

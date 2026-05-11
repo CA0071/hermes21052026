@@ -49,7 +49,7 @@ export default {
   codexAuthTitle: "Use sua assinatura do ChatGPT",
   codexAuthHint:
     "Entre com o ChatGPT no navegador. O Hermes salva a autenticacao do Codex separada das chaves de API da OpenAI.",
-  codexAuthCommand: "hermes login --provider openai-codex",
+  codexAuthCommand: "hermes auth add openai-codex --type oauth",
   codexLoginButton: "Entrar com ChatGPT",
   codexLoginButtonRunning: "Aguardando login...",
   codexLoginButtonSignedIn: "Conectado",

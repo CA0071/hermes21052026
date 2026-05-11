@@ -28,6 +28,10 @@ const SUBSCRIPTION_PROVIDERS = [
 
 type SubscriptionProviderId = (typeof SUBSCRIPTION_PROVIDERS)[number]["id"];
 
+const INITIAL_AUTH_CHECKING = Object.fromEntries(
+  SUBSCRIPTION_PROVIDERS.map((provider) => [provider.id, true]),
+) as Record<SubscriptionProviderId, boolean>;
+
 function Providers({
   profile,
   visible,
@@ -62,12 +66,25 @@ function Providers({
   const [authStatuses, setAuthStatuses] = useState<
     Record<string, ProviderAuthStatus>
   >({});
-  const [authChecking, setAuthChecking] = useState<Record<string, boolean>>({});
+  const [authChecking, setAuthChecking] = useState<Record<string, boolean>>(
+    INITIAL_AUTH_CHECKING,
+  );
   const [loginProgress, setLoginProgress] =
     useState<ProviderLoginProgress | null>(null);
   const [loginRunningProvider, setLoginRunningProvider] = useState<
     string | null
   >(null);
+  const [copiedAuthCodeProvider, setCopiedAuthCodeProvider] = useState<
+    string | null
+  >(null);
+  const copiedAuthCodeTimer = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+
+  const clearProviderLoginProgress = useCallback((providerId: string): void => {
+    setLoginProgress((prev) => (prev?.provider === providerId ? null : prev));
+    setCopiedAuthCodeProvider((prev) => (prev === providerId ? null : prev));
+  }, []);
 
   const loadConfig = useCallback(async (): Promise<void> => {
     const [envData, mc, pool] = await Promise.all([
@@ -89,6 +106,7 @@ function Providers({
   const refreshProviderAuthStatus = useCallback(
     async (providerId: SubscriptionProviderId): Promise<void> => {
       setAuthChecking((prev) => ({ ...prev, [providerId]: true }));
+      clearProviderLoginProgress(providerId);
       try {
         const status = await window.hermesAPI.getProviderAuthStatus(providerId);
         setAuthStatuses((prev) => ({
@@ -98,6 +116,9 @@ function Providers({
             detail: status.detail,
           },
         }));
+        if (status.authenticated) {
+          clearProviderLoginProgress(providerId);
+        }
       } catch (err) {
         setAuthStatuses((prev) => ({
           ...prev,
@@ -110,7 +131,7 @@ function Providers({
         setAuthChecking((prev) => ({ ...prev, [providerId]: false }));
       }
     },
-    [],
+    [clearProviderLoginProgress],
   );
 
   useEffect(() => {
@@ -128,13 +149,6 @@ function Providers({
         return;
       }
 
-      setLoginProgress(progress);
-      setLoginRunningProvider(
-        progress.status === "starting" || progress.status === "waiting"
-          ? progress.provider
-          : null,
-      );
-
       if (progress.status === "success") {
         setAuthStatuses((prev) => ({
           ...prev,
@@ -143,8 +157,26 @@ function Providers({
             detail: progress.detail,
           },
         }));
+        setLoginRunningProvider(null);
+        clearProviderLoginProgress(progress.provider);
+        return;
       }
+
+      setLoginProgress(progress);
+      setLoginRunningProvider(
+        progress.status === "starting" || progress.status === "waiting"
+          ? progress.provider
+          : null,
+      );
     });
+  }, [clearProviderLoginProgress]);
+
+  useEffect(() => {
+    return () => {
+      if (copiedAuthCodeTimer.current) {
+        clearTimeout(copiedAuthCodeTimer.current);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -242,6 +274,11 @@ function Providers({
   async function handleProviderSignIn(
     providerId: SubscriptionProviderId,
   ): Promise<void> {
+    if (authStatuses[providerId]?.authenticated) {
+      clearProviderLoginProgress(providerId);
+      return;
+    }
+
     setLoginRunningProvider(providerId);
     setLoginProgress({
       provider: providerId,
@@ -271,6 +308,20 @@ function Providers({
       });
     }
     setLoginRunningProvider(null);
+  }
+
+  async function handleCopyAuthCode(
+    providerId: SubscriptionProviderId,
+    userCode: string,
+  ): Promise<void> {
+    await navigator.clipboard.writeText(userCode);
+    setCopiedAuthCodeProvider(providerId);
+    if (copiedAuthCodeTimer.current) {
+      clearTimeout(copiedAuthCodeTimer.current);
+    }
+    copiedAuthCodeTimer.current = setTimeout(() => {
+      setCopiedAuthCodeProvider((prev) => (prev === providerId ? null : prev));
+    }, 2000);
   }
 
   async function handleCancelProviderSignIn(): Promise<void> {
@@ -414,12 +465,16 @@ function Providers({
             const isSignedIn =
               authStatuses[subscriptionProvider.id]?.authenticated ||
               progress?.status === "success";
+            const copiedCode =
+              copiedAuthCodeProvider === subscriptionProvider.id;
+            const badgeText = isChecking
+              ? t("settings.providerAuthChecking")
+              : isSignedIn
+                ? t("settings.providerAuthSignedIn")
+                : t("settings.providerAuthNotSignedIn");
 
             return (
-              <div
-                className="settings-auth-card"
-                key={subscriptionProvider.id}
-              >
+              <div className="settings-auth-card" key={subscriptionProvider.id}>
                 <div className="settings-auth-card-header">
                   <div>
                     <div className="settings-auth-title">
@@ -430,11 +485,11 @@ function Providers({
                     </div>
                   </div>
                   <span
-                    className={`settings-auth-badge ${isSignedIn ? "signed-in" : ""}`}
+                    className={`settings-auth-badge ${
+                      isSignedIn ? "signed-in" : isChecking ? "checking" : ""
+                    }`}
                   >
-                    {isSignedIn
-                      ? t("settings.providerAuthSignedIn")
-                      : t("settings.providerAuthNotSignedIn")}
+                    {badgeText}
                   </span>
                 </div>
 
@@ -444,7 +499,9 @@ function Providers({
                     onClick={() =>
                       handleProviderSignIn(subscriptionProvider.id)
                     }
-                    disabled={isChecking || Boolean(loginRunningProvider)}
+                    disabled={
+                      isChecking || Boolean(loginRunningProvider) || isSignedIn
+                    }
                     type="button"
                   >
                     {isRunning ? (
@@ -488,9 +545,7 @@ function Providers({
                     <button
                       className="btn btn-secondary btn-sm settings-auth-action"
                       onClick={() =>
-                        window.hermesAPI.openExternal(
-                          progress.verificationUrl!,
-                        )
+                        window.hermesAPI.openExternal(progress.verificationUrl!)
                       }
                       type="button"
                     >
@@ -503,7 +558,23 @@ function Providers({
                 {progress?.userCode && (
                   <div className="settings-auth-code-row">
                     <span>{t("setup.codexUserCodeLabel")}</span>
-                    <code>{progress.userCode}</code>
+                    <button
+                      aria-label={`${t("common.copy")} ${t("setup.codexUserCodeLabel")}`}
+                      className="settings-auth-code-button"
+                      onClick={() =>
+                        handleCopyAuthCode(
+                          subscriptionProvider.id,
+                          progress.userCode!,
+                        )
+                      }
+                      title={t("common.copy")}
+                      type="button"
+                    >
+                      <code>{progress.userCode}</code>
+                      <span>
+                        {copiedCode ? t("common.copied") : t("common.copy")}
+                      </span>
+                    </button>
                   </div>
                 )}
 

@@ -24,7 +24,10 @@ export default {
   fastMode: "快速模式",
   fastModeOn: "快速模式 开启",
   fastModeActive: "优先处理已激活 — 在支持的模型上降低延迟。点击禁用。",
-  fastModeInactive: "启用优先处理以降低 OpenAI 和 Anthropic 模型的延迟。",
+  fastModeInactive:
+    "为支持的 OpenAI GPT/o 系列和 Claude 模型启用优先处理以降低延迟。",
+  fastModeUnavailable:
+    "快速模式仅适用于支持的 OpenAI GPT/o 系列和 Claude 模型。",
   availableCommands: "可用命令",
   categoryChat: "聊天",
   categoryAgent: "代理",

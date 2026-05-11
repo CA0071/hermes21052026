@@ -42,7 +42,7 @@ export default {
   codexAuthTitle: "使用你的 ChatGPT 订阅",
   codexAuthHint:
     "在浏览器中登录 ChatGPT。Hermes 会将 Codex 登录信息与 OpenAI API Key 分开保存。",
-  codexAuthCommand: "hermes login --provider openai-codex",
+  codexAuthCommand: "hermes auth add openai-codex --type oauth",
   codexLoginButton: "使用 ChatGPT 登录",
   codexLoginButtonRunning: "等待登录中...",
   codexLoginButtonSignedIn: "已登录",

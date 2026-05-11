@@ -256,7 +256,7 @@ function Layout(): React.JSX.Element {
             <Office visible={view === "office"} />
           </div>
         )}
-        {view === "models" && <Models />}
+        {view === "models" && <Models profile={activeProfile} />}
         <div
           style={{
             display: view === "providers" ? "flex" : "none",

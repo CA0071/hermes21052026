@@ -5,9 +5,9 @@ import { promises as fs } from "fs";
 import { existsSync } from "fs";
 import {
   HERMES_HOME,
-  HERMES_PYTHON,
   HERMES_SCRIPT,
   getEnhancedPath,
+  getHermesPython,
 } from "./installer";
 
 const PROFILES_DIR = join(HERMES_HOME, "profiles");
@@ -108,14 +108,19 @@ export async function listProfiles(): Promise<ProfileInfo[]> {
   const profiles: ProfileInfo[] = [];
 
   // Default profile is HERMES_HOME itself
-  const [defaultConfig, defaultHasEnv, defaultHasSoul, defaultSkills, defaultGw] =
-    await Promise.all([
-      readProfileConfig(HERMES_HOME),
-      fileExists(join(HERMES_HOME, ".env")),
-      fileExists(join(HERMES_HOME, "SOUL.md")),
-      countSkills(HERMES_HOME),
-      isGatewayRunning(HERMES_HOME),
-    ]);
+  const [
+    defaultConfig,
+    defaultHasEnv,
+    defaultHasSoul,
+    defaultSkills,
+    defaultGw,
+  ] = await Promise.all([
+    readProfileConfig(HERMES_HOME),
+    fileExists(join(HERMES_HOME, ".env")),
+    fileExists(join(HERMES_HOME, "SOUL.md")),
+    countSkills(HERMES_HOME),
+    isGatewayRunning(HERMES_HOME),
+  ]);
 
   profiles.push({
     name: "default",
@@ -189,7 +194,7 @@ export function createProfile(
     const args = clone
       ? ["profile", "create", name, "--clone"]
       : ["profile", "create", name];
-    execFileSync(HERMES_PYTHON, [HERMES_SCRIPT, ...args], {
+    execFileSync(getHermesPython(), [HERMES_SCRIPT, ...args], {
       cwd: join(HERMES_HOME, "hermes-agent"),
       env: {
         ...process.env,
@@ -216,7 +221,7 @@ export function deleteProfile(name: string): {
     return { success: false, error: "Cannot delete the default profile" };
   try {
     execFileSync(
-      HERMES_PYTHON,
+      getHermesPython(),
       [HERMES_SCRIPT, "profile", "delete", name, "--yes"],
       {
         cwd: join(HERMES_HOME, "hermes-agent"),
@@ -240,7 +245,7 @@ export function deleteProfile(name: string): {
 
 export function setActiveProfile(name: string): void {
   try {
-    execFileSync(HERMES_PYTHON, [HERMES_SCRIPT, "profile", "use", name], {
+    execFileSync(getHermesPython(), [HERMES_SCRIPT, "profile", "use", name], {
       cwd: join(HERMES_HOME, "hermes-agent"),
       env: {
         ...process.env,

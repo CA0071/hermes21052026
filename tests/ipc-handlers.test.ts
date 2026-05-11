@@ -68,6 +68,7 @@ describe("New IPC handlers from v0.8/v0.9 features", () => {
     "get-provider-auth-status",
     "start-provider-login",
     "cancel-provider-login",
+    "discover-models",
   ];
 
   for (const ch of newChannels) {
@@ -99,6 +100,7 @@ describe("Legacy IPC handlers preserved", () => {
     "set-config",
     "get-model-config",
     "set-model-config",
+    "discover-models",
     "send-message",
     "abort-chat",
     "start-gateway",
