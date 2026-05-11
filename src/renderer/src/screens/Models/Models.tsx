@@ -1,7 +1,21 @@
-import { useState, useEffect, useCallback } from "react";
-import { Plus, Trash, Search, X } from "../../assets/icons";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import {
+  Check,
+  Plus,
+  Refresh,
+  Search,
+  Spinner,
+  Trash,
+  X,
+} from "../../assets/icons";
 import { PROVIDERS } from "../../constants";
 import { useI18n } from "../../components/useI18n";
+import { useHermesReadiness } from "../../hooks/useHermesReadiness";
+import {
+  createProviderModelStatusItems,
+  readyProviderStatuses,
+  selectedProviderStatus,
+} from "../../lib/providerModelStatus";
 
 interface SavedModel {
   id: string;
@@ -12,16 +26,60 @@ interface SavedModel {
   createdAt: number;
 }
 
+interface DiscoveredModel {
+  provider: string;
+  model: string;
+  name: string;
+  baseUrl: string;
+  source: "live" | "models.dev" | "endpoint";
+}
+
+interface ProviderModelCatalog {
+  provider: string;
+  active: boolean;
+  authSource: string;
+  source: "live" | "models.dev" | "endpoint" | "none";
+  models: DiscoveredModel[];
+  error?: string;
+}
+
 function providerLabelKey(value: string): string {
   return PROVIDERS.options.find((p) => p.value === value)?.label || value;
 }
 
-function Models(): React.JSX.Element {
+function sourceLabelKey(source: ProviderModelCatalog["source"]): string {
+  if (source === "live") return "models.sourceLive";
+  if (source === "models.dev") return "models.sourceModelsDev";
+  if (source === "endpoint") return "models.sourceEndpoint";
+  return "models.sourceNone";
+}
+
+function modelKey(provider: string, model: string, baseUrl: string): string {
+  return `${provider}::${model}::${baseUrl || ""}`;
+}
+
+function mergeCatalogs(
+  current: ProviderModelCatalog[],
+  incoming: ProviderModelCatalog[],
+): ProviderModelCatalog[] {
+  const next = new Map(current.map((catalog) => [catalog.provider, catalog]));
+  for (const catalog of incoming) {
+    next.set(catalog.provider, catalog);
+  }
+  return [...next.values()];
+}
+
+function Models({ profile }: { profile?: string }): React.JSX.Element {
   const { t } = useI18n();
   const [models, setModels] = useState<SavedModel[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [catalogs, setCatalogs] = useState<ProviderModelCatalog[]>([]);
+  const [catalogSearch, setCatalogSearch] = useState("");
+  const [catalogLoading, setCatalogLoading] = useState(false);
+  const [catalogError, setCatalogError] = useState("");
+  const readiness = useHermesReadiness({ profile });
 
   // Modal state
   const [showModal, setShowModal] = useState(false);
@@ -33,6 +91,7 @@ function Models(): React.JSX.Element {
   const [formApiKey, setFormApiKey] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [formError, setFormError] = useState("");
+  const [modalFetching, setModalFetching] = useState(false);
 
   function resolveCustomEnvKey(url: string): string {
     if (!url) return "CUSTOM_API_KEY";
@@ -69,6 +128,7 @@ function Models(): React.JSX.Element {
     setFormApiKey("");
     setShowApiKey(false);
     setFormError("");
+    setModalFetching(false);
     setShowModal(true);
   }
 
@@ -81,6 +141,7 @@ function Models(): React.JSX.Element {
     setFormApiKey("");
     setShowApiKey(false);
     setFormError("");
+    setModalFetching(false);
     setShowModal(true);
   }
 
@@ -124,6 +185,86 @@ function Models(): React.JSX.Element {
     await loadModels();
   }
 
+  function hasModel(model: DiscoveredModel): boolean {
+    const key = modelKey(model.provider, model.model, model.baseUrl);
+    return models.some(
+      (saved) => modelKey(saved.provider, saved.model, saved.baseUrl) === key,
+    );
+  }
+
+  async function handleFetchActiveModels(): Promise<void> {
+    setCatalogLoading(true);
+    setCatalogError("");
+    try {
+      const result = await window.hermesAPI.discoverModels({ profile });
+      setCatalogs(result);
+      if (result.length === 0) {
+        setCatalogError(t("models.noActiveProviders"));
+      }
+    } catch (err) {
+      setCatalogError((err as Error).message || t("models.fetchFailed"));
+    } finally {
+      setCatalogLoading(false);
+    }
+  }
+
+  async function handleFetchProviderModels(): Promise<void> {
+    setModalFetching(true);
+    setFormError("");
+    try {
+      const result = await window.hermesAPI.discoverModels({
+        provider: formProvider,
+        profile,
+        baseUrl: formBaseUrl.trim(),
+      });
+      setCatalogs((prev) => mergeCatalogs(prev, result));
+      const count = result.reduce(
+        (sum, catalog) => sum + catalog.models.length,
+        0,
+      );
+      if (count === 0) {
+        setFormError(result[0]?.error || t("models.fetchFailed"));
+      }
+    } catch (err) {
+      setFormError((err as Error).message || t("models.fetchFailed"));
+    } finally {
+      setModalFetching(false);
+    }
+  }
+
+  function applyDiscoveredModel(model: DiscoveredModel): void {
+    setFormProvider(model.provider);
+    setFormName(model.name);
+    setFormModel(model.model);
+    setFormBaseUrl(model.baseUrl);
+    setFormError("");
+  }
+
+  async function handleAddDiscoveredModel(
+    model: DiscoveredModel,
+  ): Promise<void> {
+    await window.hermesAPI.addModel(
+      model.name,
+      model.provider,
+      model.model,
+      model.baseUrl,
+    );
+    await loadModels();
+  }
+
+  async function handleAddVisibleModels(): Promise<void> {
+    const toAdd = filteredDiscoveredModels.filter((model) => !hasModel(model));
+    for (const model of toAdd) {
+      await window.hermesAPI.addModel(
+        model.name,
+        model.provider,
+        model.model,
+        model.baseUrl,
+      );
+    }
+    await loadModels();
+  }
+
   async function handleDelete(id: string): Promise<void> {
     await window.hermesAPI.removeModel(id);
     setConfirmDelete(null);
@@ -139,6 +280,46 @@ function Models(): React.JSX.Element {
       m.provider.toLowerCase().includes(q)
     );
   });
+
+  const savedKeys = new Set(
+    models.map((m) => modelKey(m.provider, m.model, m.baseUrl)),
+  );
+  const discoveredModels = catalogs.flatMap((catalog) => catalog.models);
+  const filteredDiscoveredModels = discoveredModels.filter((model) => {
+    if (!catalogSearch) return true;
+    const q = catalogSearch.toLowerCase();
+    return (
+      model.name.toLowerCase().includes(q) ||
+      model.model.toLowerCase().includes(q) ||
+      model.provider.toLowerCase().includes(q)
+    );
+  });
+  const modalProviderModels =
+    catalogs.find((catalog) => catalog.provider === formProvider)?.models || [];
+  const visibleNewModelCount = filteredDiscoveredModels.filter(
+    (model) =>
+      !savedKeys.has(modelKey(model.provider, model.model, model.baseUrl)),
+  ).length;
+  const providerStatusItems = useMemo(
+    () =>
+      createProviderModelStatusItems({
+        modelConfig: readiness.source.modelConfig,
+        env: readiness.source.env,
+        credentialPool: readiness.source.credentialPool,
+        providerAuth: readiness.source.providerAuth,
+      }),
+    [
+      readiness.source.credentialPool,
+      readiness.source.env,
+      readiness.source.modelConfig,
+      readiness.source.providerAuth,
+    ],
+  );
+  const readyStatuses = readyProviderStatuses(providerStatusItems);
+  const selectedStatus = selectedProviderStatus(providerStatusItems);
+  const visibleProviderStatuses = providerStatusItems.filter(
+    (item) => item.selected || item.activeForFetch,
+  );
 
   if (loading) {
     return (
@@ -160,11 +341,198 @@ function Models(): React.JSX.Element {
           </h1>
           <p className="models-subtitle">{t("models.subtitle")}</p>
         </div>
-        <button className="btn btn-primary btn-sm" onClick={openAddModal}>
-          <Plus size={14} />
-          {t("models.addModel")}
-        </button>
+        <div className="models-header-actions">
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={handleFetchActiveModels}
+            disabled={catalogLoading}
+          >
+            {catalogLoading ? (
+              <Spinner className="models-fetch-spin" size={14} />
+            ) : (
+              <Refresh size={14} />
+            )}
+            {catalogLoading
+              ? t("models.fetchingModels")
+              : t("models.fetchModels")}
+          </button>
+          <button className="btn btn-primary btn-sm" onClick={openAddModal}>
+            <Plus size={14} />
+            {t("models.addModel")}
+          </button>
+        </div>
       </div>
+
+      <section className="models-provider-status-panel">
+        <div className="models-provider-status-summary">
+          <div>
+            <h2 className="models-provider-status-title">
+              {t("models.providerStatusTitle")}
+            </h2>
+            <div className="models-provider-status-meta">
+              {t("models.providerStatusMeta", {
+                count: readyStatuses.length,
+                selected: selectedStatus
+                  ? t(selectedStatus.labelKey)
+                  : t("constants.autoDetect"),
+              })}
+            </div>
+          </div>
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={() => void readiness.refresh()}
+            disabled={readiness.loading}
+            type="button"
+          >
+            {readiness.loading ? (
+              <Spinner className="models-fetch-spin" size={14} />
+            ) : (
+              <Refresh size={14} />
+            )}
+            {t("common.refresh")}
+          </button>
+        </div>
+        <div className="models-provider-status-list">
+          {visibleProviderStatuses.length === 0 ? (
+            <span className="models-provider-status-empty">
+              {t("models.noReadyProviderStatus")}
+            </span>
+          ) : (
+            visibleProviderStatuses.map((item) => (
+              <span
+                className={`models-provider-status-chip settings-status-${item.tone}`}
+                key={item.provider}
+                title={t(item.sourceLabelKey)}
+              >
+                {item.selected && (
+                  <strong>{t("models.providerStatusSelected")}</strong>
+                )}
+                {t(item.labelKey)}
+                <em>{t(item.sourceLabelKey)}</em>
+              </span>
+            ))
+          )}
+        </div>
+      </section>
+
+      {(catalogs.length > 0 || catalogError) && (
+        <section className="models-discovery-panel">
+          <div className="models-discovery-header">
+            <div>
+              <h2 className="models-discovery-title">
+                {t("models.availableModels")}
+              </h2>
+              <div className="models-discovery-meta">
+                {t("models.availableModelsMeta", {
+                  count: discoveredModels.length,
+                  providers: catalogs.length,
+                })}
+              </div>
+            </div>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={handleAddVisibleModels}
+              disabled={visibleNewModelCount === 0}
+            >
+              <Plus size={13} />
+              {t("models.addVisibleCount", { count: visibleNewModelCount })}
+            </button>
+          </div>
+
+          <div className="models-discovery-providers">
+            {catalogs.map((catalog) => (
+              <span
+                key={catalog.provider}
+                className={`models-discovery-provider ${
+                  catalog.error ? "has-error" : ""
+                }`}
+                title={catalog.error || t(sourceLabelKey(catalog.source))}
+              >
+                {t(providerLabelKey(catalog.provider))}
+                <strong>{catalog.models.length}</strong>
+              </span>
+            ))}
+          </div>
+
+          {catalogError && <div className="models-error">{catalogError}</div>}
+          {catalogs
+            .filter((catalog) => catalog.error)
+            .map((catalog) => (
+              <div className="models-error" key={`${catalog.provider}-error`}>
+                {t("models.catalogError", {
+                  provider: t(providerLabelKey(catalog.provider)),
+                  error: catalog.error,
+                })}
+              </div>
+            ))}
+
+          {discoveredModels.length > 0 && (
+            <>
+              <div className="models-discovery-search">
+                <Search size={14} />
+                <input
+                  className="models-search-input"
+                  type="text"
+                  value={catalogSearch}
+                  onChange={(e) => setCatalogSearch(e.target.value)}
+                  placeholder={t("models.catalogSearchPlaceholder")}
+                />
+              </div>
+
+              {filteredDiscoveredModels.length === 0 ? (
+                <div className="models-discovery-empty">
+                  {t("models.noFetchedModels")}
+                </div>
+              ) : (
+                <div className="models-discovery-list">
+                  {filteredDiscoveredModels.map((model) => {
+                    const exists = savedKeys.has(
+                      modelKey(model.provider, model.model, model.baseUrl),
+                    );
+                    return (
+                      <div
+                        className="models-discovery-row"
+                        key={modelKey(
+                          model.provider,
+                          model.model,
+                          model.baseUrl,
+                        )}
+                      >
+                        <div className="models-discovery-row-main">
+                          <div className="models-discovery-row-name">
+                            {model.name}
+                          </div>
+                          <div className="models-discovery-row-model">
+                            {model.model}
+                          </div>
+                        </div>
+                        <div className="models-discovery-row-actions">
+                          <span className="models-card-provider">
+                            {t(providerLabelKey(model.provider))}
+                          </span>
+                          <span className="models-source-badge">
+                            {t(sourceLabelKey(model.source))}
+                          </span>
+                          <button
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => handleAddDiscoveredModel(model)}
+                            disabled={exists}
+                          >
+                            {exists ? <Check size={13} /> : <Plus size={13} />}
+                            {exists
+                              ? t("models.alreadyAdded")
+                              : t("models.addFetched")}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+        </section>
+      )}
 
       {models.length > 0 && (
         <div className="models-search">
@@ -290,9 +658,61 @@ function Models(): React.JSX.Element {
               </div>
 
               <div className="models-modal-field">
-                <label className="models-modal-label">
-                  {t("models.modelId")}
-                </label>
+                <div className="models-modal-label-row">
+                  <label className="models-modal-label">
+                    {t("models.modelId")}
+                  </label>
+                  <button
+                    className="btn btn-secondary btn-sm models-provider-fetch"
+                    onClick={handleFetchProviderModels}
+                    disabled={modalFetching}
+                    type="button"
+                  >
+                    {modalFetching ? (
+                      <Spinner className="models-fetch-spin" size={13} />
+                    ) : (
+                      <Refresh size={13} />
+                    )}
+                    {modalFetching
+                      ? t("models.fetchingProviderModels")
+                      : t("models.fetchProviderModels")}
+                  </button>
+                </div>
+                {modalProviderModels.length > 0 && (
+                  <select
+                    className="input models-provider-select"
+                    value=""
+                    onChange={(e) => {
+                      const selected = modalProviderModels.find(
+                        (model) =>
+                          modelKey(
+                            model.provider,
+                            model.model,
+                            model.baseUrl,
+                          ) === e.target.value,
+                      );
+                      if (selected) applyDiscoveredModel(selected);
+                    }}
+                  >
+                    <option value="">{t("models.selectFetchedModel")}</option>
+                    {modalProviderModels.map((model) => (
+                      <option
+                        key={modelKey(
+                          model.provider,
+                          model.model,
+                          model.baseUrl,
+                        )}
+                        value={modelKey(
+                          model.provider,
+                          model.model,
+                          model.baseUrl,
+                        )}
+                      >
+                        {model.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
                 <input
                   className="input"
                   type="text"
@@ -300,6 +720,11 @@ function Models(): React.JSX.Element {
                   onChange={(e) => setFormModel(e.target.value)}
                   placeholder={t("models.modelIdPlaceholder")}
                 />
+                {modalProviderModels.length > 0 && (
+                  <span className="models-modal-hint">
+                    {t("models.providerModelsHint")}
+                  </span>
+                )}
               </div>
 
               <div className="models-modal-field">

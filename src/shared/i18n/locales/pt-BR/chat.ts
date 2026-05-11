@@ -10,8 +10,11 @@ export default {
   send: "Enviar",
   custom: "Personalizado",
   typeModelName: "Digite o nome do modelo...",
+  fetchModels: "Buscar modelos",
+  fetchModelsHint: "Encontre modelos disponíveis para provedores prontos",
   emptyTitle: "Como posso ajudar você hoje?",
-  emptyHint: "Peça-me para escrever código, responder perguntas, pesquisar na web e mais",
+  emptyHint:
+    "Peça-me para escrever código, responder perguntas, pesquisar na web e mais",
   suggestionSearch: "Pesquisar na web",
   suggestionReminder: "Definir um lembrete",
   suggestionEmail: "Resumir e-mails",
@@ -24,8 +27,35 @@ export default {
   clearChat: "Limpar chat",
   fastMode: "Modo Rápido",
   fastModeOn: "Modo Rápido LIGADO",
-  fastModeActive: "Processamento prioritário ativo — menor latência em modelos suportados. Clique para desativar.",
-  fastModeInactive: "Ative o processamento prioritário para menor latência em modelos OpenAI e Anthropic.",
+  fastModeActive:
+    "Processamento prioritário ativo — menor latência em modelos suportados. Clique para desativar.",
+  fastModeInactive:
+    "Ative o processamento prioritário para menor latência em modelos OpenAI GPT/o-series e Claude suportados.",
+  fastModeUnavailable:
+    "O Modo Rápido só está disponível para modelos OpenAI GPT/o-series e Claude suportados.",
+  effortTitle: "Esforço de raciocínio",
+  effortNone: "Desligado",
+  effortMinimal: "Mínimo",
+  effortLow: "Baixo",
+  effortMedium: "Médio",
+  effortHigh: "Alto",
+  effortXhigh: "Máximo",
+  readinessInstallMissingTitle: "O Hermes precisa ser instalado",
+  readinessInstallMissingMessage:
+    "Instale o Hermes antes de enviar mensagens pelo chat.",
+  readinessInstallRepairTitle: "O Hermes precisa de reparo",
+  readinessInstallRepairMessage:
+    "O motor local está instalado, mas falhou na verificação.",
+  readinessProviderSignInTitle: "Login do provedor necessário",
+  readinessProviderSignInMessage:
+    "Entre com o ChatGPT para usar sua assinatura OpenAI Codex.",
+  readinessProviderSetupTitle: "O provedor precisa de configuração",
+  readinessProviderSetupMessage:
+    "Escolha um provedor ativo ou adicione credenciais antes de enviar mensagens.",
+  readinessRemoteTitle: "Conexão remota ausente",
+  readinessRemoteMessage:
+    "Adicione uma URL remota ou volte ao modo local antes de enviar mensagens.",
+  readinessRefresh: "Verificar novamente",
   availableCommands: "Comandos Disponíveis",
   categoryChat: "Chat",
   categoryAgent: "Agente",

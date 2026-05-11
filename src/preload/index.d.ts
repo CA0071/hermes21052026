@@ -16,6 +16,32 @@ interface InstallProgress {
   log: string;
 }
 
+interface ProviderLoginProgress {
+  provider: string;
+  status: "starting" | "waiting" | "success" | "error";
+  detail: string;
+  log: string;
+  verificationUrl?: string;
+  userCode?: string;
+}
+
+interface DiscoveredModel {
+  provider: string;
+  model: string;
+  name: string;
+  baseUrl: string;
+  source: "live" | "models.dev" | "endpoint";
+}
+
+interface ProviderModelCatalog {
+  provider: string;
+  active: boolean;
+  authSource: string;
+  source: "live" | "models.dev" | "endpoint" | "none";
+  models: DiscoveredModel[];
+  error?: string;
+}
+
 interface HermesAPI {
   // Installation
   checkInstall: () => Promise<InstallStatus>;
@@ -23,6 +49,18 @@ interface HermesAPI {
   startInstall: () => Promise<{ success: boolean; error?: string }>;
   onInstallProgress: (
     callback: (progress: InstallProgress) => void,
+  ) => () => void;
+
+  // Provider OAuth sign-in
+  getProviderAuthStatus: (
+    provider: string,
+  ) => Promise<{ provider: string; authenticated: boolean; detail: string }>;
+  startProviderLogin: (
+    provider: string,
+  ) => Promise<{ success: boolean; error?: string }>;
+  cancelProviderLogin: () => Promise<boolean>;
+  onProviderLoginProgress: (
+    callback: (progress: ProviderLoginProgress) => void,
   ) => () => void;
 
   // Hermes engine info
@@ -306,6 +344,11 @@ interface HermesAPI {
       createdAt: number;
     }>
   >;
+  discoverModels: (options?: {
+    provider?: string;
+    profile?: string;
+    baseUrl?: string;
+  }) => Promise<ProviderModelCatalog[]>;
   addModel: (
     name: string,
     provider: string,

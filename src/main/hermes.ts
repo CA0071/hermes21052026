@@ -7,9 +7,9 @@ import https from "https";
 import {
   HERMES_HOME,
   HERMES_REPO,
-  HERMES_PYTHON,
   HERMES_SCRIPT,
   getEnhancedPath,
+  getHermesPython,
 } from "./installer";
 import { getModelConfig, readEnv, getConnectionConfig } from "./config";
 import { getSshTunnelUrl, isSshTunnelActive, isSshTunnelHealthy, startSshTunnel } from "./ssh-tunnel";
@@ -466,6 +466,7 @@ function sendMessageViaCli(
     HOME: homedir(),
     HERMES_HOME: HERMES_HOME,
     PYTHONUNBUFFERED: "1",
+    PYTHONIOENCODING: "utf-8",
   };
 
   // Inject all API keys from the profile .env so the CLI can access them
@@ -530,7 +531,7 @@ function sendMessageViaCli(
     delete env.OPENROUTER_BASE_URL;
   }
 
-  const proc = spawn(HERMES_PYTHON, args, {
+  const proc = spawn(getHermesPython(), args, {
     cwd: HERMES_REPO,
     env,
     stdio: ["ignore", "pipe", "pipe"],
@@ -698,6 +699,7 @@ export function startGateway(profile?: string): boolean {
     PATH: getEnhancedPath(),
     HOME: homedir(),
     HERMES_HOME: HERMES_HOME,
+    PYTHONIOENCODING: "utf-8",
     API_SERVER_ENABLED: "true", // Ensure API server starts with gateway
   };
 
@@ -709,7 +711,7 @@ export function startGateway(profile?: string): boolean {
     }
   }
 
-  gatewayProcess = spawn(HERMES_PYTHON, [HERMES_SCRIPT, "gateway"], {
+  gatewayProcess = spawn(getHermesPython(), [HERMES_SCRIPT, "gateway"], {
     cwd: HERMES_REPO,
     env: gatewayEnv,
     stdio: "ignore",

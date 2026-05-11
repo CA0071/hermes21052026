@@ -86,6 +86,7 @@ import {
   updateSessionTitle,
 } from "./session-cache";
 import { listModels, addModel, removeModel, updateModel } from "./models";
+import { discoverModels } from "./modelDiscovery";
 import {
   listProfiles,
   createProfile,
@@ -116,6 +117,12 @@ import {
   resumeCronJob,
   triggerCronJob,
 } from "./cronjobs";
+import {
+  cancelProviderLogin,
+  getProviderAuthStatus,
+  startProviderLogin,
+  type ProviderLoginProgress,
+} from "./providerLogin";
 import { getAppLocale, setAppLocale } from "./locale";
 import type { AppLocale } from "../shared/i18n/types";
 import {
@@ -173,6 +180,10 @@ process.on("unhandledRejection", (reason) => {
 
 let mainWindow: BrowserWindow | null = null;
 let currentChatAbort: (() => void) | null = null;
+const GATEWAY_RESTART_CONFIG_KEYS = new Set([
+  "agent.reasoning_effort",
+  "agent.service_tier",
+]);
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -310,6 +321,24 @@ function setupIPC(): void {
     }
   });
 
+  // Provider OAuth sign-in
+  ipcMain.handle("get-provider-auth-status", (_event, provider: string) =>
+    getProviderAuthStatus(provider),
+  );
+
+  ipcMain.handle("start-provider-login", async (event, provider: string) => {
+    try {
+      await startProviderLogin(provider, (progress: ProviderLoginProgress) => {
+        event.sender.send("provider-login-progress", progress);
+      });
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: (err as Error).message };
+    }
+  });
+
+  ipcMain.handle("cancel-provider-login", () => cancelProviderLogin());
+
   // Configuration (profile-aware)
   ipcMain.handle("get-locale", () => getAppLocale());
   ipcMain.handle("set-locale", (_event, locale: AppLocale) =>
@@ -358,6 +387,9 @@ function setupIPC(): void {
         return true;
       }
       setConfigValue(key, value, profile);
+      if (isGatewayRunning() && GATEWAY_RESTART_CONFIG_KEYS.has(key)) {
+        restartGateway(profile);
+      }
       return true;
     },
   );
@@ -814,6 +846,13 @@ function setupIPC(): void {
     if (conn.mode === "ssh" && conn.ssh) return sshListModels(conn.ssh);
     return listModels();
   });
+  ipcMain.handle(
+    "discover-models",
+    (
+      _event,
+      options?: { provider?: string; profile?: string; baseUrl?: string },
+    ) => discoverModels(options),
+  );
   ipcMain.handle(
     "add-model",
     (_event, name: string, provider: string, model: string, baseUrl: string) =>

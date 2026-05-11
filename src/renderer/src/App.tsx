@@ -13,6 +13,7 @@ type Screen = "splash" | "welcome" | "installing" | "setup" | "main";
 // Minimum time the splash stays visible so the brand animation plays
 // through. Tracks the splash logo fade-in duration in main.css.
 const SPLASH_MIN_MS = 1300;
+const INSTALL_VERIFY_RETRY_MS = 1500;
 
 function App(): React.JSX.Element {
   const { t } = useI18n();
@@ -73,16 +74,21 @@ function App(): React.JSX.Element {
     }
     setScreen(next);
 
-    // Lazy deep-verify in the background after the UI is up. If the
-    // install is broken, surface the warning then — don't block startup.
+    // Lazy deep-verify in the background after the UI is up. Retry once before
+    // surfacing a warning so a slow cold-start Python probe does not bounce the
+    // user back to Welcome.
     //
     // Skip for remote-mode connections: verifyInstall() probes the LOCAL
-    // Python + script paths (HERMES_PYTHON / HERMES_SCRIPT in installer.ts),
+    // Python + script paths (HERMES_SCRIPT in installer.ts),
     // which don't exist on machines that only use a remote backend. Without
     // this guard the user is bounced back to Welcome with an "installBroken"
     // error immediately after a successful remote connect. (#47, #41, #30)
     if ((next === "main" || next === "setup") && !isRemote) {
-      window.hermesAPI.verifyInstall().then((ok) => {
+      window.hermesAPI.verifyInstall().then(async (ok) => {
+        if (!ok) {
+          await new Promise((r) => setTimeout(r, INSTALL_VERIFY_RETRY_MS));
+          ok = await window.hermesAPI.verifyInstall();
+        }
         if (!ok) {
           setInstallError(t("errors.installBroken"));
           setScreen("welcome");
@@ -92,7 +98,7 @@ function App(): React.JSX.Element {
   }, [t]);
 
   useEffect(() => {
-    runInstallCheck();
+    void Promise.resolve().then(runInstallCheck);
   }, [runInstallCheck]);
 
   const handleSplashFinished = useCallback(() => {

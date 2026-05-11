@@ -15,6 +15,9 @@ import {
   Bell,
   Slash,
   Zap,
+  Brain,
+  AlertTriangle,
+  RefreshCw,
 } from "lucide-react";
 
 // ── Slash Commands ──────────────────────────────────────
@@ -198,6 +201,28 @@ interface ModelGroup {
 
 import { PROVIDERS } from "../../constants";
 import { useI18n } from "../../components/useI18n";
+import {
+  modelDefaultReasoningEffort,
+  modelReasoningEffortOptions,
+  modelSupportsFastMode,
+  normalizeReasoningEffort,
+  type ReasoningEffort,
+} from "../../../../shared/modelCapabilities";
+import { useHermesReadiness } from "../../hooks/useHermesReadiness";
+import type { ReadinessViewTarget } from "../../lib/readiness";
+import {
+  createProviderModelStatusItems,
+  selectedProviderStatus,
+} from "../../lib/providerModelStatus";
+
+const REASONING_EFFORT_LABEL_KEYS: Record<ReasoningEffort, string> = {
+  none: "chat.effortNone",
+  minimal: "chat.effortMinimal",
+  low: "chat.effortLow",
+  medium: "chat.effortMedium",
+  high: "chat.effortHigh",
+  xhigh: "chat.effortXhigh",
+};
 
 interface ChatProps {
   messages: ChatMessage[];
@@ -206,6 +231,7 @@ interface ChatProps {
   profile?: string;
   onSessionStarted?: () => void;
   onNewChat?: () => void;
+  onNavigate?: (view: ReadinessViewTarget) => void;
 }
 
 function Chat({
@@ -215,6 +241,7 @@ function Chat({
   profile,
   onSessionStarted,
   onNewChat,
+  onNavigate,
 }: ChatProps): React.JSX.Element {
   const { t } = useI18n();
   const [input, setInput] = useState("");
@@ -228,6 +255,8 @@ function Chat({
     cost?: number;
   } | null>(null);
   const [fastMode, setFastMode] = useState(false);
+  const [reasoningEffort, setReasoningEffort] =
+    useState<ReasoningEffort>("medium");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -239,9 +268,12 @@ function Chat({
   const [currentProvider, setCurrentProvider] = useState("auto");
   const [currentBaseUrl, setCurrentBaseUrl] = useState("");
   const [modelGroups, setModelGroups] = useState<ModelGroup[]>([]);
+  const [modelConfigLoaded, setModelConfigLoaded] = useState(false);
   const [showModelPicker, setShowModelPicker] = useState(false);
+  const [showEffortPicker, setShowEffortPicker] = useState(false);
   const [customModelInput, setCustomModelInput] = useState("");
   const pickerRef = useRef<HTMLDivElement>(null);
+  const readiness = useHermesReadiness({ profile });
 
   // Slash command menu state
   const [slashMenuOpen, setSlashMenuOpen] = useState(false);
@@ -262,6 +294,20 @@ function Chat({
         : [],
     [slashMenuOpen, slashFilter],
   );
+
+  const fastModeSupported = useMemo(
+    () => modelSupportsFastMode(currentModel),
+    [currentModel],
+  );
+
+  const reasoningEffortOptions = useMemo(
+    () => modelReasoningEffortOptions(currentModel, currentProvider),
+    [currentModel, currentProvider],
+  );
+  const effortSelectionSupported = reasoningEffortOptions.length > 0;
+  const activeReasoningEffort = reasoningEffortOptions.includes(reasoningEffort)
+    ? reasoningEffort
+    : modelDefaultReasoningEffort(currentModel, currentProvider);
 
   const scrollToBottom = useCallback((force?: boolean) => {
     if (!force && userScrolledUpRef.current) return;
@@ -289,6 +335,7 @@ function Chat({
   }, [messages]);
 
   const loadModelConfig = useCallback(async (): Promise<void> => {
+    setModelConfigLoaded(false);
     const [mc, savedModels] = await Promise.all([
       window.hermesAPI.getModelConfig(profile),
       window.hermesAPI.listModels(),
@@ -315,6 +362,7 @@ function Chat({
       });
     }
     setModelGroups(Array.from(groupMap.values()));
+    setModelConfigLoaded(true);
   }, [profile]);
 
   // Load model config and build available models list
@@ -329,17 +377,58 @@ function Chat({
     });
   }, [profile]);
 
+  // Load reasoning effort state from config
+  useEffect(() => {
+    let cancelled = false;
+    window.hermesAPI
+      .getConfig("agent.reasoning_effort", profile)
+      .then((val) => {
+        if (!cancelled) setReasoningEffort(normalizeReasoningEffort(val));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [profile]);
+
+  useEffect(() => {
+    if (!modelConfigLoaded || !fastMode || fastModeSupported) return;
+    setFastMode(false);
+    void window.hermesAPI.setConfig("agent.service_tier", "normal", profile);
+  }, [fastMode, fastModeSupported, modelConfigLoaded, profile]);
+
+  useEffect(() => {
+    if (!modelConfigLoaded) return;
+    if (!effortSelectionSupported) {
+      setShowEffortPicker(false);
+      return;
+    }
+    if (reasoningEffortOptions.includes(reasoningEffort)) return;
+
+    const next = modelDefaultReasoningEffort(currentModel, currentProvider);
+    setReasoningEffort(next);
+    void window.hermesAPI.setConfig("agent.reasoning_effort", next, profile);
+  }, [
+    currentModel,
+    currentProvider,
+    effortSelectionSupported,
+    modelConfigLoaded,
+    profile,
+    reasoningEffort,
+    reasoningEffortOptions,
+  ]);
+
   // Close picker on click outside
   useEffect(() => {
-    if (!showModelPicker) return;
+    if (!showModelPicker && !showEffortPicker) return;
     function handleClickOutside(e: MouseEvent): void {
       if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
         setShowModelPicker(false);
+        setShowEffortPicker(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [showModelPicker]);
+  }, [showEffortPicker, showModelPicker]);
 
   // Close slash menu on click outside
   useEffect(() => {
@@ -371,11 +460,17 @@ function Chat({
     baseUrl: string,
   ): Promise<void> {
     await window.hermesAPI.setModelConfig(provider, model, baseUrl, profile);
+    if (fastMode && !modelSupportsFastMode(model)) {
+      setFastMode(false);
+      await window.hermesAPI.setConfig("agent.service_tier", "normal", profile);
+    }
     setCurrentModel(model);
     setCurrentProvider(provider);
     setCurrentBaseUrl(baseUrl);
     setShowModelPicker(false);
+    setShowEffortPicker(false);
     setCustomModelInput("");
+    void readiness.refresh();
   }
 
   async function handleCustomModelSubmit(): Promise<void> {
@@ -386,6 +481,29 @@ function Chat({
       model,
       currentBaseUrl,
     );
+  }
+
+  async function toggleFastMode(): Promise<void> {
+    if (!fastModeSupported) {
+      setFastMode(false);
+      await window.hermesAPI.setConfig("agent.service_tier", "normal", profile);
+      return;
+    }
+
+    const next = !fastMode;
+    setFastMode(next);
+    await window.hermesAPI.setConfig(
+      "agent.service_tier",
+      next ? "fast" : "normal",
+      profile,
+    );
+  }
+
+  async function selectReasoningEffort(effort: ReasoningEffort): Promise<void> {
+    if (!reasoningEffortOptions.includes(effort)) return;
+    setReasoningEffort(effort);
+    setShowEffortPicker(false);
+    await window.hermesAPI.setConfig("agent.reasoning_effort", effort, profile);
   }
 
   // IPC listeners — stable callback refs, registered once
@@ -516,6 +634,8 @@ function Chat({
       }
     }
 
+    if (chatBlocked) return;
+
     setIsLoading(true);
     setMessages((prev) => [
       ...prev,
@@ -538,6 +658,7 @@ function Chat({
   async function handleQuickAsk(): Promise<void> {
     const text = input.trim();
     if (!text || isLoading) return;
+    if (chatBlocked) return;
     // /btw sends an ephemeral side question that doesn't pollute conversation context
     setInput("");
     if (inputRef.current) inputRef.current.style.height = "auto";
@@ -716,6 +837,17 @@ function Chat({
       }
 
       case "/fast": {
+        if (!fastModeSupported) {
+          setFastMode(false);
+          await window.hermesAPI.setConfig(
+            "agent.service_tier",
+            "normal",
+            profile,
+          );
+          pushLocalResponse(t("chat.fastModeUnavailable"));
+          return true;
+        }
+
         const current = await window.hermesAPI.getConfig(
           "agent.service_tier",
           profile,
@@ -868,6 +1000,41 @@ function Chat({
     () => messages.length > 0 && messages[messages.length - 1].role === "agent",
     [messages],
   );
+  const chatIssue = readiness.snapshot.chatIssue;
+  const chatBlocked = readiness.loading || Boolean(chatIssue?.blocking);
+  const routeStatusItems = useMemo(
+    () =>
+      createProviderModelStatusItems({
+        modelConfig: {
+          provider: readiness.snapshot.currentProvider,
+          model: readiness.snapshot.currentModel,
+          baseUrl: readiness.source.modelConfig?.baseUrl || "",
+        },
+        env: readiness.source.env,
+        credentialPool: readiness.source.credentialPool,
+        providerAuth: readiness.source.providerAuth,
+      }),
+    [
+      readiness.source.credentialPool,
+      readiness.source.env,
+      readiness.source.modelConfig?.baseUrl,
+      readiness.source.providerAuth,
+      readiness.snapshot.currentModel,
+      readiness.snapshot.currentProvider,
+    ],
+  );
+  const routeStatus = selectedProviderStatus(routeStatusItems);
+  const routeStatusTone = readiness.loading
+    ? "neutral"
+    : (routeStatus?.tone ?? "neutral");
+  const routeStatusProvider = routeStatus
+    ? t(routeStatus.labelKey)
+    : t("constants.autoDetect");
+  const routeStatusLabel = readiness.loading
+    ? t("settings.statusChecking")
+    : routeStatus
+      ? t(routeStatus.sourceLabelKey)
+      : t("providers.statusNeedsSetup");
 
   return (
     <div className="chat-container">
@@ -891,30 +1058,6 @@ function Chat({
           )}
         </div>
         <div className="chat-header-actions">
-          <div className="chat-fast-wrapper">
-            <button
-              className={`btn-ghost chat-fast-btn ${fastMode ? "chat-fast-active" : ""}`}
-              onClick={async () => {
-                const next = !fastMode;
-                setFastMode(next);
-                await window.hermesAPI.setConfig(
-                  "agent.service_tier",
-                  next ? "fast" : "normal",
-                  profile,
-                );
-              }}
-            >
-              <Zap size={14} />
-            </button>
-            <div className="chat-fast-popover">
-              <strong>{fastMode ? t("chat.fastModeOn") : t("chat.fastMode")}</strong>
-              <span>
-                {fastMode
-                  ? t("chat.fastModeActive")
-                  : t("chat.fastModeInactive")}
-              </span>
-            </div>
-          </div>
           {onNewChat && (
             <button
               className="btn-ghost chat-clear-btn"
@@ -935,6 +1078,34 @@ function Chat({
           )}
         </div>
       </div>
+
+      {chatIssue && (
+        <div className={`chat-readiness chat-readiness-${chatIssue.tone}`}>
+          <AlertTriangle size={16} />
+          <div className="chat-readiness-copy">
+            <strong>{chatIssue.title}</strong>
+            <span>{chatIssue.message}</span>
+          </div>
+          <div className="chat-readiness-actions">
+            {onNavigate && (
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => onNavigate(chatIssue.target)}
+              >
+                {chatIssue.actionLabel}
+              </button>
+            )}
+            <button
+              className="btn-ghost chat-readiness-refresh"
+              onClick={() => void readiness.refresh()}
+              title={t("chat.readinessRefresh")}
+              type="button"
+            >
+              <RefreshCw size={14} />
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="chat-messages" ref={messagesContainerRef}>
         {messages.length === 0 ? (
@@ -1106,7 +1277,7 @@ function Chat({
               <button
                 className="chat-send-btn"
                 onClick={handleSend}
-                disabled={!input.trim()}
+                disabled={!input.trim() || chatBlocked}
                 title={t("chat.send")}
               >
                 <Send size={16} />
@@ -1120,6 +1291,7 @@ function Chat({
             className="chat-model-trigger"
             onClick={() => {
               if (!showModelPicker) loadModelConfig();
+              setShowEffortPicker(false);
               setShowModelPicker(!showModelPicker);
             }}
           >
@@ -1127,8 +1299,97 @@ function Chat({
             <ChevronDown size={12} />
           </button>
 
+          {effortSelectionSupported && (
+            <div className="chat-effort-wrapper">
+              <button
+                className="btn-ghost chat-effort-btn"
+                onClick={() => {
+                  setShowModelPicker(false);
+                  setShowEffortPicker((open) => !open);
+                }}
+                title={t("chat.effortTitle")}
+                type="button"
+              >
+                <Brain size={13} />
+                <span>
+                  {t(REASONING_EFFORT_LABEL_KEYS[activeReasoningEffort])}
+                </span>
+                <ChevronDown size={10} />
+              </button>
+              {showEffortPicker && (
+                <div className="chat-effort-menu">
+                  <div className="chat-effort-menu-label">
+                    {t("chat.effortTitle")}
+                  </div>
+                  {reasoningEffortOptions.map((effort) => (
+                    <button
+                      key={effort}
+                      className={`chat-effort-option ${activeReasoningEffort === effort ? "active" : ""}`}
+                      onClick={() => void selectReasoningEffort(effort)}
+                      type="button"
+                    >
+                      {t(REASONING_EFFORT_LABEL_KEYS[effort])}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <span
+            className={`chat-route-status settings-status-${routeStatusTone}`}
+            title={`${routeStatusProvider}: ${routeStatusLabel}`}
+          >
+            <strong>{routeStatusProvider}</strong>
+            <span>{routeStatusLabel}</span>
+          </span>
+
+          {fastModeSupported && (
+            <div className="chat-fast-wrapper">
+              <button
+                className={`btn-ghost chat-fast-btn ${fastMode ? "chat-fast-active" : ""}`}
+                onClick={() => void toggleFastMode()}
+                title={fastMode ? t("chat.fastModeOn") : t("chat.fastMode")}
+                type="button"
+              >
+                <Zap size={13} />
+                <span>{t("chat.fastMode")}</span>
+              </button>
+              <div className="chat-fast-popover">
+                <strong>
+                  {fastMode ? t("chat.fastModeOn") : t("chat.fastMode")}
+                </strong>
+                <span>
+                  {fastMode
+                    ? t("chat.fastModeActive")
+                    : t("chat.fastModeInactive")}
+                </span>
+              </div>
+            </div>
+          )}
+
           {showModelPicker && (
             <div className="chat-model-dropdown">
+              {onNavigate && (
+                <button
+                  className="chat-model-option chat-model-fetch"
+                  onClick={() => {
+                    setShowModelPicker(false);
+                    onNavigate("models");
+                  }}
+                  type="button"
+                >
+                  <RefreshCw size={13} />
+                  <span className="chat-model-fetch-copy">
+                    <span className="chat-model-fetch-title">
+                      {t("chat.fetchModels")}
+                    </span>
+                    <span className="chat-model-fetch-hint">
+                      {t("chat.fetchModelsHint")}
+                    </span>
+                  </span>
+                </button>
+              )}
               {modelGroups.map((group) => (
                 <div key={group.provider} className="chat-model-group">
                   <div className="chat-model-group-label">

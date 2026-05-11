@@ -1,6 +1,35 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { SETTINGS_SECTIONS, PROVIDERS } from "../../constants";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { Check, ExternalLink, Refresh, Spinner } from "../../assets/icons";
+import {
+  SETTINGS_SECTIONS,
+  PROVIDERS,
+  SUBSCRIPTION_PROVIDERS,
+  type SubscriptionProviderId,
+} from "../../constants";
 import { useI18n } from "../../components/useI18n";
+import {
+  createProviderModelStatusItems,
+  readyProviderStatuses,
+  selectedProviderStatus,
+} from "../../lib/providerModelStatus";
+
+type ProviderLoginProgress = {
+  provider: string;
+  status: "starting" | "waiting" | "success" | "error";
+  detail: string;
+  log: string;
+  verificationUrl?: string;
+  userCode?: string;
+};
+
+type ProviderAuthStatus = {
+  authenticated: boolean;
+  detail: string;
+};
+
+const INITIAL_AUTH_CHECKING = Object.fromEntries(
+  SUBSCRIPTION_PROVIDERS.map((provider) => [provider.id, true]),
+) as Record<SubscriptionProviderId, boolean>;
 
 function Providers({
   profile,
@@ -32,6 +61,30 @@ function Providers({
   const [poolNewKey, setPoolNewKey] = useState("");
   const [poolNewLabel, setPoolNewLabel] = useState("");
 
+  // Browser sign-in providers
+  const [authStatuses, setAuthStatuses] = useState<
+    Record<string, ProviderAuthStatus>
+  >({});
+  const [authChecking, setAuthChecking] = useState<Record<string, boolean>>(
+    INITIAL_AUTH_CHECKING,
+  );
+  const [loginProgress, setLoginProgress] =
+    useState<ProviderLoginProgress | null>(null);
+  const [loginRunningProvider, setLoginRunningProvider] = useState<
+    string | null
+  >(null);
+  const [copiedAuthCodeProvider, setCopiedAuthCodeProvider] = useState<
+    string | null
+  >(null);
+  const copiedAuthCodeTimer = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+
+  const clearProviderLoginProgress = useCallback((providerId: string): void => {
+    setLoginProgress((prev) => (prev?.provider === providerId ? null : prev));
+    setCopiedAuthCodeProvider((prev) => (prev === providerId ? null : prev));
+  }, []);
+
   const loadConfig = useCallback(async (): Promise<void> => {
     const [envData, mc, pool] = await Promise.all([
       window.hermesAPI.getEnv(profile),
@@ -49,10 +102,88 @@ function Providers({
     });
   }, [profile]);
 
+  const refreshProviderAuthStatus = useCallback(
+    async (providerId: SubscriptionProviderId): Promise<void> => {
+      setAuthChecking((prev) => ({ ...prev, [providerId]: true }));
+      clearProviderLoginProgress(providerId);
+      try {
+        const status = await window.hermesAPI.getProviderAuthStatus(providerId);
+        setAuthStatuses((prev) => ({
+          ...prev,
+          [providerId]: {
+            authenticated: status.authenticated,
+            detail: status.detail,
+          },
+        }));
+        if (status.authenticated) {
+          clearProviderLoginProgress(providerId);
+        }
+      } catch (err) {
+        setAuthStatuses((prev) => ({
+          ...prev,
+          [providerId]: {
+            authenticated: false,
+            detail: (err as Error).message,
+          },
+        }));
+      } finally {
+        setAuthChecking((prev) => ({ ...prev, [providerId]: false }));
+      }
+    },
+    [clearProviderLoginProgress],
+  );
+
   useEffect(() => {
     modelLoaded.current = false;
     loadConfig();
   }, [loadConfig]);
+
+  useEffect(() => {
+    return window.hermesAPI.onProviderLoginProgress((progress) => {
+      if (
+        !SUBSCRIPTION_PROVIDERS.some(
+          (provider) => provider.id === progress.provider,
+        )
+      ) {
+        return;
+      }
+
+      if (progress.status === "success") {
+        setAuthStatuses((prev) => ({
+          ...prev,
+          [progress.provider]: {
+            authenticated: true,
+            detail: progress.detail,
+          },
+        }));
+        setLoginRunningProvider(null);
+        clearProviderLoginProgress(progress.provider);
+        return;
+      }
+
+      setLoginProgress(progress);
+      setLoginRunningProvider(
+        progress.status === "starting" || progress.status === "waiting"
+          ? progress.provider
+          : null,
+      );
+    });
+  }, [clearProviderLoginProgress]);
+
+  useEffect(() => {
+    return () => {
+      if (copiedAuthCodeTimer.current) {
+        clearTimeout(copiedAuthCodeTimer.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (visible === false) return;
+    for (const provider of SUBSCRIPTION_PROVIDERS) {
+      void refreshProviderAuthStatus(provider.id);
+    }
+  }, [visible, refreshProviderAuthStatus]);
 
   // Refresh model config when the screen becomes visible
   useEffect(() => {
@@ -102,6 +233,26 @@ function Providers({
     };
   }, [modelProvider, modelName, modelBaseUrl, saveModelConfig]);
 
+  const providerStatusItems = useMemo(
+    () =>
+      createProviderModelStatusItems({
+        modelConfig: {
+          provider: modelProvider,
+          model: modelName,
+          baseUrl: modelBaseUrl,
+        },
+        env,
+        credentialPool: credPool,
+        providerAuth: authStatuses,
+      }),
+    [authStatuses, credPool, env, modelBaseUrl, modelName, modelProvider],
+  );
+  const readyStatuses = readyProviderStatuses(providerStatusItems);
+  const selectedStatus = selectedProviderStatus(providerStatusItems);
+  const visibleProviderStatuses = providerStatusItems.filter(
+    (item) => item.selected || item.activeForFetch,
+  );
+
   async function handleBlur(key: string): Promise<void> {
     const value = env[key] || "";
     await window.hermesAPI.setEnv(key, value, profile);
@@ -139,6 +290,100 @@ function Providers({
     setCredPool((prev) => ({ ...prev, [provider]: entries }));
   }
 
+  async function handleProviderSignIn(
+    providerId: SubscriptionProviderId,
+  ): Promise<void> {
+    if (authStatuses[providerId]?.authenticated) {
+      clearProviderLoginProgress(providerId);
+      return;
+    }
+
+    setLoginRunningProvider(providerId);
+    setLoginProgress({
+      provider: providerId,
+      status: "starting",
+      detail: t("setup.codexLoginStarting"),
+      log: "",
+    });
+
+    try {
+      const result = await window.hermesAPI.startProviderLogin(providerId);
+      if (result.success) {
+        await refreshProviderAuthStatus(providerId);
+      } else {
+        setLoginProgress({
+          provider: providerId,
+          status: "error",
+          detail: result.error || t("setup.codexLoginFailed"),
+          log: "",
+        });
+      }
+    } catch (err) {
+      setLoginProgress({
+        provider: providerId,
+        status: "error",
+        detail: (err as Error).message || t("setup.codexLoginFailed"),
+        log: "",
+      });
+    }
+    setLoginRunningProvider(null);
+  }
+
+  async function handleCopyAuthCode(
+    providerId: SubscriptionProviderId,
+    userCode: string,
+  ): Promise<void> {
+    await navigator.clipboard.writeText(userCode);
+    setCopiedAuthCodeProvider(providerId);
+    if (copiedAuthCodeTimer.current) {
+      clearTimeout(copiedAuthCodeTimer.current);
+    }
+    copiedAuthCodeTimer.current = setTimeout(() => {
+      setCopiedAuthCodeProvider((prev) => (prev === providerId ? null : prev));
+    }, 2000);
+  }
+
+  async function handleCancelProviderSignIn(): Promise<void> {
+    const providerId = loginRunningProvider;
+    await window.hermesAPI.cancelProviderLogin();
+    setLoginRunningProvider(null);
+    if (providerId) {
+      setLoginProgress({
+        provider: providerId,
+        status: "error",
+        detail: t("setup.codexLoginCancelled"),
+        log: "",
+      });
+    }
+  }
+
+  function providerProgress(
+    providerId: SubscriptionProviderId,
+  ): ProviderLoginProgress | null {
+    return loginProgress?.provider === providerId ? loginProgress : null;
+  }
+
+  function providerStatusClass(providerId: SubscriptionProviderId): string {
+    const progress = providerProgress(providerId);
+    if (progress?.status) return progress.status;
+    return authStatuses[providerId]?.authenticated ? "success" : "";
+  }
+
+  function providerStatusText(providerId: SubscriptionProviderId): string {
+    const progress = providerProgress(providerId);
+    if (authChecking[providerId]) return t("setup.codexCheckingAuth");
+    if (progress?.status === "success") return t("setup.codexLoginSuccess");
+    if (progress?.status === "error") {
+      return progress.detail || t("setup.codexLoginFailed");
+    }
+    if (progress?.userCode) return t("setup.codexLoginWaiting");
+    if (progress?.status === "starting") return t("setup.codexLoginStarting");
+    if (authStatuses[providerId]?.authenticated) {
+      return t("setup.codexLoginSuccess");
+    }
+    return t("setup.codexNotSignedIn");
+  }
+
   function toggleVisibility(key: string): void {
     setVisibleKeys((prev) => {
       const next = new Set(prev);
@@ -156,6 +401,50 @@ function Providers({
       <p className="models-subtitle" style={{ marginBottom: 16 }}>
         {t("providers.subtitle")}
       </p>
+
+      <div className="settings-section provider-status-section">
+        <div className="settings-section-title">
+          {t("providers.statusOverview")}
+        </div>
+        <div className="provider-status-summary">
+          <div className="provider-status-current">
+            <span>{t("providers.currentRouting")}</span>
+            <strong>
+              {selectedStatus
+                ? t(selectedStatus.labelKey)
+                : t("constants.autoDetect")}
+            </strong>
+            <em>{modelName || t("providers.providerDefaultModel")}</em>
+          </div>
+          <span
+            className={`settings-status-badge settings-status-${
+              selectedStatus?.tone || "neutral"
+            }`}
+          >
+            {selectedStatus
+              ? t(selectedStatus.statusLabelKey)
+              : t("providers.statusNeedsSetup")}
+          </span>
+        </div>
+        <div className="provider-status-hint">
+          {t("providers.statusHint", { count: readyStatuses.length })}
+        </div>
+        <div className="models-provider-status-list">
+          {visibleProviderStatuses.map((item) => (
+            <span
+              className={`models-provider-status-chip settings-status-${item.tone}`}
+              key={item.provider}
+              title={t(item.sourceLabelKey)}
+            >
+              {item.selected && (
+                <strong>{t("providers.statusSelected")}</strong>
+              )}
+              {t(item.labelKey)}
+              <em>{t(item.sourceLabelKey)}</em>
+            </span>
+          ))}
+        </div>
+      </div>
 
       <div className="settings-section">
         <div className="settings-section-title">
@@ -226,6 +515,151 @@ function Providers({
 
       <div className="settings-section">
         <div className="settings-section-title">
+          {t("settings.sections.providerSignIns")}
+        </div>
+        <div className="settings-auth-hint">
+          {t("settings.providerSignInsHint")}
+        </div>
+        <div className="settings-auth-list">
+          {SUBSCRIPTION_PROVIDERS.map((subscriptionProvider) => {
+            const progress = providerProgress(subscriptionProvider.id);
+            const isRunning = loginRunningProvider === subscriptionProvider.id;
+            const isChecking = authChecking[subscriptionProvider.id];
+            const isSignedIn =
+              authStatuses[subscriptionProvider.id]?.authenticated ||
+              progress?.status === "success";
+            const copiedCode =
+              copiedAuthCodeProvider === subscriptionProvider.id;
+            const badgeText = isChecking
+              ? t("settings.providerAuthChecking")
+              : isSignedIn
+                ? t("settings.providerAuthSignedIn")
+                : t("settings.providerAuthNotSignedIn");
+
+            return (
+              <div className="settings-auth-card" key={subscriptionProvider.id}>
+                <div className="settings-auth-card-header">
+                  <div>
+                    <div className="settings-auth-title">
+                      {t(subscriptionProvider.name)}
+                    </div>
+                    <div className="settings-auth-description">
+                      {t(subscriptionProvider.hint)}
+                    </div>
+                  </div>
+                  <span
+                    className={`settings-auth-badge ${
+                      isSignedIn ? "signed-in" : isChecking ? "checking" : ""
+                    }`}
+                  >
+                    {badgeText}
+                  </span>
+                </div>
+
+                <div className="settings-auth-actions">
+                  <button
+                    className="btn btn-primary btn-sm settings-auth-action"
+                    onClick={() =>
+                      handleProviderSignIn(subscriptionProvider.id)
+                    }
+                    disabled={
+                      isChecking || Boolean(loginRunningProvider) || isSignedIn
+                    }
+                    type="button"
+                  >
+                    {isRunning ? (
+                      <Spinner className="settings-auth-spin" size={14} />
+                    ) : isSignedIn ? (
+                      <Check size={14} />
+                    ) : null}
+                    {isRunning
+                      ? t("setup.codexLoginButtonRunning")
+                      : isSignedIn
+                        ? t("setup.codexLoginButtonSignedIn")
+                        : t("setup.codexLoginButton")}
+                  </button>
+
+                  <button
+                    className="btn btn-secondary btn-sm settings-auth-action"
+                    onClick={() =>
+                      refreshProviderAuthStatus(subscriptionProvider.id)
+                    }
+                    disabled={isChecking || isRunning}
+                    type="button"
+                  >
+                    <Refresh
+                      className={isChecking ? "settings-auth-spin" : ""}
+                      size={14}
+                    />
+                    {t("common.refresh")}
+                  </button>
+
+                  {isRunning && (
+                    <button
+                      className="btn btn-secondary btn-sm settings-auth-action"
+                      onClick={handleCancelProviderSignIn}
+                      type="button"
+                    >
+                      {t("common.cancel")}
+                    </button>
+                  )}
+
+                  {progress?.verificationUrl && (
+                    <button
+                      className="btn btn-secondary btn-sm settings-auth-action"
+                      onClick={() =>
+                        window.hermesAPI.openExternal(progress.verificationUrl!)
+                      }
+                      type="button"
+                    >
+                      {t("setup.codexOpenBrowser")}
+                      <ExternalLink size={13} />
+                    </button>
+                  )}
+                </div>
+
+                {progress?.userCode && (
+                  <div className="settings-auth-code-row">
+                    <span>{t("setup.codexUserCodeLabel")}</span>
+                    <button
+                      aria-label={`${t("common.copy")} ${t("setup.codexUserCodeLabel")}`}
+                      className="settings-auth-code-button"
+                      onClick={() =>
+                        handleCopyAuthCode(
+                          subscriptionProvider.id,
+                          progress.userCode!,
+                        )
+                      }
+                      title={t("common.copy")}
+                      type="button"
+                    >
+                      <code>{progress.userCode}</code>
+                      <span>
+                        {copiedCode ? t("common.copied") : t("common.copy")}
+                      </span>
+                    </button>
+                  </div>
+                )}
+
+                <div
+                  className={`settings-auth-status ${providerStatusClass(
+                    subscriptionProvider.id,
+                  )}`}
+                >
+                  {providerStatusText(subscriptionProvider.id)}
+                </div>
+
+                <code className="settings-auth-command">
+                  {t(subscriptionProvider.command)}
+                </code>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="settings-section">
+        <div className="settings-section-title">
           {t("settings.sections.credentialPool")}
         </div>
         <div className="settings-field">
@@ -241,7 +675,7 @@ function Providers({
             >
               <option value="">{t("common.provider")}</option>
               {PROVIDERS.options
-                .filter((p) => p.value !== "auto")
+                .filter((p) => p.value !== "auto" && p.value !== "openai-codex")
                 .map((p) => (
                   <option key={p.value} value={p.value}>
                     {t(p.label)}

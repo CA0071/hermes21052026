@@ -2,7 +2,9 @@ export default {
   title: "Configuración",
   sections: {
     hermesAgent: "Hermes Agent",
+    statusOverview: "Resumen de estado",
     appearance: "Apariencia",
+    providerSignIns: "Inicios de sesion de proveedores",
     credentialPool: "Grupo de credenciales",
   },
   theme: {
@@ -16,6 +18,7 @@ export default {
     english: "English",
     spanish: "Español",
     chinese: "中文",
+    portuguese: "Português",
     hint: "Elige el idioma de la interfaz",
   },
   notDetected: "No detectado",
@@ -27,21 +30,46 @@ export default {
   modelBaseUrlPlaceholder: "http://localhost:1234/v1",
   networkSection: "Red",
   forceIpv4: "Forzar IPv4",
-  forceIpv4Hint: "Desactiva IPv6 para corregir problemas de tiempo de espera de conexión en algunas redes",
+  forceIpv4Hint:
+    "Desactiva IPv6 para corregir problemas de tiempo de espera de conexión en algunas redes",
   httpProxy: "Proxy HTTP",
-  httpProxyHint: "Proxy SOCKS o HTTP para todas las conexiones salientes (déjalo en blanco para detección automática)",
+  httpProxyHint:
+    "Proxy SOCKS o HTTP para todas las conexiones salientes (déjalo en blanco para detección automática)",
   saved: "Guardado",
-  providerHint: "Selecciona un proveedor de inferencia o detecta uno automáticamente según la API key",
-  customProviderHint: "Usa cualquier API compatible con OpenAI (LM Studio, Ollama, vLLM, etc.)",
-  modelHint: "Nombre del modelo predeterminado (déjalo en blanco para usar el valor predeterminado del proveedor)",
+  providerHint:
+    "Selecciona un proveedor de inferencia o detecta uno automaticamente desde la autenticacion configurada",
+  customProviderHint:
+    "Usa cualquier API compatible con OpenAI (LM Studio, Ollama, vLLM, etc.)",
+  modelHint:
+    "Nombre del modelo predeterminado (déjalo en blanco para usar el valor predeterminado del proveedor)",
   customBaseUrlHint: "Endpoint de API compatible con OpenAI",
-  poolHint: "Agrega varias API keys para el mismo proveedor para la rotación automática y el equilibrio de carga. Hermes alternará entre ellas.",
+  providerSignInsHint:
+    "Administra proveedores que usan inicio de sesion en navegador en lugar de API keys.",
+  providerAuthChecking: "Comprobando...",
+  providerAuthSignedIn: "Sesion iniciada",
+  providerAuthNotSignedIn: "Sin iniciar sesion",
+  overviewInstall: "Instalación",
+  statusChecking: "Comprobando...",
+  statusReady: "Listo",
+  statusVerified: "Verificado",
+  statusNeedsRepair: "Requiere reparación",
+  statusNeedsSetup: "Requiere configuración",
+  statusNotInstalled: "No instalado",
+  statusUpdateAvailable: "Actualización disponible",
+  statusActive: "Activo",
+  statusConfigured: "Configurado",
+  statusRunning: "En ejecución",
+  statusStopped: "Detenido",
+  providerDefault: "Predeterminado del proveedor",
+  poolHint:
+    "Agrega varias API keys para el mismo proveedor para la rotación automática y el equilibrio de carga. Hermes alternará entre ellas.",
   add: "Agregar",
   remove: "Quitar",
   keyLabel: "Clave",
   empty: "(vacío)",
   dataSection: "Datos",
-  dataHint: "Exporta o importa tu configuración de Hermes, sesiones, habilidades y memoria.",
+  dataHint:
+    "Exporta o importa tu configuración de Hermes, sesiones, habilidades y memoria.",
   backingUp: "Creando copia de seguridad...",
   exportBackup: "Exportar copia de seguridad",
   importing: "Importando...",
@@ -57,7 +85,8 @@ export default {
   running: "Ejecutando...",
   debugDump: "Volcado de depuración",
   migrationDetected: "Se detectó una instalación de OpenClaw",
-  migrationDesc: "Se encontró OpenClaw en <code>{{path}}</code>. Puedes migrar tu configuración, API keys, sesiones y habilidades a Hermes.",
+  migrationDesc:
+    "Se encontró OpenClaw en <code>{{path}}</code>. Puedes migrar tu configuración, API keys, sesiones y habilidades a Hermes.",
   migrationDismiss: "No volver a mostrar",
   migrating: "Migrando...",
   migrateToHermes: "Migrar a Hermes",
@@ -68,17 +97,22 @@ export default {
   connectionSection: "Conexión",
   modeLocal: "Local",
   modeRemote: "Remoto",
+  modeSsh: "Túnel SSH",
   modeLocalHint: "Usando Hermes instalado en este dispositivo",
-  modeRemoteHint: "Conectarse a un servidor de API de Hermes en tu red o en la nube",
+  modeRemoteHint:
+    "Conectarse a un servidor de API de Hermes en tu red o en la nube",
   remoteUrl: "URL remota",
-  remoteUrlHint: "La URL del servidor de API de Hermes (debe exponer /health y /v1/chat/completions)",
+  remoteUrlHint:
+    "La URL del servidor de API de Hermes (debe exponer /health y /v1/chat/completions)",
   remoteApiKey: "API key",
-  remoteApiKeyHint: "Coincide con API_SERVER_KEY en el host remoto. Déjalo vacío si el servidor acepta solicitudes no autenticadas.",
+  remoteApiKeyHint:
+    "Coincide con API_SERVER_KEY en el host remoto. Déjalo vacío si el servidor acepta solicitudes no autenticadas.",
   testingConnection: "Probando...",
   testConnection: "Probar conexión",
   save: "Guardar",
   serverConfigTitle: "Configuración del servidor",
-  serverConfigHint: "Estás conectado a un servidor remoto de Hermes. La selección de modelos, las API keys de proveedores y las credenciales se administran en <code>~/.hermes/.env</code> y <code>config.yaml</code> del servidor. Edítalos en el host (por ejemplo, <code>docker exec -it hermes vi /opt/data/.env</code>) y reinicia el contenedor.",
+  serverConfigHint:
+    "Estás conectado a un servidor remoto de Hermes. La selección de modelos, las API keys de proveedores y las credenciales se administran en <code>~/.hermes/.env</code> y <code>config.yaml</code> del servidor. Edítalos en el host (por ejemplo, <code>docker exec -it hermes vi /opt/data/.env</code>) y reinicia el contenedor.",
   connectionMode: "Modo",
   switchedToLocal: "Se cambió al modo local",
 } as const;

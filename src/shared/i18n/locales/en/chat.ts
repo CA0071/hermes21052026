@@ -10,6 +10,8 @@ export default {
   send: "Send",
   custom: "Custom",
   typeModelName: "Type model name...",
+  fetchModels: "Fetch models",
+  fetchModelsHint: "Find available models for ready providers",
   emptyTitle: "How can I help you today?",
   emptyHint: "Ask me to write code, answer questions, search the web, and more",
   suggestionSearch: "Search the web",
@@ -24,8 +26,35 @@ export default {
   clearChat: "Clear chat",
   fastMode: "Fast Mode",
   fastModeOn: "Fast Mode ON",
-  fastModeActive: "Priority processing active — lower latency on supported models. Click to disable.",
-  fastModeInactive: "Enable priority processing for lower latency on OpenAI and Anthropic models.",
+  fastModeActive:
+    "Priority processing active — lower latency on supported models. Click to disable.",
+  fastModeInactive:
+    "Enable priority processing for lower latency on supported OpenAI GPT/o-series and Claude models.",
+  fastModeUnavailable:
+    "Fast Mode is only available for supported OpenAI GPT/o-series and Claude models.",
+  effortTitle: "Reasoning effort",
+  effortNone: "Off",
+  effortMinimal: "Minimal",
+  effortLow: "Low",
+  effortMedium: "Medium",
+  effortHigh: "High",
+  effortXhigh: "Max",
+  readinessInstallMissingTitle: "Hermes needs installation",
+  readinessInstallMissingMessage:
+    "Install Hermes before sending messages from Chat.",
+  readinessInstallRepairTitle: "Hermes needs repair",
+  readinessInstallRepairMessage:
+    "The local engine is installed but failed verification.",
+  readinessProviderSignInTitle: "Provider sign-in required",
+  readinessProviderSignInMessage:
+    "Sign in with ChatGPT to use your OpenAI Codex subscription.",
+  readinessProviderSetupTitle: "Provider needs setup",
+  readinessProviderSetupMessage:
+    "Choose an active provider or add credentials before sending messages.",
+  readinessRemoteTitle: "Remote connection missing",
+  readinessRemoteMessage:
+    "Add a remote URL or switch back to local mode before sending messages.",
+  readinessRefresh: "Check again",
   availableCommands: "Available Commands",
   categoryChat: "Chat",
   categoryAgent: "Agent",

@@ -2,7 +2,11 @@ export default {
   title: "Configura tu proveedor de IA",
   subtitle: "Elige un proveedor y configúralo para empezar",
   providerCards: {
-    openrouter: { name: "OpenRouter", desc: "Más de 200 modelos", tag: "Recomendado" },
+    openrouter: {
+      name: "OpenRouter",
+      desc: "Más de 200 modelos",
+      tag: "Recomendado",
+    },
     anthropic: { name: "Anthropic", desc: "Modelos Claude", tag: "" },
     openai: { name: "OpenAI", desc: "Modelos GPT", tag: "" },
     local: {
@@ -28,15 +32,39 @@ export default {
   remoteGroupLabel: "APIs remotas compatibles con OpenAI",
   serverUrl: "URL base",
   modelName: "Nombre del modelo",
-  localServerHint: "Asegúrate de que tu servidor local esté en ejecución antes de continuar",
-  customServerHint: "Elige un preajuste o pega cualquier URL base compatible con OpenAI",
+  localServerHint:
+    "Asegúrate de que tu servidor local esté en ejecución antes de continuar",
+  customServerHint:
+    "Elige un preajuste o pega cualquier URL base compatible con OpenAI",
   customApiKeyLabel: "API key",
-  customApiKeyHint: "Obligatoria para APIs remotas. Déjala en blanco para localhost.",
-  defaultModelHint: "Déjalo en blanco para usar el modelo predeterminado del servidor",
+  customApiKeyHint:
+    "Obligatoria para APIs remotas. Déjala en blanco para localhost.",
+  defaultModelHint:
+    "Déjalo en blanco para usar el modelo predeterminado del servidor",
   missingApiKey: "Introduce una API key",
   missingServerUrl: "Introduce la URL del servidor",
   saveFailed: "No se pudo guardar la configuración",
   noKeyHint: "¿No tienes una clave? Consigue una aquí",
+  noApiKeyTitle: "No se necesita API key",
+  noApiKeyHint: "Este proveedor usa su propio inicio de sesion.",
+  codexAuthTitle: "Usa tu suscripcion de ChatGPT",
+  codexAuthHint:
+    "Inicia sesion con ChatGPT en tu navegador. Hermes guarda la autenticacion de Codex separada de las API keys de OpenAI.",
+  codexAuthCommand: "hermes auth add openai-codex --type oauth",
+  codexLoginButton: "Iniciar sesion con ChatGPT",
+  codexLoginButtonRunning: "Esperando inicio de sesion...",
+  codexLoginButtonSignedIn: "Sesion iniciada",
+  codexOpenBrowser: "Abrir navegador",
+  codexUserCodeLabel: "Codigo de inicio",
+  codexCheckingAuth: "Comprobando inicio de sesion de Codex...",
+  codexNotSignedIn:
+    "Inicia sesion para continuar con tu suscripcion de ChatGPT.",
+  codexLoginStarting: "Iniciando sesion...",
+  codexLoginWaiting:
+    "Navegador abierto. Introduce el codigo y termina el inicio de sesion.",
+  codexLoginSuccess: "Sesion iniciada. Puedes continuar.",
+  codexLoginFailed: "Fallo el inicio de sesion",
+  codexLoginCancelled: "Inicio de sesion cancelado.",
   continue: "Continuar",
   saving: "Guardando...",
   apiKeyLabel: "API key de {{provider}}",
