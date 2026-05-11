@@ -431,6 +431,7 @@ function sendMessageViaCli(
     HOME: homedir(),
     HERMES_HOME: HERMES_HOME,
     PYTHONUNBUFFERED: "1",
+    PYTHONIOENCODING: "utf-8",
   };
 
   // Inject all API keys from the profile .env so the CLI can access them
@@ -663,6 +664,7 @@ export function startGateway(profile?: string): boolean {
     PATH: getEnhancedPath(),
     HOME: homedir(),
     HERMES_HOME: HERMES_HOME,
+    PYTHONIOENCODING: "utf-8",
     API_SERVER_ENABLED: "true", // Ensure API server starts with gateway
   };
 

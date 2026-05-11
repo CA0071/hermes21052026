@@ -75,6 +75,92 @@ function invalidateCache(prefix: string): void {
   }
 }
 
+function yamlQuote(value: string): string {
+  return JSON.stringify(value);
+}
+
+function sectionBlock(content: string, section: string): string | null {
+  const re = new RegExp(
+    `^${escapeRegex(section)}:[ \\t]*\\n((?:[ \\t]+.*(?:\\r?\\n|$))*)`,
+    "m",
+  );
+  return content.match(re)?.[1] || null;
+}
+
+function sectionValue(
+  content: string,
+  section: string,
+  key: string,
+): string | null {
+  const block = sectionBlock(content, section);
+  if (!block) return null;
+  const re = new RegExp(
+    `^[ \\t]*${escapeRegex(key)}:[ \\t]*["']?([^"'\\n#]*)["']?`,
+    "m",
+  );
+  const match = block.match(re);
+  const value = match?.[1]?.trim();
+  return match ? value || "" : null;
+}
+
+function scalarSectionValue(content: string, section: string): string | null {
+  const re = new RegExp(
+    `^${escapeRegex(section)}:[ \\t]*["']?([^"'\\n#]+)["']?`,
+    "m",
+  );
+  const value = content.match(re)?.[1]?.trim();
+  return value || null;
+}
+
+function upsertModelSection(
+  content: string,
+  provider: string,
+  model: string,
+  baseUrl: string,
+): string {
+  const values = {
+    default: model,
+    provider,
+    base_url: baseUrl,
+  };
+  const blockRe = /^model:\s*\n((?:[ \t]+.*(?:\r?\n|$))*)/m;
+
+  function upsertBlockValue(block: string, key: string, value: string): string {
+    const lineRe = new RegExp(
+      `^([ \\t]*${escapeRegex(key)}:[ \\t]*)["']?[^"'\\n#]*["']?`,
+      "m",
+    );
+    if (lineRe.test(block)) {
+      return block.replace(lineRe, `$1${yamlQuote(value)}`);
+    }
+    const suffix = block.endsWith("\n") || block.length === 0 ? "" : "\n";
+    return `${block}${suffix}  ${key}: ${yamlQuote(value)}\n`;
+  }
+
+  const blockMatch = content.match(blockRe);
+  if (blockMatch) {
+    const blockStart = blockMatch.index ?? 0;
+    let block = blockMatch[1];
+    for (const [key, value] of Object.entries(values)) {
+      block = upsertBlockValue(block, key, value);
+    }
+    return (
+      content.slice(0, blockStart) +
+      `model:\n${block}` +
+      content.slice(blockStart + blockMatch[0].length)
+    );
+  }
+
+  const scalarRe = /^model:[ \t]*["']?[^"'\n#]*["']?.*$/m;
+  const modelBlock = `model:\n  default: ${yamlQuote(model)}\n  provider: ${yamlQuote(provider)}\n  base_url: ${yamlQuote(baseUrl)}\n`;
+  if (scalarRe.test(content)) {
+    return content.replace(scalarRe, modelBlock.trimEnd());
+  }
+
+  const prefix = content.trimEnd();
+  return `${prefix}${prefix ? "\n\n" : ""}${modelBlock}`;
+}
+
 function profilePaths(profile?: string): {
   envFile: string;
   configFile: string;
@@ -194,7 +280,11 @@ export function getModelConfig(profile?: string): {
   baseUrl: string;
 } {
   const cacheKey = `mc:${profile || "default"}`;
-  const cached = getCached<{ provider: string; model: string; baseUrl: string }>(cacheKey);
+  const cached = getCached<{
+    provider: string;
+    model: string;
+    baseUrl: string;
+  }>(cacheKey);
   if (cached) return cached;
 
   const { configFile } = profilePaths(profile);
@@ -203,14 +293,21 @@ export function getModelConfig(profile?: string): {
 
   const content = readFileSync(configFile, "utf-8");
 
-  const providerMatch = content.match(/^\s*provider:\s*["']?([^"'\n#]+)["']?/m);
-  const modelMatch = content.match(/^\s*default:\s*["']?([^"'\n#]+)["']?/m);
-  const baseUrlMatch = content.match(/^\s*base_url:\s*["']?([^"'\n#]+)["']?/m);
+  const provider =
+    sectionValue(content, "model", "provider") ??
+    sectionValue(content, "models", "provider");
+  const model =
+    sectionValue(content, "model", "default") ??
+    scalarSectionValue(content, "model") ??
+    sectionValue(content, "models", "default");
+  const baseUrl =
+    sectionValue(content, "model", "base_url") ??
+    sectionValue(content, "models", "base_url");
 
   const result = {
-    provider: providerMatch ? providerMatch[1].trim() : defaults.provider,
-    model: modelMatch ? modelMatch[1].trim() : defaults.model,
-    baseUrl: baseUrlMatch ? baseUrlMatch[1].trim() : defaults.baseUrl,
+    provider: provider || defaults.provider,
+    model: model ?? defaults.model,
+    baseUrl: baseUrl ?? defaults.baseUrl,
   };
 
   setCache(cacheKey, result);
@@ -225,24 +322,8 @@ export function setModelConfig(
 ): void {
   invalidateCache(`mc:${profile || "default"}`);
   const { configFile } = profilePaths(profile);
-  if (!existsSync(configFile)) return;
-
-  let content = readFileSync(configFile, "utf-8");
-
-  const providerRegex = /^(\s*provider:\s*)["']?[^"'\n#]*["']?/m;
-  if (providerRegex.test(content)) {
-    content = content.replace(providerRegex, `$1"${provider}"`);
-  }
-
-  const modelRegex = /^(\s*default:\s*)["']?[^"'\n#]*["']?/m;
-  if (modelRegex.test(content)) {
-    content = content.replace(modelRegex, `$1"${model}"`);
-  }
-
-  const baseUrlRegex = /^(\s*base_url:\s*)["']?[^"'\n#]*["']?/m;
-  if (baseUrlRegex.test(content)) {
-    content = content.replace(baseUrlRegex, `$1"${baseUrl}"`);
-  }
+  let content = existsSync(configFile) ? readFileSync(configFile, "utf-8") : "";
+  content = upsertModelSection(content, provider, model, baseUrl);
 
   // Disable smart_model_routing
   const lines = content.split("\n");
@@ -272,7 +353,13 @@ export function getHermesHome(profile?: string): string {
 
 // ── Platform enabled/disabled in config.yaml ────────────
 
-const SUPPORTED_PLATFORMS = ["telegram", "discord", "slack", "whatsapp", "signal"];
+const SUPPORTED_PLATFORMS = [
+  "telegram",
+  "discord",
+  "slack",
+  "whatsapp",
+  "signal",
+];
 
 export function getPlatformEnabled(profile?: string): Record<string, boolean> {
   const { configFile } = profilePaths(profile);

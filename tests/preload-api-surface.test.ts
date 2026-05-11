@@ -91,6 +91,17 @@ describe("New APIs from v0.8/v0.9 features", () => {
     expect(preloadMethods).toContain("discoverMemoryProviders");
     expect(typeMethods).toContain("discoverMemoryProviders");
   });
+
+  it("has provider OAuth sign-in APIs", () => {
+    expect(preloadMethods).toContain("getProviderAuthStatus");
+    expect(preloadMethods).toContain("startProviderLogin");
+    expect(preloadMethods).toContain("cancelProviderLogin");
+    expect(preloadMethods).toContain("onProviderLoginProgress");
+    expect(typeMethods).toContain("getProviderAuthStatus");
+    expect(typeMethods).toContain("startProviderLogin");
+    expect(typeMethods).toContain("cancelProviderLogin");
+    expect(typeMethods).toContain("onProviderLoginProgress");
+  });
 });
 
 // ─── Legacy APIs still present ──────────────────────────
@@ -101,6 +112,10 @@ describe("Legacy APIs preserved (backward compat)", () => {
     "checkInstall",
     "startInstall",
     "onInstallProgress",
+    "getProviderAuthStatus",
+    "startProviderLogin",
+    "cancelProviderLogin",
+    "onProviderLoginProgress",
     // Hermes engine
     "getHermesVersion",
     "refreshHermesVersion",

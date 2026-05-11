@@ -106,6 +106,12 @@ import {
   resumeCronJob,
   triggerCronJob,
 } from "./cronjobs";
+import {
+  cancelProviderLogin,
+  getProviderAuthStatus,
+  startProviderLogin,
+  type ProviderLoginProgress,
+} from "./providerLogin";
 import { getAppLocale, setAppLocale } from "./locale";
 import type { AppLocale } from "../shared/i18n/types";
 
@@ -229,6 +235,24 @@ function setupIPC(): void {
       return { success: false, error: (err as Error).message };
     }
   });
+
+  // Provider OAuth sign-in
+  ipcMain.handle("get-provider-auth-status", (_event, provider: string) =>
+    getProviderAuthStatus(provider),
+  );
+
+  ipcMain.handle("start-provider-login", async (event, provider: string) => {
+    try {
+      await startProviderLogin(provider, (progress: ProviderLoginProgress) => {
+        event.sender.send("provider-login-progress", progress);
+      });
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: (err as Error).message };
+    }
+  });
+
+  ipcMain.handle("cancel-provider-login", () => cancelProviderLogin());
 
   // Configuration (profile-aware)
   ipcMain.handle("get-locale", () => getAppLocale());

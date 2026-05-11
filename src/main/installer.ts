@@ -1,6 +1,6 @@
-import { spawn, execSync, execFile } from "child_process";
+import { spawn, execSync, execFile, execFileSync } from "child_process";
 import { existsSync, readFileSync, readdirSync } from "fs";
-import { join } from "path";
+import { delimiter, isAbsolute, join } from "path";
 import { homedir } from "os";
 import type { BrowserWindow } from "electron";
 import { getModelConfig, getConnectionConfig } from "./config";
@@ -11,7 +11,7 @@ export const HERMES_HOME =
   process.env.HERMES_HOME?.trim() || join(homedir(), ".hermes");
 export const HERMES_REPO = join(HERMES_HOME, "hermes-agent");
 export const HERMES_VENV = join(HERMES_REPO, "venv");
-export const HERMES_PYTHON = join(HERMES_VENV, "bin", "python");
+export const HERMES_PYTHON = resolveHermesPython();
 export const HERMES_SCRIPT = join(HERMES_REPO, "hermes");
 export const HERMES_ENV_FILE = join(HERMES_HOME, ".env");
 export const HERMES_CONFIG_FILE = join(HERMES_HOME, "config.yaml");
@@ -31,12 +31,82 @@ export interface InstallProgress {
   log: string;
 }
 
+function findCommandOnPath(command: string): string | null {
+  try {
+    const out =
+      process.platform === "win32"
+        ? execFileSync("where.exe", [command], {
+            stdio: ["ignore", "pipe", "ignore"],
+          }).toString()
+        : execFileSync("sh", ["-lc", `command -v ${command}`], {
+            stdio: ["ignore", "pipe", "ignore"],
+          }).toString();
+
+    const matches = out
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+    if (matches.length === 0) return null;
+
+    // Prefer a real Python install over the Microsoft Store shim when both
+    // appear on PATH.
+    return (
+      matches.find(
+        (match) => !/[\\/]Microsoft[\\/]WindowsApps[\\/]/i.test(match),
+      ) || matches[0]
+    );
+  } catch {
+    return null;
+  }
+}
+
+function resolveHermesPython(): string {
+  const candidates =
+    process.platform === "win32"
+      ? [
+          join(HERMES_VENV, "Scripts", "python.exe"),
+          join(HERMES_VENV, "bin", "python.exe"),
+          join(HERMES_VENV, "bin", "python"),
+        ]
+      : [
+          join(HERMES_VENV, "bin", "python3"),
+          join(HERMES_VENV, "bin", "python"),
+        ];
+
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return candidate;
+  }
+
+  return (
+    findCommandOnPath(
+      process.platform === "win32" ? "python.exe" : "python3",
+    ) ||
+    findCommandOnPath("python") ||
+    (process.platform === "win32" ? "python.exe" : "python3")
+  );
+}
+
+function executableAvailable(command: string): boolean {
+  if (isAbsolute(command) || /[\\/]/.test(command)) {
+    return existsSync(command);
+  }
+  return findCommandOnPath(command) !== null;
+}
+
+function hermesRuntimeAvailable(): boolean {
+  return existsSync(HERMES_SCRIPT) && executableAvailable(HERMES_PYTHON);
+}
+
 export function getEnhancedPath(): string {
   const home = homedir();
+  const venvBin =
+    process.platform === "win32"
+      ? join(HERMES_VENV, "Scripts")
+      : join(HERMES_VENV, "bin");
   const extra = [
     join(home, ".local", "bin"),
     join(home, ".cargo", "bin"),
-    join(HERMES_VENV, "bin"),
+    venvBin,
     // Node version manager shim directories
     join(home, ".volta", "bin"),
     join(home, ".asdf", "shims"),
@@ -47,7 +117,7 @@ export function getEnhancedPath(): string {
     "/opt/homebrew/bin",
     "/opt/homebrew/sbin",
   ];
-  return [...extra, process.env.PATH || ""].join(":");
+  return [...extra, process.env.PATH || ""].join(delimiter);
 }
 
 /** Resolve the active nvm node version's bin directory. */
@@ -96,7 +166,7 @@ export function checkInstallStatus(): InstallStatus {
   // `python --version` check used to run here adds 1–10s of cold-start
   // latency, so it now lives in `verifyInstall()` and is invoked lazily
   // by the renderer after the main UI is mounted.
-  const installed = existsSync(HERMES_PYTHON) && existsSync(HERMES_SCRIPT);
+  const installed = hermesRuntimeAvailable();
   const configured = existsSync(HERMES_ENV_FILE);
   let hasApiKey = false;
   const verified = installed;
@@ -104,7 +174,15 @@ export function checkInstallStatus(): InstallStatus {
   // Local/custom providers don't need an API key
   try {
     const mc = getModelConfig();
-    const localProviders = ["custom", "lmstudio", "ollama", "vllm", "llamacpp"];
+    const localProviders = [
+      "custom",
+      "lmstudio",
+      "ollama",
+      "vllm",
+      "llamacpp",
+      "nous",
+      "openai-codex",
+    ];
     if (localProviders.includes(mc.provider)) {
       hasApiKey = true;
     }
@@ -144,7 +222,7 @@ let _verifyCache: { ok: boolean; ts: number } | null = null;
 const VERIFY_TTL_MS = 5 * 60 * 1000;
 
 export async function verifyInstall(): Promise<boolean> {
-  if (!existsSync(HERMES_PYTHON) || !existsSync(HERMES_SCRIPT)) return false;
+  if (!hermesRuntimeAvailable()) return false;
   if (_verifyCache && Date.now() - _verifyCache.ts < VERIFY_TTL_MS) {
     return _verifyCache.ok;
   }
@@ -159,6 +237,7 @@ export async function verifyInstall(): Promise<boolean> {
           PATH: getEnhancedPath(),
           HOME: homedir(),
           HERMES_HOME,
+          PYTHONIOENCODING: "utf-8",
         },
         timeout: 15000,
       },
@@ -177,7 +256,7 @@ let _versionFetching = false;
 
 export async function getHermesVersion(): Promise<string | null> {
   if (_cachedVersion !== null) return _cachedVersion;
-  if (!existsSync(HERMES_PYTHON) || !existsSync(HERMES_SCRIPT)) return null;
+  if (!hermesRuntimeAvailable()) return null;
   if (_versionFetching) {
     // Wait for in-flight fetch
     return new Promise((resolve) => {
@@ -201,6 +280,7 @@ export async function getHermesVersion(): Promise<string | null> {
           PATH: getEnhancedPath(),
           HOME: homedir(),
           HERMES_HOME,
+          PYTHONIOENCODING: "utf-8",
         },
         timeout: 15000,
       },
@@ -222,7 +302,7 @@ export function clearVersionCache(): void {
 }
 
 export function runHermesDoctor(): string {
-  if (!existsSync(HERMES_PYTHON) || !existsSync(HERMES_SCRIPT)) {
+  if (!hermesRuntimeAvailable()) {
     return "Hermes is not installed.";
   }
   try {
@@ -233,6 +313,7 @@ export function runHermesDoctor(): string {
         PATH: getEnhancedPath(),
         HOME: homedir(),
         HERMES_HOME,
+        PYTHONIOENCODING: "utf-8",
       },
       stdio: ["ignore", "pipe", "pipe"],
       timeout: 30000,
@@ -259,7 +340,7 @@ export function checkOpenClawExists(): { found: boolean; path: string | null } {
 export async function runClawMigrate(
   onProgress: (progress: InstallProgress) => void,
 ): Promise<void> {
-  if (!existsSync(HERMES_PYTHON) || !existsSync(HERMES_SCRIPT)) {
+  if (!hermesRuntimeAvailable()) {
     throw new Error("Hermes is not installed.");
   }
 
@@ -292,6 +373,7 @@ export async function runClawMigrate(
         PATH: getEnhancedPath(),
         HOME: homedir(),
         HERMES_HOME,
+        PYTHONIOENCODING: "utf-8",
         TERM: "dumb",
       },
       stdio: ["ignore", "pipe", "pipe"],
@@ -323,7 +405,7 @@ export async function runClawMigrate(
 export async function runHermesUpdate(
   onProgress: (progress: InstallProgress) => void,
 ): Promise<void> {
-  if (!existsSync(HERMES_PYTHON) || !existsSync(HERMES_SCRIPT)) {
+  if (!hermesRuntimeAvailable()) {
     throw new Error("Hermes is not installed. Please install it first.");
   }
 
@@ -349,6 +431,7 @@ export async function runHermesUpdate(
         PATH: getEnhancedPath(),
         HOME: homedir(),
         HERMES_HOME,
+        PYTHONIOENCODING: "utf-8",
         TERM: "dumb",
       },
       stdio: ["ignore", "pipe", "pipe"],
@@ -479,25 +562,52 @@ export async function runInstall(
     return await new Promise<void>((resolve, reject) => {
       const home = homedir();
 
-      // Source the user's shell profile to get the same PATH as their terminal,
-      // then run the official install script. Electron apps launched from Finder
-      // don't inherit the terminal environment.
-      const shellProfile = getShellProfile(home);
-      const installCmd = [
-        shellProfile ? `source "${shellProfile}" 2>/dev/null;` : "",
-        "curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash -s -- --skip-setup",
-      ].join(" ");
-
       const basePath = getEnhancedPath();
-      const proc = spawn("bash", ["-c", installCmd], {
+      const installEnv = {
+        ...process.env,
+        PATH: askpass
+          ? `${askpass.pathPrepend}${delimiter}${basePath}`
+          : basePath,
+        HOME: home,
+        HERMES_HOME,
+        PYTHONIOENCODING: "utf-8",
+        TERM: "dumb",
+        ...(askpass?.env ?? {}),
+      };
+
+      const isWindows = process.platform === "win32";
+      const installUrl =
+        "https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts";
+      let command: string;
+      let args: string[];
+      if (isWindows) {
+        command = "powershell.exe";
+        args = [
+          "-NoProfile",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-Command",
+          [
+            "$ErrorActionPreference = 'Stop';",
+            `& ([scriptblock]::Create((Invoke-RestMethod -UseBasicParsing '${installUrl}/install.ps1'))) -SkipSetup`,
+          ].join(" "),
+        ];
+      } else {
+        // Source the user's shell profile to get the same PATH as their terminal,
+        // then run the official install script. Electron apps launched from Finder
+        // don't inherit the terminal environment.
+        const shellProfile = getShellProfile(home);
+        const installCmd = [
+          shellProfile ? `source "${shellProfile}" 2>/dev/null;` : "",
+          `curl -fsSL ${installUrl}/install.sh | bash -s -- --skip-setup`,
+        ].join(" ");
+        command = "bash";
+        args = ["-c", installCmd];
+      }
+
+      const proc = spawn(command, args, {
         cwd: home,
-        env: {
-          ...process.env,
-          PATH: askpass ? `${askpass.pathPrepend}:${basePath}` : basePath,
-          HOME: home,
-          TERM: "dumb",
-          ...(askpass?.env ?? {}),
-        },
+        env: installEnv,
         stdio: ["ignore", "pipe", "pipe"],
       });
 
@@ -517,7 +627,7 @@ export async function runInstall(
           // The install script can exit non-zero due to benign issues
           // (e.g. git stash pop failure on already-clean repo).
           // If Hermes is actually installed and working, treat as success.
-          if (existsSync(HERMES_PYTHON) && existsSync(HERMES_SCRIPT)) {
+          if (hermesRuntimeAvailable()) {
             emit(
               "\nInstall script exited with warnings, but Hermes is installed successfully.\n",
             );
@@ -548,7 +658,7 @@ export async function runInstall(
 export async function runHermesBackup(
   profile?: string,
 ): Promise<{ success: boolean; path?: string; error?: string }> {
-  if (!existsSync(HERMES_PYTHON) || !existsSync(HERMES_SCRIPT)) {
+  if (!hermesRuntimeAvailable()) {
     return { success: false, error: "Hermes is not installed." };
   }
   const args = [HERMES_SCRIPT, "backup"];
@@ -565,6 +675,7 @@ export async function runHermesBackup(
           PATH: getEnhancedPath(),
           HOME: homedir(),
           HERMES_HOME,
+          PYTHONIOENCODING: "utf-8",
           TERM: "dumb",
         },
         timeout: 120000,
@@ -595,7 +706,7 @@ export async function runHermesImport(
   archivePath: string,
   profile?: string,
 ): Promise<{ success: boolean; error?: string }> {
-  if (!existsSync(HERMES_PYTHON) || !existsSync(HERMES_SCRIPT)) {
+  if (!hermesRuntimeAvailable()) {
     return { success: false, error: "Hermes is not installed." };
   }
   const args = [HERMES_SCRIPT, "import", archivePath];
@@ -612,6 +723,7 @@ export async function runHermesImport(
           PATH: getEnhancedPath(),
           HOME: homedir(),
           HERMES_HOME,
+          PYTHONIOENCODING: "utf-8",
           TERM: "dumb",
         },
         timeout: 120000,
@@ -635,7 +747,7 @@ export async function runHermesImport(
 // ────────────────────────────────────────────────────
 
 export function runHermesDump(): Promise<string> {
-  if (!existsSync(HERMES_PYTHON) || !existsSync(HERMES_SCRIPT)) {
+  if (!hermesRuntimeAvailable()) {
     return Promise.resolve("Hermes is not installed.");
   }
   return new Promise((resolve) => {
@@ -649,6 +761,7 @@ export function runHermesDump(): Promise<string> {
           PATH: getEnhancedPath(),
           HOME: homedir(),
           HERMES_HOME,
+          PYTHONIOENCODING: "utf-8",
           TERM: "dumb",
         },
         timeout: 30000,
