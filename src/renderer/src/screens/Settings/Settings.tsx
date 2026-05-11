@@ -3,10 +3,19 @@ import { useTheme } from "../../components/ThemeProvider";
 import { THEME_OPTIONS } from "../../constants";
 import { useI18n } from "../../components/useI18n";
 import { APP_LOCALES, type AppLocale } from "../../../../shared/i18n";
-import { ArrowRight, Download, Upload, FileText } from "lucide-react";
+import {
+  ArrowRight,
+  Download,
+  Upload,
+  FileText,
+  Play,
+  RefreshCw,
+  Wrench,
+} from "lucide-react";
 import { useHermesReadiness } from "../../hooks/useHermesReadiness";
 import {
   parseHermesVersion,
+  type ReadinessOverviewItem,
   type ReadinessViewTarget,
 } from "../../lib/readiness";
 
@@ -20,6 +29,14 @@ const LANGUAGE_LABEL_KEYS: Record<AppLocale, string> = {
 type SettingsProps = {
   profile?: string;
   onNavigate?: (view: ReadinessViewTarget) => void;
+};
+
+type OverviewAction = {
+  label: string;
+  icon: "arrow" | "play" | "refresh" | "wrench";
+  onClick: () => void | Promise<void>;
+  disabled?: boolean;
+  primary?: boolean;
 };
 
 // Read cached values from localStorage for instant display
@@ -112,6 +129,8 @@ function Settings({ profile, onNavigate }: SettingsProps): React.JSX.Element {
   // Debug dump
   const [dumpOutput, setDumpOutput] = useState<string | null>(null);
   const [dumpRunning, setDumpRunning] = useState(false);
+  const [overviewRefreshing, setOverviewRefreshing] = useState(false);
+  const [gatewayStarting, setGatewayStarting] = useState(false);
 
   const readiness = useHermesReadiness({
     profile,
@@ -316,38 +335,174 @@ function Settings({ profile, onNavigate }: SettingsProps): React.JSX.Element {
   async function handleDoctor(): Promise<void> {
     setDoctorRunning(true);
     setDoctorOutput(null);
-    const output = await window.hermesAPI.runHermesDoctor();
-    setDoctorOutput(output);
-    setDoctorRunning(false);
+    try {
+      const output = await window.hermesAPI.runHermesDoctor();
+      setDoctorOutput(output);
+    } catch (err) {
+      setDoctorOutput((err as Error).message);
+    } finally {
+      setDoctorRunning(false);
+    }
   }
 
   // Helper to fetch fresh version, clear backend cache, and update localStorage
-  function refreshVersion(): void {
-    window.hermesAPI.refreshHermesVersion().then((v) => {
-      setHermesVersion(v);
-      if (v) {
-        try {
-          localStorage.setItem("hermes-version-cache", v);
-        } catch {
-          /* ignore */
-        }
+  async function refreshVersion(): Promise<void> {
+    const v = await window.hermesAPI.refreshHermesVersion();
+    setHermesVersion(v);
+    if (v) {
+      try {
+        localStorage.setItem("hermes-version-cache", v);
+      } catch {
+        /* ignore */
       }
-    });
+    }
   }
 
   async function handleUpdateHermes(): Promise<void> {
     setUpdating(true);
     setUpdateResult(null);
-    const result = await window.hermesAPI.runHermesUpdate();
-    setUpdating(false);
-    if (result.success) {
-      setUpdateResult(t("settings.updatedSuccessfully"));
-      setUpdateResultType("success");
-      refreshVersion();
-      void readiness.refresh();
-    } else {
-      setUpdateResult(result.error || t("settings.updateFailed"));
+    try {
+      const result = await window.hermesAPI.runHermesUpdate();
+      if (result.success) {
+        setUpdateResult(t("settings.updatedSuccessfully"));
+        setUpdateResultType("success");
+        void refreshVersion();
+        void readiness.refresh();
+      } else {
+        setUpdateResult(result.error || t("settings.updateFailed"));
+        setUpdateResultType("error");
+      }
+    } catch (err) {
+      setUpdateResult((err as Error).message || t("settings.updateFailed"));
       setUpdateResultType("error");
+    } finally {
+      setUpdating(false);
+    }
+  }
+
+  async function handleOverviewRefresh(): Promise<void> {
+    setOverviewRefreshing(true);
+    try {
+      await Promise.all([refreshVersion(), readiness.refresh()]);
+    } finally {
+      setOverviewRefreshing(false);
+    }
+  }
+
+  async function handleOverviewStartGateway(): Promise<void> {
+    setGatewayStarting(true);
+    try {
+      const started = await window.hermesAPI.startGateway();
+      await readiness.refresh();
+      if (!started && onNavigate) {
+        onNavigate("gateway");
+      }
+      window.setTimeout(() => {
+        void readiness.refresh();
+      }, 2000);
+    } finally {
+      setGatewayStarting(false);
+    }
+  }
+
+  function navigationOverviewAction(
+    item: ReadinessOverviewItem,
+  ): OverviewAction | null {
+    if (!item.target || !onNavigate) return null;
+    return {
+      label: item.actionLabel || item.label,
+      icon: "arrow",
+      onClick: () => item.target && onNavigate(item.target),
+    };
+  }
+
+  function overviewAction(item: ReadinessOverviewItem): OverviewAction | null {
+    const navigationAction = navigationOverviewAction(item);
+
+    if (item.id === "engine") {
+      if (parsedVersion?.updateInfo) {
+        return {
+          label: updating ? t("settings.updating") : t("settings.updateEngine"),
+          icon: "wrench",
+          onClick: handleUpdateHermes,
+          disabled: updating,
+          primary: true,
+        };
+      }
+      return {
+        label: overviewRefreshing
+          ? t("settings.running")
+          : t("settings.refresh"),
+        icon: "refresh",
+        onClick: handleOverviewRefresh,
+        disabled: overviewRefreshing,
+      };
+    }
+
+    if (item.id === "install") {
+      const installStatus = readiness.source.installStatus;
+      if (!installStatus) return null;
+      if (!installStatus.installed || !installStatus.verified) {
+        return {
+          label: doctorRunning
+            ? t("settings.runningDiagnosis")
+            : t("settings.runDiagnosis"),
+          icon: "wrench",
+          onClick: handleDoctor,
+          disabled: doctorRunning,
+          primary: true,
+        };
+      }
+      return null;
+    }
+
+    if (item.id === "provider") {
+      const providerAuth = readiness.source.providerAuth;
+      if (
+        readiness.snapshot.currentProvider === "openai-codex" &&
+        providerAuth?.authenticated
+      ) {
+        return {
+          label: overviewRefreshing
+            ? t("settings.running")
+            : t("settings.refresh"),
+          icon: "refresh",
+          onClick: handleOverviewRefresh,
+          disabled: overviewRefreshing,
+        };
+      }
+      return navigationAction;
+    }
+
+    if (item.id === "gateway" && !readiness.source.gatewayRunning) {
+      return {
+        label: gatewayStarting ? t("settings.running") : t("common.start"),
+        icon: "play",
+        onClick: handleOverviewStartGateway,
+        disabled: gatewayStarting,
+        primary: true,
+      };
+    }
+
+    return navigationAction;
+  }
+
+  function renderOverviewIcon(action: OverviewAction): React.JSX.Element {
+    const spin =
+      (action.icon === "refresh" && overviewRefreshing) ||
+      (action.icon === "wrench" && (updating || doctorRunning));
+    const className = spin ? "settings-overview-spin" : undefined;
+
+    switch (action.icon) {
+      case "play":
+        return <Play size={13} />;
+      case "refresh":
+        return <RefreshCw className={className} size={13} />;
+      case "wrench":
+        return <Wrench className={className} size={13} />;
+      case "arrow":
+      default:
+        return <ArrowRight size={13} />;
     }
   }
 
@@ -441,7 +596,7 @@ function Settings({ profile, onNavigate }: SettingsProps): React.JSX.Element {
           <div className="settings-hermes-actions">
             {parsedVersion?.updateInfo ? (
               <button
-                className="btn btn-primary "
+                className="btn btn-primary"
                 onClick={handleUpdateHermes}
                 disabled={updating}
               >
@@ -496,32 +651,41 @@ function Settings({ profile, onNavigate }: SettingsProps): React.JSX.Element {
           {t("settings.sections.statusOverview")}
         </div>
         <div className="settings-overview-list">
-          {overviewItems.map((item) => (
-            <div key={item.label} className="settings-overview-item">
-              <div className="settings-overview-main">
-                <span className="settings-overview-label">{item.label}</span>
-                <span className="settings-overview-value">{item.value}</span>
+          {overviewItems.map((item) => {
+            const action = overviewAction(item);
+
+            return (
+              <div key={item.label} className="settings-overview-item">
+                <div className="settings-overview-main">
+                  <span className="settings-overview-label">{item.label}</span>
+                  <span className="settings-overview-value">{item.value}</span>
+                </div>
+                <div className="settings-overview-meta">
+                  {item.badge && (
+                    <span
+                      className={`settings-status-badge settings-status-${item.tone}`}
+                    >
+                      {item.badge}
+                    </span>
+                  )}
+                  {action && (
+                    <button
+                      className={`btn ${
+                        action.primary ? "btn-primary" : "btn-secondary"
+                      } btn-sm settings-overview-action`}
+                      disabled={action.disabled}
+                      onClick={() => void action.onClick()}
+                      type="button"
+                    >
+                      {action.icon !== "arrow" && renderOverviewIcon(action)}
+                      <span>{action.label}</span>
+                      {action.icon === "arrow" && renderOverviewIcon(action)}
+                    </button>
+                  )}
+                </div>
               </div>
-              <div className="settings-overview-meta">
-                {item.badge && (
-                  <span
-                    className={`settings-status-badge settings-status-${item.tone}`}
-                  >
-                    {item.badge}
-                  </span>
-                )}
-                {item.target && onNavigate && (
-                  <button
-                    className="btn btn-secondary btn-sm settings-overview-action"
-                    onClick={() => item.target && onNavigate(item.target)}
-                  >
-                    {item.actionLabel}
-                    <ArrowRight size={13} />
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

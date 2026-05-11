@@ -2551,6 +2551,15 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  white-space: nowrap;
+}
+
+.settings-overview-action svg {
+  flex-shrink: 0;
+}
+
+.settings-overview-spin {
+  animation: spin 0.8s linear infinite;
 }
 
 .settings-status-badge {
