@@ -65,6 +65,9 @@ describe("New IPC handlers from v0.8/v0.9 features", () => {
     "run-hermes-dump",
     "list-mcp-servers",
     "discover-memory-providers",
+    "get-provider-auth-status",
+    "start-provider-login",
+    "cancel-provider-login",
   ];
 
   for (const ch of newChannels) {
@@ -84,6 +87,9 @@ describe("Legacy IPC handlers preserved", () => {
   const legacyChannels = [
     "check-install",
     "start-install",
+    "get-provider-auth-status",
+    "start-provider-login",
+    "cancel-provider-login",
     "get-hermes-version",
     "run-hermes-doctor",
     "run-hermes-update",

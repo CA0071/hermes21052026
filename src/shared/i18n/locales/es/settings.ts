@@ -3,6 +3,7 @@ export default {
   sections: {
     hermesAgent: "Hermes Agent",
     appearance: "Apariencia",
+    providerSignIns: "Inicios de sesion de proveedores",
     credentialPool: "Grupo de credenciales",
   },
   theme: {
@@ -31,10 +32,13 @@ export default {
   httpProxy: "Proxy HTTP",
   httpProxyHint: "Proxy SOCKS o HTTP para todas las conexiones salientes (déjalo en blanco para detección automática)",
   saved: "Guardado",
-  providerHint: "Selecciona un proveedor de inferencia o detecta uno automáticamente según la API key",
+  providerHint: "Selecciona un proveedor de inferencia o detecta uno automaticamente desde la autenticacion configurada",
   customProviderHint: "Usa cualquier API compatible con OpenAI (LM Studio, Ollama, vLLM, etc.)",
   modelHint: "Nombre del modelo predeterminado (déjalo en blanco para usar el valor predeterminado del proveedor)",
   customBaseUrlHint: "Endpoint de API compatible con OpenAI",
+  providerSignInsHint: "Administra proveedores que usan inicio de sesion en navegador en lugar de API keys.",
+  providerAuthSignedIn: "Sesion iniciada",
+  providerAuthNotSignedIn: "Sin iniciar sesion",
   poolHint: "Agrega varias API keys para el mismo proveedor para la rotación automática y el equilibrio de carga. Hermes alternará entre ellas.",
   add: "Agregar",
   remove: "Quitar",

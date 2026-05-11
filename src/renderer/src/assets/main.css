@@ -738,6 +738,98 @@ body {
   color: var(--accent-hover);
 }
 
+.setup-auth-panel {
+  padding: 14px 16px;
+  background: var(--bg-secondary);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  margin-bottom: 16px;
+}
+
+.setup-auth-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.setup-auth-hint {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.setup-auth-command {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.setup-auth-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.setup-auth-action {
+  min-height: 32px;
+}
+
+.setup-auth-spin {
+  animation: spin 0.8s linear infinite;
+}
+
+.setup-auth-code-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius-sm);
+}
+
+.setup-auth-code-row span {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.setup-auth-code-row code {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.setup-auth-status {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.35;
+}
+
+.setup-auth-status.success {
+  color: var(--success);
+}
+
+.setup-auth-status.error {
+  color: var(--error);
+}
+
+.setup-auth-status.waiting {
+  color: var(--warning);
+}
+
 .setup-local-presets {
   display: flex;
   gap: 6px;
@@ -1935,6 +2027,130 @@ body {
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
+}
+
+.settings-auth-hint {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+
+.settings-auth-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.settings-auth-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  background: var(--bg-primary);
+}
+
+.settings-auth-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.settings-auth-title {
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.settings-auth-description {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.settings-auth-badge {
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 7px;
+}
+
+.settings-auth-badge.signed-in {
+  border-color: color-mix(in srgb, var(--success) 45%, var(--border));
+  color: var(--success);
+}
+
+.settings-auth-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.settings-auth-action {
+  min-height: 32px;
+}
+
+.settings-auth-spin {
+  animation: spin 0.8s linear infinite;
+}
+
+.settings-auth-code-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+}
+
+.settings-auth-code-row span {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.settings-auth-code-row code {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.settings-auth-status {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.35;
+  margin-top: 10px;
+}
+
+.settings-auth-status.success {
+  color: var(--success);
+}
+
+.settings-auth-status.error {
+  color: var(--error);
+}
+
+.settings-auth-status.waiting {
+  color: var(--warning);
+}
+
+.settings-auth-command {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 11px;
 }
 
 .settings-pool-add {

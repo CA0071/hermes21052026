@@ -3,6 +3,7 @@ export default {
   sections: {
     hermesAgent: "Hermes Agent",
     appearance: "外观",
+    providerSignIns: "提供商登录",
     credentialPool: "凭据池",
   },
   theme: {
@@ -32,10 +33,13 @@ export default {
   httpProxy: "HTTP 代理",
   httpProxyHint: "所有 outgoing 连接的 SOCKS 或 HTTP 代理(留空则自动检测)",
   saved: "已保存",
-  providerHint: "选择推理提供商,或根据 API Key 自动识别",
+  providerHint: "选择推理提供商，或根据已配置的认证自动识别",
   customProviderHint: "使用任何兼容 OpenAI 的接口(LM Studio、Ollama、vLLM 等)",
   modelHint: "默认模型名(留空则使用提供商默认值)",
   customBaseUrlHint: "兼容 OpenAI 的 API 地址",
+  providerSignInsHint: "管理使用浏览器登录而不是 API Key 的提供商。",
+  providerAuthSignedIn: "已登录",
+  providerAuthNotSignedIn: "未登录",
   poolHint: "为同一提供商添加多个 API Key,以便自动轮换和负载均衡。Hermes 会在它们之间轮流使用。",
   add: "添加",
   remove: "移除",

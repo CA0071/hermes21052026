@@ -1,7 +1,16 @@
-import { useState } from "react";
-import { ArrowRight, ExternalLink } from "../../assets/icons";
+import { useEffect, useState } from "react";
+import { ArrowRight, Check, ExternalLink, Spinner } from "../../assets/icons";
 import { PROVIDERS, LOCAL_PRESETS } from "../../constants";
 import { useI18n } from "../../components/useI18n";
+
+type SetupProviderLoginProgress = {
+  provider: string;
+  status: "starting" | "waiting" | "success" | "error";
+  detail: string;
+  log: string;
+  verificationUrl?: string;
+  userCode?: string;
+};
 
 function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
   const { t } = useI18n();
@@ -12,12 +21,111 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [showKey, setShowKey] = useState(false);
+  const [codexLoginProgress, setCodexLoginProgress] =
+    useState<SetupProviderLoginProgress | null>(null);
+  const [codexLoginRunning, setCodexLoginRunning] = useState(false);
+  const [codexSignedIn, setCodexSignedIn] = useState(false);
+  const [codexAuthChecking, setCodexAuthChecking] = useState(false);
 
   const provider = PROVIDERS.setup.find((p) => p.id === selectedProvider)!;
   const isLocal = selectedProvider === "local";
+  const isCodexSubscription = selectedProvider === "openai-codex";
+
+  useEffect(() => {
+    return window.hermesAPI.onProviderLoginProgress((progress) => {
+      if (progress.provider !== "openai-codex") return;
+      setCodexLoginProgress(progress);
+      setCodexLoginRunning(
+        progress.status === "starting" || progress.status === "waiting",
+      );
+      if (progress.status === "success") {
+        setCodexSignedIn(true);
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!isCodexSubscription) return undefined;
+
+    setCodexAuthChecking(true);
+    window.hermesAPI
+      .getProviderAuthStatus("openai-codex")
+      .then((status) => {
+        if (cancelled) return;
+        setCodexSignedIn(status.authenticated);
+        if (status.authenticated) {
+          setCodexLoginProgress({
+            provider: "openai-codex",
+            status: "success",
+            detail: t("setup.codexLoginSuccess"),
+            log: status.detail,
+          });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setCodexSignedIn(false);
+      })
+      .finally(() => {
+        if (!cancelled) setCodexAuthChecking(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isCodexSubscription, t]);
 
   function applyLocalPreset(presetBaseUrl: string): void {
     setBaseUrl(presetBaseUrl);
+  }
+
+  function codexStatusText(): string {
+    if (codexAuthChecking) return t("setup.codexCheckingAuth");
+    if (!codexLoginProgress) return t("setup.codexNotSignedIn");
+    if (codexLoginProgress.status === "success") {
+      return t("setup.codexLoginSuccess");
+    }
+    if (codexLoginProgress.status === "error") {
+      return codexLoginProgress.detail || t("setup.codexLoginFailed");
+    }
+    if (codexLoginProgress.userCode) return t("setup.codexLoginWaiting");
+    return t("setup.codexLoginStarting");
+  }
+
+  async function handleCodexSignIn(): Promise<void> {
+    setError("");
+    setCodexSignedIn(false);
+    setCodexLoginRunning(true);
+    setCodexLoginProgress({
+      provider: "openai-codex",
+      status: "starting",
+      detail: t("setup.codexLoginStarting"),
+      log: "",
+    });
+
+    try {
+      const result = await window.hermesAPI.startProviderLogin("openai-codex");
+      if (result.success) {
+        setCodexSignedIn(true);
+      } else {
+        setError(result.error || t("setup.codexLoginFailed"));
+      }
+    } catch {
+      setError(t("setup.codexLoginFailed"));
+    } finally {
+      setCodexLoginRunning(false);
+    }
+  }
+
+  async function handleCancelCodexSignIn(): Promise<void> {
+    await window.hermesAPI.cancelProviderLogin();
+    setCodexLoginRunning(false);
+    setCodexLoginProgress({
+      provider: "openai-codex",
+      status: "error",
+      detail: t("setup.codexLoginCancelled"),
+      log: "",
+    });
   }
 
   function resolveCustomEnvKey(url: string): string {
@@ -195,7 +303,7 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
               {t("setup.defaultModelHint")}
             </div>
           </>
-        ) : (
+        ) : provider.needsKey ? (
           <>
             <label className="setup-label">
               {t("setup.apiKeyLabel", { provider: t(provider.name) })}
@@ -230,6 +338,98 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
               <ExternalLink size={12} />
             </button>
           </>
+        ) : (
+          <>
+            <div className="setup-auth-panel">
+              <div className="setup-auth-title">
+                {isCodexSubscription
+                  ? t("setup.codexAuthTitle")
+                  : t("setup.noApiKeyTitle")}
+              </div>
+              <div className="setup-auth-hint">
+                {isCodexSubscription
+                  ? t("setup.codexAuthHint")
+                  : t("setup.noApiKeyHint")}
+              </div>
+              {isCodexSubscription && (
+                <>
+                  <div className="setup-auth-actions">
+                    <button
+                      className="btn btn-primary btn-sm setup-auth-action"
+                      onClick={handleCodexSignIn}
+                      disabled={codexAuthChecking || codexLoginRunning}
+                      type="button"
+                    >
+                      {codexLoginRunning ? (
+                        <Spinner className="setup-auth-spin" size={14} />
+                      ) : codexSignedIn ? (
+                        <Check size={14} />
+                      ) : null}
+                      {codexLoginRunning
+                        ? t("setup.codexLoginButtonRunning")
+                        : codexSignedIn
+                          ? t("setup.codexLoginButtonSignedIn")
+                          : t("setup.codexLoginButton")}
+                    </button>
+                    {codexLoginRunning && (
+                      <button
+                        className="btn btn-secondary btn-sm setup-auth-action"
+                        onClick={handleCancelCodexSignIn}
+                        type="button"
+                      >
+                        {t("common.cancel")}
+                      </button>
+                    )}
+                    {codexLoginProgress?.verificationUrl && (
+                      <button
+                        className="btn btn-secondary btn-sm setup-auth-action"
+                        onClick={() =>
+                          window.hermesAPI.openExternal(
+                            codexLoginProgress.verificationUrl!,
+                          )
+                        }
+                        type="button"
+                      >
+                        {t("setup.codexOpenBrowser")}
+                        <ExternalLink size={13} />
+                      </button>
+                    )}
+                  </div>
+                  {codexLoginProgress?.userCode && (
+                    <div className="setup-auth-code-row">
+                      <span>{t("setup.codexUserCodeLabel")}</span>
+                      <code>{codexLoginProgress.userCode}</code>
+                    </div>
+                  )}
+                  <div
+                    className={`setup-auth-status ${codexLoginProgress?.status || ""}`}
+                  >
+                    {codexStatusText()}
+                  </div>
+                  <code className="setup-auth-command">
+                    {t("setup.codexAuthCommand")}
+                  </code>
+                </>
+              )}
+            </div>
+
+            <label className="setup-label" style={{ marginTop: 16 }}>
+              {t("setup.modelName")}{" "}
+              <span className="setup-label-optional">
+                {t("common.optional")}
+              </span>
+            </label>
+            <input
+              className="input"
+              type="text"
+              placeholder={t("setup.modelNamePlaceholder")}
+              value={modelName}
+              onChange={(e) => setModelName(e.target.value)}
+            />
+            <div className="setup-field-hint">
+              {t("setup.defaultModelHint")}
+            </div>
+          </>
         )}
 
         {error && <div className="setup-error">{error}</div>}
@@ -240,7 +440,9 @@ function Setup({ onComplete }: { onComplete: () => void }): React.JSX.Element {
           disabled={
             saving ||
             (provider.needsKey && !apiKey.trim()) ||
-            (isLocal && !baseUrl.trim())
+            (isLocal && !baseUrl.trim()) ||
+            (isCodexSubscription &&
+              (codexAuthChecking || codexLoginRunning || !codexSignedIn))
           }
           style={{ marginTop: isLocal ? 20 : 0 }}
         >

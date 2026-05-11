@@ -16,6 +16,15 @@ interface InstallProgress {
   log: string;
 }
 
+interface ProviderLoginProgress {
+  provider: string;
+  status: "starting" | "waiting" | "success" | "error";
+  detail: string;
+  log: string;
+  verificationUrl?: string;
+  userCode?: string;
+}
+
 interface HermesAPI {
   // Installation
   checkInstall: () => Promise<InstallStatus>;
@@ -23,6 +32,18 @@ interface HermesAPI {
   startInstall: () => Promise<{ success: boolean; error?: string }>;
   onInstallProgress: (
     callback: (progress: InstallProgress) => void,
+  ) => () => void;
+
+  // Provider OAuth sign-in
+  getProviderAuthStatus: (
+    provider: string,
+  ) => Promise<{ provider: string; authenticated: boolean; detail: string }>;
+  startProviderLogin: (
+    provider: string,
+  ) => Promise<{ success: boolean; error?: string }>;
+  cancelProviderLogin: () => Promise<boolean>;
+  onProviderLoginProgress: (
+    callback: (progress: ProviderLoginProgress) => void,
   ) => () => void;
 
   // Hermes engine info

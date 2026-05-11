@@ -41,6 +41,48 @@ const hermesAPI = {
     return () => ipcRenderer.removeListener("install-progress", handler);
   },
 
+  // Provider OAuth sign-in
+  getProviderAuthStatus: (
+    provider: string,
+  ): Promise<{ provider: string; authenticated: boolean; detail: string }> =>
+    ipcRenderer.invoke("get-provider-auth-status", provider),
+
+  startProviderLogin: (
+    provider: string,
+  ): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke("start-provider-login", provider),
+
+  cancelProviderLogin: (): Promise<boolean> =>
+    ipcRenderer.invoke("cancel-provider-login"),
+
+  onProviderLoginProgress: (
+    callback: (progress: {
+      provider: string;
+      status: "starting" | "waiting" | "success" | "error";
+      detail: string;
+      log: string;
+      verificationUrl?: string;
+      userCode?: string;
+    }) => void,
+  ): (() => void) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      progress: unknown,
+    ): void =>
+      callback(
+        progress as {
+          provider: string;
+          status: "starting" | "waiting" | "success" | "error";
+          detail: string;
+          log: string;
+          verificationUrl?: string;
+          userCode?: string;
+        },
+      );
+    ipcRenderer.on("provider-login-progress", handler);
+    return () => ipcRenderer.removeListener("provider-login-progress", handler);
+  },
+
   // Hermes engine info
   getHermesVersion: (): Promise<string | null> =>
     ipcRenderer.invoke("get-hermes-version"),
