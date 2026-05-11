@@ -1,10 +1,10 @@
 {
-  "name": "hermes-desktop",
+  "name": "erzy-office",
   "version": "0.3.5",
-  "description": "Hermes Agent Desktop — self-improving AI assistant",
+  "description": "Erzy Office — desktop AI agent for SME automation, powered by Hermes Agent",
   "main": "./out/main/index.js",
-  "author": "fathah",
-  "homepage": "https://github.com/fathah/hermes-desktop",
+  "author": "Erzy",
+  "homepage": "https://github.com/deniel666/Erzy-desktop-agent",
   "scripts": {
     "format": "prettier --write .",
     "lint": "eslint --cache .",

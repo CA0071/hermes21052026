@@ -3,7 +3,7 @@ export default {
   startingInstall: "Iniciando la instalación",
   installationComplete: "Instalación completada",
   installationFailed: "La instalación falló",
-  installingHermes: "Instalando Hermes Agent",
+  installingHermes: "Instalando Erzy Office",
   installationFailedHint:
     "La instalación falló. Inténtalo de nuevo o instala desde la terminal.",
   retryInstallation: "Reintentar la instalación",

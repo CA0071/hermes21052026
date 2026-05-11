@@ -1,7 +1,7 @@
 export default {
   title: "Configuración",
   sections: {
-    hermesAgent: "Hermes Agent",
+    hermesAgent: "Motor de IA",
     appearance: "Apariencia",
     credentialPool: "Grupo de credenciales",
   },

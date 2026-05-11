@@ -1,5 +1,5 @@
 export default {
-  appName: "Hermes Agent",
+  appName: "Erzy Office",
   continue: "Continuar",
   cancel: "Cancelar",
   retry: "Tentar novamente",

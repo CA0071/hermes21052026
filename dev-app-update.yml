@@ -1,4 +1,4 @@
 provider: github
-owner: fathah
-repo: hermes-desktop
-updaterCacheDirName: hermes-desktop-updater
+owner: deniel666
+repo: Erzy-desktop-agent
+updaterCacheDirName: erzy-office-updater

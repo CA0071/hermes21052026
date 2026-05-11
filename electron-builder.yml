@@ -1,5 +1,5 @@
-appId: com.nousresearch.hermes
-productName: Hermes Agent
+appId: com.erzy.office
+productName: Erzy Office
 directories:
   buildResources: build
 files:
@@ -12,7 +12,7 @@ files:
 asarUnpack:
   - resources/**
 win:
-  executableName: hermes-agent
+  executableName: erzy-office
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
@@ -38,14 +38,14 @@ linux:
     - snap
     - deb
     - rpm
-  maintainer: electronjs.org
-  vendor: Nous Research
+  maintainer: Erzy
+  vendor: Erzy
   category: Utility
-  synopsis: Self-improving AI assistant desktop app
+  synopsis: Desktop AI agent for SME automation
   description: >-
-    Hermes Desktop is a native desktop app for installing, configuring, and chatting
-    with Hermes Agent — a self-improving AI assistant with tool use, multi-platform
-    messaging, and a closed learning loop.
+    Erzy Office is a desktop AI agent for small and medium businesses — automating
+    accounting, paperwork, email, and back-office tasks. Powered by Hermes Agent
+    (open source, MIT-licensed) under the hood.
 appImage:
   artifactName: ${name}-${version}.${ext}
 rpm:
@@ -53,5 +53,5 @@ rpm:
 npmRebuild: false
 publish:
   provider: github
-  owner: fathah
-  repo: hermes-desktop
+  owner: deniel666
+  repo: Erzy-desktop-agent

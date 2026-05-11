@@ -1,6 +1,6 @@
-# Contributing to Hermes Desktop
+# Contributing to Erzy Office
 
-Thanks for your interest in contributing to Hermes Desktop! Whether it's a bug fix, a new feature, improved docs, or just a typo — every contribution helps.
+Thanks for your interest in contributing to Erzy Office! Whether it's a bug fix, a new feature, improved docs, or just a typo — every contribution helps.
 
 ## Languages
 
