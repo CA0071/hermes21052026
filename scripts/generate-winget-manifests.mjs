@@ -1,18 +1,8 @@
 // scripts/generate-winget-manifests.mjs
-//
-// Fills the YAML templates in build/winget/ with the current version,
-// installer URL, and SHA256 of the NSIS installer in dist/, and writes
-// the result under dist/winget/manifests/n/NousResearch/HermesDesktop/<version>/.
-//
-// Run from CLI: VERSION=0.2.3 PUBLISH_OWNER=fathah node scripts/generate-winget-manifests.mjs
-// Or import as ESM and call generateWingetManifests({ rootDir, version, name, publishOwner }).
-
 import { createHash } from "node:crypto";
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 
-// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function generateWingetManifests({
   rootDir,
   version,
@@ -23,7 +13,7 @@ export function generateWingetManifests({
   if (!existsSync(exePath)) {
     throw new Error(
       `NSIS installer not found at ${exePath}. ` +
-        `Run electron-builder --win nsis first, or download the windows-artifacts CI artifact into dist/.`,
+        `Run electron-builder --win nsis first.`,
     );
   }
 
@@ -31,9 +21,38 @@ export function generateWingetManifests({
     .update(readFileSync(exePath))
     .digest("hex")
     .toUpperCase();
-  const releaseDate = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  
   const installerUrl = `https://github.com/${publishOwner}/hermes-desktop/releases/download/v${version}/${name}-${version}-setup.exe`;
   const releaseNotesUrl = `https://github.com/${publishOwner}/hermes-desktop/releases/tag/v${version}`;
+  const releaseDate = new Date().toISOString().slice(0, 10);
+
+  // New Feature: Automated Template Processing & Directory Creation
+  const manifestDir = join(rootDir, "dist", "winget", "manifests", name[0].toLowerCase(), publishOwner, name, version);
+  const templateDir = join(rootDir, "build", "winget");
+
+  mkdirSync(manifestDir, { recursive: true });
+
+  const placeholders = {
+    "{{version}}": version,
+    "{{sha256}}": sha256,
+    "{{installerUrl}}": installerUrl,
+    "{{releaseNotesUrl}}": releaseNotesUrl,
+    "{{releaseDate}}": releaseDate,
+    "{{publishOwner}}": publishOwner
+  };
+
+  readdirSync(templateDir).forEach(file => {
+    let content = readFileSync(join(templateDir, file), "utf8");
+    
+    Object.entries(placeholders).forEach(([key, value]) => {
+      content = content.replaceAll(key, value);
+    });
+
+    writeFileSync(join(manifestDir, file), content);
+  });
+
+  console.log(`✅ Manifests generated in: ${manifestDir}`);
+}
 
   const replacements = {
     VERSION: version,
