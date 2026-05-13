@@ -4,6 +4,9 @@ export default {
     "Define your agent's personality, tone, and instructions via SOUL.md",
   resetTitle: "Reset to default",
   reset: "Reset",
+  save: "Save Persona",
+  saving: "Saving...",
+  saveTitle: "Save current persona settings",
   resetConfirm:
     "Reset to the default persona? Your current content will be lost.",
   placeholder: "Write your agent's persona instructions here...",

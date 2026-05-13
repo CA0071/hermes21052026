@@ -702,9 +702,19 @@ function Chat({
     }
   }
 
+  function isComposingText(e: React.KeyboardEvent): boolean {
+    const nativeEvent = e.nativeEvent as KeyboardEvent & {
+      isComposing?: boolean;
+    };
+    return nativeEvent.isComposing === true || nativeEvent.keyCode === 229;
+  }
+
   function handleKeyDown(e: React.KeyboardEvent): void {
-    // Slash menu keyboard navigation
-    if (slashMenuOpen && filteredSlashCommands.length > 0) {
+    const composing = isComposingText(e);
+
+    // Slash menu keyboard navigation. Do not consume Enter while IME is composing
+    // Chinese/Japanese/Korean text; Enter is used to commit candidate text there.
+    if (slashMenuOpen && filteredSlashCommands.length > 0 && !composing) {
       if (e.key === "ArrowDown") {
         e.preventDefault();
         setSlashSelectedIndex((i) =>
@@ -731,7 +741,7 @@ function Chat({
       }
     }
 
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey && !composing) {
       e.preventDefault();
       handleSend();
     }

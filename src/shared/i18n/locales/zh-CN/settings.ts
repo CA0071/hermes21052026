@@ -35,7 +35,8 @@ export default {
   customProviderHint: "使用任何兼容 OpenAI 的接口(LM Studio、Ollama、vLLM 等)",
   modelHint: "默认模型名(留空则使用提供商默认值)",
   customBaseUrlHint: "兼容 OpenAI 的 API 地址",
-  poolHint: "为同一提供商添加多个 API Key,以便自动轮换和负载均衡。Hermes 会在它们之间轮流使用。",
+  poolHint:
+    "为同一提供商添加多个 API Key,以便自动轮换和负载均衡。Hermes 会在它们之间轮流使用。",
   add: "添加",
   remove: "移除",
   keyLabel: "密钥",
@@ -52,8 +53,10 @@ export default {
   resettingInstall: "正在清理...",
   resetInstallDone: "已清理安装状态，正在重新打开首次安装流程。",
   resetInstallFailed: "清理失败",
-  resetInstallConfirm: "这会删除 ~/.hermes 中的 Yat Studio/Hermes 本地运行环境、配置、会话和 API Key，用于模拟全新安装。确定继续？",
-  resetInstallHint: "macOS 卸载 App 通常只删除 /Applications/Yat Studio.app，不会自动删除 {{path}}。如果要像新机器一样重装，可先点这里清理本地运行环境。",
+  resetInstallConfirm:
+    "这会删除 ~/.hermes 中的 Yat Studio/Hermes 本地运行环境、配置、会话和 API Key，用于模拟全新安装。确定继续？",
+  resetInstallHint:
+    "macOS 卸载 App 通常只删除 /Applications/Yat Studio.app，不会自动删除 {{path}}。如果要像新机器一样重装，可先点这里清理本地运行环境。",
   refresh: "刷新",
   emptyLog: "(空)",
   updating: "更新中...",
@@ -64,12 +67,16 @@ export default {
   running: "运行中...",
   debugDump: "调试转储",
   migrationDetected: "检测到 OpenClaw 安装",
-  migrationDesc: "在 <code>{{path}}</code> 发现 OpenClaw。你可以将配置、API Key、会话和技能迁移到 Hermes。",
+  migrationDesc:
+    "在 <code>{{path}}</code> 发现 OpenClaw。你可以将配置、API Key、会话和技能迁移到 Hermes。",
   migrationDismiss: "不再显示",
   migrating: "迁移中...",
   migrateToHermes: "迁移到 Hermes",
   skip: "跳过",
-  appearanceHint: "选择聊天界面风格：微信、钉钉、WhatsApp 或 LINE。语言默认跟随系统。",
+  appearanceHint:
+    "选择聊天界面风格：微信、钉钉、WhatsApp 或 LINE。点选后可预览，点击“应用并保存”后永久生效；语言默认跟随系统。",
+  previewTheme: "预览这个界面风格",
+  applyAppearance: "应用并保存",
   apiKeyPlaceholder: "API Key",
   labelPlaceholder: "标签({{optional}})",
   connectionSection: "连接",
@@ -78,14 +85,17 @@ export default {
   modeLocalHint: "使用本机安装的 Hermes",
   modeRemoteHint: "连接到网络或云服务器上的 Hermes API",
   remoteUrl: "远程服务器地址",
-  remoteUrlHint: "Hermes API 服务器地址（需开放 /health 和 /v1/chat/completions）",
+  remoteUrlHint:
+    "Hermes API 服务器地址（需开放 /health 和 /v1/chat/completions）",
   remoteApiKey: "API 密钥",
-  remoteApiKeyHint: "与远程主机上的 API_SERVER_KEY 匹配。如果服务器接受未认证的请求，可以留空。",
+  remoteApiKeyHint:
+    "与远程主机上的 API_SERVER_KEY 匹配。如果服务器接受未认证的请求，可以留空。",
   testingConnection: "测试中...",
   testConnection: "测试连接",
   save: "保存",
   serverConfigTitle: "服务器配置",
-  serverConfigHint: "你已连接到远程 Hermes 服务器。模型选择、提供商 API Key 和凭据均在服务器的 <code>~/.hermes/.env</code> 和 <code>config.yaml</code> 中管理。请在主机上编辑（例如 <code>docker exec -it hermes vi /opt/data/.env</code>）然后重启容器。",
+  serverConfigHint:
+    "你已连接到远程 Hermes 服务器。模型选择、提供商 API Key 和凭据均在服务器的 <code>~/.hermes/.env</code> 和 <code>config.yaml</code> 中管理。请在主机上编辑（例如 <code>docker exec -it hermes vi /opt/data/.env</code>）然后重启容器。",
   connectionMode: "模式",
   switchedToLocal: "已切换到本地模式",
 } as const;

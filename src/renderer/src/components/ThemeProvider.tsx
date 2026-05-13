@@ -1,4 +1,10 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 
 export type Theme = "wechat" | "dingtalk" | "whatsapp" | "line";
 type ResolvedTheme = Theme;
@@ -7,12 +13,16 @@ interface ThemeContextValue {
   theme: Theme;
   resolved: ResolvedTheme;
   setTheme: (theme: Theme) => void;
+  previewTheme: (theme: Theme) => void;
+  resetPreview: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue>({
   theme: "whatsapp",
   resolved: "whatsapp",
   setTheme: () => {},
+  previewTheme: () => {},
+  resetPreview: () => {},
 });
 
 import { THEME_STORAGE_KEY as STORAGE_KEY } from "../constants";
@@ -40,10 +50,33 @@ export function ThemeProvider({
   });
   const [resolved, setResolved] = useState<ResolvedTheme>(() => resolve(theme));
 
-  function setTheme(next: Theme): void {
-    setThemeState(next);
-    localStorage.setItem(STORAGE_KEY, next);
-  }
+  const applyResolvedTheme = useCallback((next: Theme): void => {
+    document.documentElement.setAttribute("data-theme", next);
+    document.documentElement.setAttribute("data-product-theme", next);
+  }, []);
+
+  const setTheme = useCallback(
+    (next: Theme): void => {
+      setThemeState(next);
+      setResolved(next);
+      localStorage.setItem(STORAGE_KEY, next);
+      applyResolvedTheme(next);
+    },
+    [applyResolvedTheme],
+  );
+
+  const previewTheme = useCallback(
+    (next: Theme): void => {
+      setResolved(next);
+      applyResolvedTheme(next);
+    },
+    [applyResolvedTheme],
+  );
+
+  const resetPreview = useCallback((): void => {
+    setResolved(theme);
+    applyResolvedTheme(theme);
+  }, [applyResolvedTheme, theme]);
 
   // Update resolved whenever theme changes
   useEffect(() => {
@@ -52,12 +85,13 @@ export function ThemeProvider({
 
   // Apply both a product style and a light base theme to <html>.
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", resolved);
-    document.documentElement.setAttribute("data-product-theme", resolved);
+    applyResolvedTheme(resolved);
   }, [resolved]);
 
   return (
-    <ThemeContext.Provider value={{ theme, resolved, setTheme }}>
+    <ThemeContext.Provider
+      value={{ theme, resolved, setTheme, previewTheme, resetPreview }}
+    >
       {children}
     </ThemeContext.Provider>
   );

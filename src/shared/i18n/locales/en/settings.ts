@@ -27,21 +27,26 @@ export default {
   modelBaseUrlPlaceholder: "http://localhost:1234/v1",
   networkSection: "Network",
   forceIpv4: "Force IPv4",
-  forceIpv4Hint: "Disable IPv6 to fix connection timeout issues on some networks",
+  forceIpv4Hint:
+    "Disable IPv6 to fix connection timeout issues on some networks",
   httpProxy: "HTTP Proxy",
-  httpProxyHint: "SOCKS or HTTP proxy for all outgoing connections (leave blank for auto-detect)",
+  httpProxyHint:
+    "SOCKS or HTTP proxy for all outgoing connections (leave blank for auto-detect)",
   saved: "Saved",
   providerHint: "Select an inference provider, or auto-detect based on API Key",
-  customProviderHint: "Use any OpenAI-compatible API (LM Studio, Ollama, vLLM, etc.)",
+  customProviderHint:
+    "Use any OpenAI-compatible API (LM Studio, Ollama, vLLM, etc.)",
   modelHint: "Default model name (leave blank to use provider default)",
   customBaseUrlHint: "OpenAI-compatible API endpoint",
-  poolHint: "Add multiple API Keys for the same provider for automatic rotation and load balancing. Hermes will cycle through them.",
+  poolHint:
+    "Add multiple API Keys for the same provider for automatic rotation and load balancing. Hermes will cycle through them.",
   add: "Add",
   remove: "Remove",
   keyLabel: "Key",
   empty: "(empty)",
   dataSection: "Data",
-  dataHint: "Export or import your Hermes configuration, sessions, skills, and memory.",
+  dataHint:
+    "Export or import your Hermes configuration, sessions, skills, and memory.",
   backingUp: "Backing up...",
   exportBackup: "Export Backup",
   importing: "Importing...",
@@ -50,10 +55,13 @@ export default {
   resetInstallSection: "Reinstall / first-run testing",
   resetInstall: "Clear Yat Studio install state",
   resettingInstall: "Clearing...",
-  resetInstallDone: "Install state cleared. Reopening the first-run install flow.",
+  resetInstallDone:
+    "Install state cleared. Reopening the first-run install flow.",
   resetInstallFailed: "Failed to clear install state",
-  resetInstallConfirm: "This deletes the local Yat Studio/Hermes runtime, config, sessions, and API keys under ~/.hermes so you can simulate a fresh install. Continue?",
-  resetInstallHint: "macOS app removal usually deletes only /Applications/Yat Studio.app, not {{path}}. To test like a new machine, clear the local runtime here first.",
+  resetInstallConfirm:
+    "This deletes the local Yat Studio/Hermes runtime, config, sessions, and API keys under ~/.hermes so you can simulate a fresh install. Continue?",
+  resetInstallHint:
+    "macOS app removal usually deletes only /Applications/Yat Studio.app, not {{path}}. To test like a new machine, clear the local runtime here first.",
   refresh: "Refresh",
   emptyLog: "(empty)",
   updating: "Updating...",
@@ -64,12 +72,16 @@ export default {
   running: "Running...",
   debugDump: "Debug Dump",
   migrationDetected: "OpenClaw Installation Detected",
-  migrationDesc: "Found OpenClaw at <code>{{path}}</code>. You can migrate your configuration, API keys, sessions, and skills to Hermes.",
+  migrationDesc:
+    "Found OpenClaw at <code>{{path}}</code>. You can migrate your configuration, API keys, sessions, and skills to Hermes.",
   migrationDismiss: "Don't show again",
   migrating: "Migrating...",
   migrateToHermes: "Migrate to Hermes",
   skip: "Skip",
-  appearanceHint: "Choose a chat interface style: WeChat, DingTalk, WhatsApp, or LINE. Language follows the OS by default.",
+  appearanceHint:
+    "Choose a chat interface style: WeChat, DingTalk, WhatsApp, or LINE. Click to preview, then Apply & Save to make it permanent. Language follows the OS by default.",
+  previewTheme: "Preview this interface style",
+  applyAppearance: "Apply & Save",
   apiKeyPlaceholder: "API Key",
   labelPlaceholder: "Label ({{optional}})",
   connectionSection: "Connection",
@@ -78,14 +90,17 @@ export default {
   modeLocalHint: "Using Hermes installed on this device",
   modeRemoteHint: "Connect to a Hermes API server on your network or cloud",
   remoteUrl: "Remote URL",
-  remoteUrlHint: "The Hermes API server URL (must expose /health and /v1/chat/completions)",
+  remoteUrlHint:
+    "The Hermes API server URL (must expose /health and /v1/chat/completions)",
   remoteApiKey: "API Key",
-  remoteApiKeyHint: "Matches API_SERVER_KEY on the remote host. Leave empty if the server accepts unauthenticated requests.",
+  remoteApiKeyHint:
+    "Matches API_SERVER_KEY on the remote host. Leave empty if the server accepts unauthenticated requests.",
   testingConnection: "Testing...",
   testConnection: "Test Connection",
   save: "Save",
   serverConfigTitle: "Server Configuration",
-  serverConfigHint: "You&apos;re connected to a remote Hermes server. Model selection, provider API keys, and credentials are managed on the server&apos;s <code>~/.hermes/.env</code> and <code>config.yaml</code>. Edit them on the host (e.g. <code>docker exec -it hermes vi /opt/data/.env</code>) and restart the container.",
+  serverConfigHint:
+    "You&apos;re connected to a remote Hermes server. Model selection, provider API keys, and credentials are managed on the server&apos;s <code>~/.hermes/.env</code> and <code>config.yaml</code>. Edit them on the host (e.g. <code>docker exec -it hermes vi /opt/data/.env</code>) and restart the container.",
   connectionMode: "Mode",
   switchedToLocal: "Switched to local mode",
 } as const;

@@ -11,6 +11,8 @@ function Soul({ profile }: SoulProps): React.JSX.Element {
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const [showReset, setShowReset] = useState(false);
   const loaded = useRef(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -20,6 +22,7 @@ function Soul({ profile }: SoulProps): React.JSX.Element {
     setLoading(true);
     const text = await window.hermesAPI.readSoul(profile);
     setContent(text);
+    setDirty(false);
     setLoading(false);
     setTimeout(() => {
       loaded.current = true;
@@ -33,7 +36,10 @@ function Soul({ profile }: SoulProps): React.JSX.Element {
   const saveSoul = useCallback(
     async (text: string) => {
       if (!loaded.current) return;
+      setSaving(true);
       await window.hermesAPI.writeSoul(text, profile);
+      setSaving(false);
+      setDirty(false);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     },
@@ -41,20 +47,29 @@ function Soul({ profile }: SoulProps): React.JSX.Element {
   );
 
   useEffect(() => {
-    if (!loaded.current) return;
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      saveSoul(content);
-    }, 500);
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [content, saveSoul]);
+  }, []);
+
+  function handleContentChange(next: string): void {
+    setContent(next);
+    if (loaded.current) {
+      setDirty(true);
+      setSaved(false);
+    }
+  }
+
+  async function handleSave(): Promise<void> {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    await saveSoul(content);
+  }
 
   async function handleReset(): Promise<void> {
     const newContent = await window.hermesAPI.resetSoul(profile);
     loaded.current = false;
     setContent(newContent);
+    setDirty(false);
     setShowReset(false);
     setSaved(true);
     setTimeout(() => {
@@ -83,14 +98,24 @@ function Soul({ profile }: SoulProps): React.JSX.Element {
           </h2>
           <p className="soul-subtitle">{t("soul.subtitle")}</p>
         </div>
-        <button
-          className="btn btn-secondary btn-sm"
-          onClick={() => setShowReset(true)}
-          title={t("soul.resetTitle")}
-        >
-          <Refresh size={14} />
-          {t("soul.reset")}
-        </button>
+        <div className="soul-actions">
+          <button
+            className="btn btn-primary btn-sm"
+            onClick={handleSave}
+            disabled={!dirty || saving}
+            title={t("soul.saveTitle")}
+          >
+            {saving ? t("soul.saving") : t("soul.save")}
+          </button>
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={() => setShowReset(true)}
+            title={t("soul.resetTitle")}
+          >
+            <Refresh size={14} />
+            {t("soul.reset")}
+          </button>
+        </div>
       </div>
 
       {showReset && (
@@ -113,7 +138,7 @@ function Soul({ profile }: SoulProps): React.JSX.Element {
       <textarea
         className="soul-editor"
         value={content}
-        onChange={(e) => setContent(e.target.value)}
+        onChange={(e) => handleContentChange(e.target.value)}
         placeholder={t("soul.placeholder")}
         spellCheck={false}
       />

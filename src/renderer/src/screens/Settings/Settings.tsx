@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useTheme } from "../../components/ThemeProvider";
+import { useTheme, type Theme } from "../../components/ThemeProvider";
 import { THEME_OPTIONS } from "../../constants";
 import { useI18n } from "../../components/useI18n";
 import { Download, Upload, FileText } from "lucide-react";
@@ -25,7 +25,9 @@ function getCachedOpenClaw(): { found: boolean; path: string | null } | null {
 function Settings({ profile }: { profile?: string }): React.JSX.Element {
   const { t, localePreference, setLocale } = useI18n();
   const [hermesHome, setHermesHome] = useState("");
-  const { theme, setTheme } = useTheme();
+  const { theme, resolved, setTheme, previewTheme, resetPreview } = useTheme();
+  const [selectedTheme, setSelectedTheme] = useState<Theme>(theme);
+  const [appearanceSaved, setAppearanceSaved] = useState(false);
 
   // Hermes engine info — initialize from localStorage cache for instant display
   const [hermesVersion, setHermesVersion] = useState<string | null>(
@@ -84,7 +86,9 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
   const [httpProxy, setHttpProxy] = useState("");
   const [networkSaved, setNetworkSaved] = useState(false);
   const [resettingInstall, setResettingInstall] = useState(false);
-  const [resetInstallResult, setResetInstallResult] = useState<string | null>(null);
+  const [resetInstallResult, setResetInstallResult] = useState<string | null>(
+    null,
+  );
 
   // Debug dump
   const [dumpOutput, setDumpOutput] = useState<string | null>(null);
@@ -141,6 +145,14 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
     loadConfig();
   }, [loadConfig]);
 
+  useEffect(() => {
+    setSelectedTheme(theme);
+  }, [theme]);
+
+  useEffect(() => {
+    return () => resetPreview();
+  }, [resetPreview]);
+
   async function handleMigrate(): Promise<void> {
     setMigrating(true);
     setMigrationLog("");
@@ -174,6 +186,18 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
   function handleDismissMigration(): void {
     localStorage.setItem("hermes-openclaw-dismissed", "true");
     setMigrationDismissed(true);
+  }
+
+  function handleSelectTheme(next: Theme): void {
+    setSelectedTheme(next);
+    previewTheme(next);
+    setAppearanceSaved(false);
+  }
+
+  function handleApplyTheme(): void {
+    setTheme(selectedTheme);
+    setAppearanceSaved(true);
+    setTimeout(() => setAppearanceSaved(false), 2000);
   }
 
   async function handleSaveConnection(): Promise<void> {
@@ -278,7 +302,9 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
         setTimeout(() => window.location.reload(), 900);
       })
       .catch((err) => {
-        setResetInstallResult((err as Error).message || t("settings.resetInstallFailed"));
+        setResetInstallResult(
+          (err as Error).message || t("settings.resetInstallFailed"),
+        );
         setResettingInstall(false);
       });
   }
@@ -618,17 +644,43 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
         <div className="settings-field">
           <label className="settings-field-label">
             {t("settings.theme.label")}
+            {appearanceSaved && (
+              <span className="settings-saved" style={{ marginLeft: 8 }}>
+                {t("settings.saved")}
+              </span>
+            )}
           </label>
           <div className="settings-theme-options">
             {THEME_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
-                className={`settings-theme-option ${theme === opt.value ? "active" : ""}`}
-                onClick={() => setTheme(opt.value)}
+                className={`settings-theme-option ${selectedTheme === opt.value ? "active" : ""}`}
+                onClick={() => handleSelectTheme(opt.value)}
+                title={t("settings.previewTheme")}
               >
                 {t(opt.label)}
               </button>
             ))}
+          </div>
+          <div className="settings-apply-row">
+            <button
+              className="btn btn-primary"
+              onClick={handleApplyTheme}
+              disabled={theme === selectedTheme && resolved === selectedTheme}
+            >
+              {t("settings.applyAppearance")}
+            </button>
+            {theme !== selectedTheme && (
+              <button
+                className="btn btn-secondary"
+                onClick={() => {
+                  setSelectedTheme(theme);
+                  resetPreview();
+                }}
+              >
+                {t("common.cancel")}
+              </button>
+            )}
           </div>
           <div className="settings-field-hint">
             {t("settings.appearanceHint")}
@@ -786,20 +838,29 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
       </div>
 
       <div className="settings-section settings-danger-section">
-        <div className="settings-section-title">{t("settings.resetInstallSection")}</div>
+        <div className="settings-section-title">
+          {t("settings.resetInstallSection")}
+        </div>
         <div className="settings-field">
           <div className="settings-field-hint" style={{ marginBottom: 10 }}>
-            {t("settings.resetInstallHint", { path: hermesHome || "~/.hermes" })}
+            {t("settings.resetInstallHint", {
+              path: hermesHome || "~/.hermes",
+            })}
           </div>
           <button
             className="btn btn-secondary"
             onClick={handleResetYatInstall}
             disabled={resettingInstall}
           >
-            {resettingInstall ? t("settings.resettingInstall") : t("settings.resetInstall")}
+            {resettingInstall
+              ? t("settings.resettingInstall")
+              : t("settings.resetInstall")}
           </button>
           {resetInstallResult && (
-            <div className="settings-hermes-result success" style={{ marginTop: 8 }}>
+            <div
+              className="settings-hermes-result success"
+              style={{ marginTop: 8 }}
+            >
               {resetInstallResult}
             </div>
           )}
