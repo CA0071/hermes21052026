@@ -5,6 +5,15 @@ export default {
   openrouterName: "OpenRouter",
   openrouterDesc: "200+ 模型",
   openrouterTag: "推荐",
+  // OpenCode Go
+  opencodeGoName: "OpenCode Go",
+  opencodeGoDesc: "低成本开放模型（DeepSeek、GLM 等）",
+  opencodeGoTag: "",
+  // OpenCode Zen
+  opencodeZenName: "OpenCode Zen",
+  opencodeZenDesc: "精选旗舰模型（GPT、Claude、Gemini）",
+  opencodeZenTag: "高级",
+
   anthropicName: "Anthropic",
   anthropicDesc: "Claude 模型",
   openaiName: "OpenAI",

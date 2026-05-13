@@ -5,6 +5,15 @@ export default {
   openrouterName: "OpenRouter",
   openrouterDesc: "200+ models",
   openrouterTag: "Recommended",
+  // OpenCode Go
+  opencodeGoName: "OpenCode Go",
+  opencodeGoDesc: "Low-cost open models (DeepSeek, GLM, etc.)",
+  opencodeGoTag: "",
+  // OpenCode Zen
+  opencodeZenName: "OpenCode Zen",
+  opencodeZenDesc: "Curated flagship models (GPT, Claude, Gemini)",
+  opencodeZenTag: "Premium",
+
   anthropicName: "Anthropic",
   anthropicDesc: "Claude models",
   openaiName: "OpenAI",
