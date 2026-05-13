@@ -47,6 +47,7 @@ import {
   testSshConnection,
   isSshTunnelActive,
   isSshTunnelHealthy,
+  getSshTunnelUrl,
 } from "./ssh-tunnel";
 import {
   getClaw3dStatus,
@@ -124,6 +125,13 @@ import {
 import { getAppLocale, setAppLocale } from "./locale";
 import { startManagementServer, stopManagementServer } from "./manage-server";
 import { remoteManage } from "./manage-proxy";
+import {
+  testSshPasswordConnection,
+  deployManagementServer,
+  configureCloudflareIngress,
+  installCloudflaredService,
+  generateAndInstallSshKey,
+} from "./remote-setup";
 import {
   hardenAttachedWebContents,
   hardenWebviewPreferences,
@@ -536,6 +544,39 @@ function setupIPC(): void {
       testSshConnection({ host, port, username, keyPath, remotePort, localPort: 19642 }),
   );
 
+  // Remote setup wizard
+  ipcMain.handle(
+    "test-ssh-password",
+    (_event, host: string, port: number, username: string, password: string) =>
+      testSshPasswordConnection(host, port, username, password),
+  );
+
+  ipcMain.handle(
+    "deploy-remote-server",
+    async (_event, host: string, port: number, username: string, password: string) =>
+      deployManagementServer(host, port, username, password, (step) => {
+        mainWindow?.webContents.send("deploy-progress", step);
+      }),
+  );
+
+  ipcMain.handle(
+    "configure-cloudflare",
+    (_event, apiToken: string, tunnelToken: string, hostname: string) =>
+      configureCloudflareIngress(apiToken, tunnelToken, hostname),
+  );
+
+  ipcMain.handle(
+    "install-cloudflared",
+    (_event, host: string, port: number, username: string, password: string, tunnelToken: string) =>
+      installCloudflaredService(host, port, username, password, tunnelToken),
+  );
+
+  ipcMain.handle(
+    "setup-remote-ssh-key",
+    (_event, host: string, port: number, username: string, password: string) =>
+      generateAndInstallSshKey(host, port, username, password),
+  );
+
   ipcMain.handle("start-ssh-tunnel", async () => {
     const conn = getConnectionConfig();
     if (conn.mode !== "ssh") return false;
@@ -667,6 +708,7 @@ function setupIPC(): void {
   ipcMain.handle("start-gateway", async () => {
     const conn = getConnectionConfig();
     if (conn.mode === "ssh" && conn.ssh) { await sshStartGateway(conn.ssh); return true; }
+    if (isRemoteOnlyMode()) return true;
     const started = startGateway();
     if (started) {
       const env = readEnv();
@@ -677,13 +719,19 @@ function setupIPC(): void {
   ipcMain.handle("stop-gateway", async () => {
     const conn = getConnectionConfig();
     if (conn.mode === "ssh" && conn.ssh) { await sshStopGateway(conn.ssh); return true; }
+    if (isRemoteOnlyMode()) return true;
     stopGateway(true);
     stopManagementServer();
     return true;
   });
-  ipcMain.handle("gateway-status", () => {
+  ipcMain.handle("gateway-status", async () => {
     const conn = getConnectionConfig();
-    if (conn.mode === "ssh" && conn.ssh) return sshGatewayStatus(conn.ssh);
+    if (conn.mode === "ssh" && conn.ssh) {
+      // Check gateway.pid first; fall back to SSH tunnel health (agent responds = running)
+      try { if (await sshGatewayStatus(conn.ssh)) return true; } catch {}
+      return isSshTunnelActive() && await isSshTunnelHealthy().catch(() => false);
+    }
+    if (isRemoteOnlyMode()) return remoteManage<boolean>("getGatewayStatus", {}).catch(() => false);
     return isGatewayRunning();
   });
 
@@ -1076,23 +1124,53 @@ function setupIPC(): void {
   });
 
   // Cloudflare Tunnel
-  ipcMain.handle("get-tunnel-config", () => getTunnelConfig());
+  ipcMain.handle("get-tunnel-config", () => {
+    const conn = getConnectionConfig();
+    if (conn.mode === "ssh") return { mode: "quick" as const, tunnelName: "", hostname: "" };
+    if (isRemoteOnlyMode()) return remoteManage("getTunnelConfig", {}).catch(() => getTunnelConfig());
+    return getTunnelConfig();
+  });
 
   ipcMain.handle("save-tunnel-config", (_event, config) => {
+    const conn = getConnectionConfig();
+    if (conn.mode === "ssh") return { ok: true };
+    if (isRemoteOnlyMode()) return remoteManage("saveTunnelConfig", config as Record<string, unknown>).catch(() => ({ ok: true }));
     setTunnelConfig(config);
     cloudflareTunnel.restart(8642, config);
     return { ok: true };
   });
 
-  ipcMain.handle("get-tunnel-status", () => cloudflareTunnel.getStatus());
+  ipcMain.handle("get-tunnel-status", () => {
+    const conn = getConnectionConfig();
+    if (conn.mode === "ssh") {
+      // Reflect the SSH tunnel state in place of Cloudflare tunnel
+      const active = isSshTunnelActive();
+      return { status: active ? "active" : "idle", url: getSshTunnelUrl() ?? null };
+    }
+    if (isRemoteOnlyMode()) return remoteManage("getTunnelStatus", {}).catch(() => cloudflareTunnel.getStatus());
+    return cloudflareTunnel.getStatus();
+  });
 
-  ipcMain.handle("start-tunnel", () => {
+  ipcMain.handle("start-tunnel", async () => {
+    const conn = getConnectionConfig();
+    if (conn.mode === "ssh") {
+      // Re-start SSH tunnel if it dropped
+      if (!isSshTunnelActive()) await startSshTunnel(conn.ssh).catch(() => {});
+      return true;
+    }
+    if (isRemoteOnlyMode()) return true;
     const config = getTunnelConfig();
     cloudflareTunnel.start(8642, config);
     return true;
   });
 
-  ipcMain.handle("stop-tunnel", () => {
+  ipcMain.handle("stop-tunnel", async () => {
+    const conn = getConnectionConfig();
+    if (conn.mode === "ssh") {
+      stopSshTunnel();
+      return true;
+    }
+    if (isRemoteOnlyMode()) return true;
     cloudflareTunnel.stop();
     return true;
   });

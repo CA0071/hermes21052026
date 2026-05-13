@@ -33,23 +33,18 @@ function Gateway({ profile }: { profile?: string }): React.JSX.Element {
   const [showTunnelInfo, setShowTunnelInfo] = useState(false);
 
   const loadConfig = useCallback(async (): Promise<void> => {
-    const envData = await window.hermesAPI.getEnv(profile);
-    setEnv(envData);
-    const gwStatus = await window.hermesAPI.gatewayStatus();
-    setGatewayRunning(gwStatus);
-    const platforms = await window.hermesAPI.getPlatformEnabled(profile);
-    setPlatformEnabled(platforms);
+    await window.hermesAPI.getEnv(profile).then(setEnv).catch(() => {});
+    await window.hermesAPI.gatewayStatus().then(setGatewayRunning).catch(() => {});
+    await window.hermesAPI.getPlatformEnabled(profile).then(setPlatformEnabled).catch(() => {});
 
-    const cfg = await window.hermesAPI.getTunnelConfig();
-    setTunnelMode(cfg.mode);
-    setTunnelName(cfg.tunnelName);
-    setTunnelHostname(cfg.hostname);
+    await window.hermesAPI.getTunnelConfig().then((cfg) => {
+      setTunnelMode(cfg.mode);
+      setTunnelName(cfg.tunnelName);
+      setTunnelHostname(cfg.hostname);
+    }).catch(() => {});
 
-    const state = await window.hermesAPI.getTunnelStatus();
-    setTunnelState(state);
-
-    const ac = await window.hermesAPI.getAutoConnect();
-    setAutoConnectState(ac);
+    await window.hermesAPI.getTunnelStatus().then(setTunnelState).catch(() => {});
+    await window.hermesAPI.getAutoConnect().then(setAutoConnectState).catch(() => {});
   }, [profile]);
 
   useEffect(() => {

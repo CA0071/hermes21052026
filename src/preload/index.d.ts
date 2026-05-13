@@ -496,6 +496,12 @@ interface HermesAPI {
       error?: string;
     }) => void,
   ) => () => void;
+  testSshPassword: (host: string, port: number, username: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  deployRemoteServer: (host: string, port: number, username: string, password: string) => Promise<{ success: boolean; apiKey: string; error?: string }>;
+  onDeployProgress: (callback: (step: { step: number; total: number; label: string; error?: string }) => void) => () => void;
+  configureCloudflare: (apiToken: string, tunnelToken: string, hostname: string) => Promise<{ success: boolean; publicUrl: string; accountId: string; tunnelId: string; error?: string }>;
+  installCloudflared: (host: string, port: number, username: string, password: string, tunnelToken: string) => Promise<{ success: boolean; error?: string }>;
+  setupRemoteSshKey: (host: string, port: number, username: string, password: string) => Promise<{ success: boolean; keyPath: string; error?: string }>;
 }
 
 declare global {

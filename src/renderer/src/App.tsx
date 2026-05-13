@@ -6,8 +6,9 @@ import Install from "./screens/Install/Install";
 import Setup from "./screens/Setup/Setup";
 import Layout from "./screens/Layout/Layout";
 import SplashScreen from "./screens/SplashScreen/SplashScreen";
+import RemoteSetup from "./screens/RemoteSetup/RemoteSetup";
 
-type Screen = "splash" | "welcome" | "installing" | "setup" | "main";
+type Screen = "splash" | "welcome" | "installing" | "setup" | "main" | "remote-setup";
 
 // Minimum time the splash stays visible so the brand animation plays
 // through. Tracks the splash logo fade-in duration in main.css.
@@ -143,6 +144,14 @@ function App(): React.JSX.Element {
             error={installError}
             onStart={handleRetryInstall}
             onRecheck={handleRecheck}
+            onSetupRemote={() => setScreen("remote-setup")}
+          />
+        );
+      case "remote-setup":
+        return (
+          <RemoteSetup
+            onBack={() => setScreen("welcome")}
+            onComplete={handleRecheck}
           />
         );
       case "installing":

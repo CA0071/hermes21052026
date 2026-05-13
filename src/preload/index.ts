@@ -728,6 +728,41 @@ const hermesAPI = {
     ipcRenderer.on("tunnel-status", handler);
     return () => ipcRenderer.removeListener("tunnel-status", handler);
   },
+
+  // Remote setup wizard
+  testSshPassword: (
+    host: string, port: number, username: string, password: string,
+  ): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke("test-ssh-password", host, port, username, password),
+
+  deployRemoteServer: (
+    host: string, port: number, username: string, password: string,
+  ): Promise<{ success: boolean; apiKey: string; error?: string }> =>
+    ipcRenderer.invoke("deploy-remote-server", host, port, username, password),
+
+  onDeployProgress: (
+    callback: (step: { step: number; total: number; label: string; error?: string }) => void,
+  ): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: unknown): void =>
+      callback(data as { step: number; total: number; label: string; error?: string });
+    ipcRenderer.on("deploy-progress", handler);
+    return () => ipcRenderer.removeListener("deploy-progress", handler);
+  },
+
+  configureCloudflare: (
+    apiToken: string, tunnelToken: string, hostname: string,
+  ): Promise<{ success: boolean; publicUrl: string; accountId: string; tunnelId: string; error?: string }> =>
+    ipcRenderer.invoke("configure-cloudflare", apiToken, tunnelToken, hostname),
+
+  installCloudflared: (
+    host: string, port: number, username: string, password: string, tunnelToken: string,
+  ): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke("install-cloudflared", host, port, username, password, tunnelToken),
+
+  setupRemoteSshKey: (
+    host: string, port: number, username: string, password: string,
+  ): Promise<{ success: boolean; keyPath: string; error?: string }> =>
+    ipcRenderer.invoke("setup-remote-ssh-key", host, port, username, password),
 };
 
 if (process.contextIsolated) {
