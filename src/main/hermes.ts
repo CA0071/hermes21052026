@@ -658,7 +658,7 @@ export async function sendMessage(
   // Remote mode: always use API, no CLI fallback
   // Do NOT forward client model param — let the remote server use its own configured model
   if (isRemoteMode()) {
-    return sendMessageViaApi(message, cb, profile, resumeSessionId, history, model);
+    return sendMessageViaApi(message, cb, profile, resumeSessionId, history);
   }
 
   // Check API server availability (cache the result, re-check periodically)
