@@ -530,6 +530,7 @@ function Chat({
         profile,
         hermesSessionId || undefined,
         messages.map((m) => ({ role: m.role, content: m.content })),
+        currentModel || undefined,
       );
     } catch {
       // Error already handled by onChatError IPC listener — avoid duplicate
@@ -553,6 +554,7 @@ function Chat({
         profile,
         hermesSessionId || undefined,
         messages.map((m) => ({ role: m.role, content: m.content })),
+        currentModel || undefined,
       );
     } catch {
       // Error already handled by onChatError IPC listener — avoid duplicate
@@ -837,9 +839,9 @@ function Chat({
     ]);
     const history = messages.map((m) => ({ role: m.role, content: m.content }));
     window.hermesAPI
-      .sendMessage("/approve", profile, hermesSessionId || undefined, history)
+      .sendMessage("/approve", profile, hermesSessionId || undefined, history, currentModel || undefined)
       .catch(() => setIsLoading(false));
-  }, [profile, hermesSessionId, setMessages, messages]);
+  }, [profile, hermesSessionId, setMessages, messages, currentModel]);
 
   const handleDeny = useCallback(() => {
     setInput("");
@@ -850,9 +852,9 @@ function Chat({
     ]);
     const history = messages.map((m) => ({ role: m.role, content: m.content }));
     window.hermesAPI
-      .sendMessage("/deny", profile, hermesSessionId || undefined, history)
+      .sendMessage("/deny", profile, hermesSessionId || undefined, history, currentModel || undefined)
       .catch(() => setIsLoading(false));
-  }, [profile, hermesSessionId, setMessages, messages]);
+  }, [profile, hermesSessionId, setMessages, messages, currentModel]);
 
   const visibleMessages = useMemo(
     () => messages.filter((m) => (m.content || "").trim()),
