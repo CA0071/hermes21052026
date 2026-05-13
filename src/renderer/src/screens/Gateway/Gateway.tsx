@@ -1,6 +1,15 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { Info, X } from "lucide-react";
 import { GATEWAY_SECTIONS, GATEWAY_PLATFORMS } from "../../constants";
 import { useI18n } from "../../components/useI18n";
+
+type TunnelStatus = "idle" | "starting" | "active" | "error";
+
+interface TunnelState {
+  status: TunnelStatus;
+  url: string | null;
+  error?: string;
+}
 
 function Gateway({ profile }: { profile?: string }): React.JSX.Element {
   const { t } = useI18n();
@@ -14,6 +23,14 @@ function Gateway({ profile }: { profile?: string }): React.JSX.Element {
   const gatewayStatusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const platformStatusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Tunnel state
+  const [tunnelState, setTunnelState] = useState<TunnelState>({ status: "idle", url: null });
+  const [tunnelMode, setTunnelMode] = useState<"quick" | "named">("quick");
+  const [tunnelName, setTunnelName] = useState("");
+  const [tunnelHostname, setTunnelHostname] = useState("");
+  const [tunnelConfigSaved, setTunnelConfigSaved] = useState(false);
+  const [showTunnelInfo, setShowTunnelInfo] = useState(false);
+
   const loadConfig = useCallback(async (): Promise<void> => {
     const envData = await window.hermesAPI.getEnv(profile);
     setEnv(envData);
@@ -21,11 +38,26 @@ function Gateway({ profile }: { profile?: string }): React.JSX.Element {
     setGatewayRunning(gwStatus);
     const platforms = await window.hermesAPI.getPlatformEnabled(profile);
     setPlatformEnabled(platforms);
+
+    const cfg = await window.hermesAPI.getTunnelConfig();
+    setTunnelMode(cfg.mode);
+    setTunnelName(cfg.tunnelName);
+    setTunnelHostname(cfg.hostname);
+
+    const state = await window.hermesAPI.getTunnelStatus();
+    setTunnelState(state);
   }, [profile]);
 
   useEffect(() => {
     loadConfig();
   }, [loadConfig]);
+
+  useEffect(() => {
+    const unsub = window.hermesAPI.onTunnelStatus((state) => {
+      setTunnelState(state);
+    });
+    return unsub;
+  }, []);
 
   // Poll gateway status (10s interval to reduce IPC overhead)
   useEffect(() => {
@@ -90,6 +122,33 @@ function Gateway({ profile }: { profile?: string }): React.JSX.Element {
     });
   }
 
+  async function saveTunnelConfig(): Promise<void> {
+    await window.hermesAPI.saveTunnelConfig({
+      mode: tunnelMode,
+      tunnelName,
+      hostname: tunnelHostname,
+    });
+    setTunnelConfigSaved(true);
+    setTimeout(() => setTunnelConfigSaved(false), 2000);
+  }
+
+  async function toggleTunnel(): Promise<void> {
+    if (tunnelState.status === "idle" || tunnelState.status === "error") {
+      await window.hermesAPI.startTunnel();
+    } else {
+      await window.hermesAPI.stopTunnel();
+    }
+  }
+
+  function tunnelStatusLabel(): string {
+    switch (tunnelState.status) {
+      case "active": return tunnelState.url ?? t("gateway.tunnel.active");
+      case "starting": return t("gateway.tunnel.starting");
+      case "error": return tunnelState.error ?? t("gateway.tunnel.error");
+      default: return t("gateway.tunnel.idle");
+    }
+  }
+
   // Build a set of field keys that belong to platforms (for grouping)
   const platformFieldKeys = new Set(GATEWAY_PLATFORMS.flatMap((p) => p.fields));
 
@@ -128,6 +187,142 @@ function Gateway({ profile }: { profile?: string }): React.JSX.Element {
             </button>
           </div>
           <div className="settings-field-hint">{t("gateway.gatewayHint")}</div>
+        </div>
+      </div>
+
+      {showTunnelInfo && (
+        <div className="tunnel-info-overlay" onClick={() => setShowTunnelInfo(false)}>
+          <div className="tunnel-info-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="tunnel-info-header">
+              <span>{t("gateway.tunnel.infoTitle")}</span>
+              <button className="btn-ghost tunnel-info-close" onClick={() => setShowTunnelInfo(false)}>
+                <X size={16} />
+              </button>
+            </div>
+            <div className="tunnel-info-body">
+              <p>{t("gateway.tunnel.infoIntro")}</p>
+              <div className="tunnel-info-steps">
+                <div className="tunnel-info-step">
+                  <span className="tunnel-info-step-num">1</span>
+                  <div>
+                    <strong>{t("gateway.tunnel.step1Title")}</strong>
+                    <p>{t("gateway.tunnel.step1Desc")}</p>
+                    <div className="tunnel-info-code">
+                      <span>winget install Cloudflare.cloudflared</span>
+                    </div>
+                    <p className="tunnel-info-alt">{t("gateway.tunnel.step1Alt")}</p>
+                  </div>
+                </div>
+                <div className="tunnel-info-step">
+                  <span className="tunnel-info-step-num">2</span>
+                  <div>
+                    <strong>{t("gateway.tunnel.step2Title")}</strong>
+                    <p>{t("gateway.tunnel.step2Desc")}</p>
+                  </div>
+                </div>
+                <div className="tunnel-info-step">
+                  <span className="tunnel-info-step-num">3</span>
+                  <div>
+                    <strong>{t("gateway.tunnel.step3Title")}</strong>
+                    <p>{t("gateway.tunnel.step3Desc")}</p>
+                    <div className="tunnel-info-code">
+                      <span>cloudflared tunnel login</span>
+                    </div>
+                    <div className="tunnel-info-code">
+                      <span>cloudflared tunnel create my-tunnel-name</span>
+                    </div>
+                    <p className="tunnel-info-note">{t("gateway.tunnel.step3Note")}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="settings-section">
+        <div className="settings-section-title tunnel-section-title">
+          {t("gateway.tunnel.title")}
+          <button
+            className="btn-ghost tunnel-info-btn"
+            onClick={() => setShowTunnelInfo(true)}
+            title={t("gateway.tunnel.infoTitle")}
+          >
+            <Info size={15} />
+          </button>
+        </div>
+        <div className="settings-field">
+          <label className="settings-field-label">{t("gateway.tunnel.status")}</label>
+          <div className="settings-gateway-row">
+            <span
+              className={`settings-gateway-status ${tunnelState.status === "active" ? "running" : tunnelState.status === "error" ? "stopped" : ""}`}
+              title={tunnelState.status === "active" ? tunnelState.url ?? undefined : tunnelState.error}
+            >
+              {tunnelStatusLabel()}
+            </span>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={toggleTunnel}
+              disabled={tunnelState.status === "starting"}
+            >
+              {tunnelState.status === "idle" || tunnelState.status === "error"
+                ? t("common.start")
+                : t("common.stop")}
+            </button>
+            {tunnelState.status === "active" && tunnelState.url && (
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => navigator.clipboard.writeText(tunnelState.url!)}
+              >
+                {t("gateway.tunnel.copy")}
+              </button>
+            )}
+          </div>
+          <div className="settings-field-hint">{t("gateway.tunnel.hint")}</div>
+        </div>
+
+        <div className="settings-field">
+          <label className="settings-field-label">{t("gateway.tunnel.mode")}</label>
+          <select
+            className="input"
+            value={tunnelMode}
+            onChange={(e) => setTunnelMode(e.target.value as "quick" | "named")}
+          >
+            <option value="quick">{t("gateway.tunnel.modeQuick")}</option>
+            <option value="named">{t("gateway.tunnel.modeNamed")}</option>
+          </select>
+        </div>
+
+        {tunnelMode === "named" && (
+          <>
+            <div className="settings-field">
+              <label className="settings-field-label">{t("gateway.tunnel.tunnelName")}</label>
+              <input
+                className="input"
+                type="text"
+                value={tunnelName}
+                onChange={(e) => setTunnelName(e.target.value)}
+                placeholder="e.g. my-hermes-tunnel"
+              />
+            </div>
+            <div className="settings-field">
+              <label className="settings-field-label">{t("gateway.tunnel.hostname")}</label>
+              <input
+                className="input"
+                type="text"
+                value={tunnelHostname}
+                onChange={(e) => setTunnelHostname(e.target.value)}
+                placeholder="e.g. hermes.example.com"
+              />
+              <div className="settings-field-hint">{t("gateway.tunnel.hostnameHint")}</div>
+            </div>
+          </>
+        )}
+
+        <div className="settings-field">
+          <button className="btn btn-primary btn-sm" onClick={saveTunnelConfig}>
+            {tunnelConfigSaved ? t("common.saved") : t("common.save")}
+          </button>
         </div>
       </div>
 

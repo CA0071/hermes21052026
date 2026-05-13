@@ -78,7 +78,10 @@ import {
   setConnectionConfig,
   getPlatformEnabled,
   setPlatformEnabled,
+  getTunnelConfig,
+  setTunnelConfig,
 } from "./config";
+import * as cloudflareTunnel from "./cloudflare-tunnel";
 import { listSessions, getSessionMessages, searchSessions } from "./sessions";
 import {
   syncSessionCache,
@@ -180,6 +183,10 @@ process.on("unhandledRejection", (reason) => {
 
 let mainWindow: BrowserWindow | null = null;
 let currentChatAbort: (() => void) | null = null;
+
+cloudflareTunnel.events.on("status", (state) => {
+  mainWindow?.webContents.send("tunnel-status", state);
+});
 
 function openExternalUrl(rawUrl: unknown): void {
   if (!isAllowedExternalUrl(rawUrl)) {
@@ -992,6 +999,28 @@ function setupIPC(): void {
     if (conn.mode === "ssh" && conn.ssh) return sshReadLogs(conn.ssh, logFile, lines);
     return readLogs(logFile, lines);
   });
+
+  // Cloudflare Tunnel
+  ipcMain.handle("get-tunnel-config", () => getTunnelConfig());
+
+  ipcMain.handle("save-tunnel-config", (_event, config) => {
+    setTunnelConfig(config);
+    cloudflareTunnel.restart(8642, config);
+    return { ok: true };
+  });
+
+  ipcMain.handle("get-tunnel-status", () => cloudflareTunnel.getStatus());
+
+  ipcMain.handle("start-tunnel", () => {
+    const config = getTunnelConfig();
+    cloudflareTunnel.start(8642, config);
+    return true;
+  });
+
+  ipcMain.handle("stop-tunnel", () => {
+    cloudflareTunnel.stop();
+    return true;
+  });
 }
 
 function buildMenu(): void {
@@ -1207,6 +1236,7 @@ app.on("window-all-closed", () => {
     stopGateway();
     stopSshTunnel();
     stopClaw3d();
+    cloudflareTunnel.stop();
     app.quit();
   }
 });
@@ -1220,4 +1250,5 @@ app.on("before-quit", () => {
   stopGateway();
   stopSshTunnel();
   stopClaw3d();
+  cloudflareTunnel.stop();
 });
