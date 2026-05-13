@@ -98,25 +98,20 @@ interface ChatHandle {
 //  API Server health check
 // ────────────────────────────────────────────────────
 
-function isApiServerReady(): Promise<boolean> {
-  return new Promise((resolve) => {
-    const url = `${getApiUrl()}/health`;
-    const mod = url.startsWith("https") ? https : http;
-    const req = mod.request(
-      url,
-      { method: "GET", timeout: 1500, headers: getRemoteAuthHeader() },
-      (res) => {
-        resolve(res.statusCode === 200);
-        res.resume();
-      },
-    );
-    req.on("error", () => resolve(false));
-    req.on("timeout", () => {
-      req.destroy();
-      resolve(false);
+async function isApiServerReady(): Promise<boolean> {
+  const url = `${getApiUrl()}/health`;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { net } = require("electron") as typeof import("electron");
+    const res = await net.fetch(url, {
+      method: "GET",
+      headers: getRemoteAuthHeader() as Record<string, string>,
+      signal: AbortSignal.timeout(1500),
     });
-    req.end();
-  });
+    return res.status === 200;
+  } catch {
+    return false;
+  }
 }
 
 // ────────────────────────────────────────────────────
@@ -824,30 +819,25 @@ export function isApiReady(): boolean {
   return apiServerAvailable === true;
 }
 
-export function testRemoteConnection(
+export async function testRemoteConnection(
   url: string,
   apiKey?: string,
 ): Promise<boolean> {
-  return new Promise((resolve) => {
-    const target = `${url.replace(/\/+$/, "")}/health`;
-    const mod = target.startsWith("https") ? https : http;
-    const headers: Record<string, string> = {};
-    if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
-    const req = mod.request(
-      target,
-      { method: "GET", timeout: 5000, headers },
-      (res) => {
-        resolve(res.statusCode === 200);
-        res.resume();
-      },
-    );
-    req.on("error", () => resolve(false));
-    req.on("timeout", () => {
-      req.destroy();
-      resolve(false);
+  const target = `${url.replace(/\/+$/, "")}/health`;
+  const headers: Record<string, string> = {};
+  if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { net } = require("electron") as typeof import("electron");
+    const res = await net.fetch(target, {
+      method: "GET",
+      headers,
+      signal: AbortSignal.timeout(8000),
     });
-    req.end();
-  });
+    return res.status === 200;
+  } catch {
+    return false;
+  }
 }
 
 export function restartGateway(profile?: string): void {
