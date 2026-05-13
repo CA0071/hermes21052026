@@ -242,6 +242,7 @@ function Chat({
   const [modelGroups, setModelGroups] = useState<ModelGroup[]>([]);
   const [showModelPicker, setShowModelPicker] = useState(false);
   const [customModelInput, setCustomModelInput] = useState("");
+  const [isRemote, setIsRemote] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
 
   // Slash command menu state
@@ -321,6 +322,7 @@ function Chat({
   // Load model config and build available models list
   useEffect(() => {
     loadModelConfig();
+    window.hermesAPI.isRemoteMode().then(setIsRemote);
   }, [loadModelConfig]);
 
   // Load fast mode state from config
@@ -1125,6 +1127,11 @@ function Chat({
         </div>
 
         <div className="chat-model-bar" ref={pickerRef}>
+          {isRemote ? (
+            <span className="chat-model-trigger" style={{ cursor: "default", opacity: 0.7 }} title="Model is selected by the remote gateway">
+              <span className="chat-model-name">remote</span>
+            </span>
+          ) : (
           <button
             className="chat-model-trigger"
             onClick={() => {
@@ -1135,8 +1142,9 @@ function Chat({
             <span className="chat-model-name">{displayModel}</span>
             <ChevronDown size={12} />
           </button>
+          )}
 
-          {showModelPicker && (
+          {!isRemote && showModelPicker && (
             <div className="chat-model-dropdown">
               {modelGroups.map((group) => (
                 <div key={group.provider} className="chat-model-group">

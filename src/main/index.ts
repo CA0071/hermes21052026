@@ -122,6 +122,8 @@ import {
   triggerCronJob,
 } from "./cronjobs";
 import { getAppLocale, setAppLocale } from "./locale";
+import { startManagementServer, stopManagementServer } from "./manage-server";
+import { remoteManage } from "./manage-proxy";
 import {
   hardenAttachedWebContents,
   hardenWebviewPreferences,
@@ -380,6 +382,7 @@ function setupIPC(): void {
   ipcMain.handle("get-env", (_event, profile?: string) => {
     const conn = getConnectionConfig();
     if (conn.mode === "ssh" && conn.ssh) return sshReadEnv(conn.ssh, profile);
+    if (isRemoteOnlyMode()) return remoteManage("getEnv", { profile });
     return readEnv(profile);
   });
 
@@ -391,6 +394,7 @@ function setupIPC(): void {
         await sshSetEnvValue(conn.ssh, key, value, profile);
         return true;
       }
+      if (isRemoteOnlyMode()) return remoteManage("setEnv", { key, value, profile });
       setEnvValue(key, value, profile);
       // Restart gateway so it picks up the new API key
       if (
@@ -407,6 +411,7 @@ function setupIPC(): void {
   ipcMain.handle("get-config", (_event, key: string, profile?: string) => {
     const conn = getConnectionConfig();
     if (conn.mode === "ssh" && conn.ssh) return sshGetConfigValue(conn.ssh, key, profile);
+    if (isRemoteOnlyMode()) return remoteManage("getConfig", { key, profile });
     return getConfigValue(key, profile);
   });
 
@@ -418,6 +423,7 @@ function setupIPC(): void {
         await sshSetConfigValue(conn.ssh, key, value, profile);
         return true;
       }
+      if (isRemoteOnlyMode()) return remoteManage("setConfig", { key, value, profile });
       setConfigValue(key, value, profile);
       return true;
     },
@@ -426,12 +432,14 @@ function setupIPC(): void {
   ipcMain.handle("get-hermes-home", (_event, profile?: string) => {
     const conn = getConnectionConfig();
     if (conn.mode === "ssh" && conn.ssh) return sshGetHermesHome(conn.ssh, profile);
+    if (isRemoteOnlyMode()) return remoteManage("getHermesHome", { profile });
     return getHermesHome(profile);
   });
 
   ipcMain.handle("get-model-config", (_event, profile?: string) => {
     const conn = getConnectionConfig();
     if (conn.mode === "ssh" && conn.ssh) return sshGetModelConfig(conn.ssh, profile);
+    if (isRemoteOnlyMode()) return remoteManage("getModelConfig", { profile });
     return getModelConfig(profile);
   });
 
@@ -459,6 +467,7 @@ function setupIPC(): void {
         }
         return true;
       }
+      if (isRemoteOnlyMode()) return remoteManage("setModelConfig", { provider, model, baseUrl, profile });
       const prev = getModelConfig(profile);
       setModelConfig(provider, model, baseUrl, profile);
 
@@ -658,12 +667,18 @@ function setupIPC(): void {
   ipcMain.handle("start-gateway", async () => {
     const conn = getConnectionConfig();
     if (conn.mode === "ssh" && conn.ssh) { await sshStartGateway(conn.ssh); return true; }
-    return startGateway();
+    const started = startGateway();
+    if (started) {
+      const env = readEnv();
+      startManagementServer(env["API_SERVER_KEY"] || "");
+    }
+    return started;
   });
   ipcMain.handle("stop-gateway", async () => {
     const conn = getConnectionConfig();
     if (conn.mode === "ssh" && conn.ssh) { await sshStopGateway(conn.ssh); return true; }
     stopGateway(true);
+    stopManagementServer();
     return true;
   });
   ipcMain.handle("gateway-status", () => {
@@ -676,6 +691,7 @@ function setupIPC(): void {
   ipcMain.handle("get-platform-enabled", (_event, profile?: string) => {
     const conn = getConnectionConfig();
     if (conn.mode === "ssh" && conn.ssh) return sshGetPlatformEnabled(conn.ssh, profile);
+    if (isRemoteOnlyMode()) return remoteManage("getPlatformEnabled", { profile });
     return getPlatformEnabled(profile);
   });
   ipcMain.handle(
@@ -686,6 +702,7 @@ function setupIPC(): void {
         await sshSetPlatformEnabled(conn.ssh, platform, enabled, profile);
         return true;
       }
+      if (isRemoteOnlyMode()) return remoteManage("setPlatformEnabled", { platform, enabled, profile });
       setPlatformEnabled(platform, enabled, profile);
       // Restart gateway so it picks up the new platform config
       if (isGatewayRunning()) {
@@ -706,12 +723,14 @@ function setupIPC(): void {
   ipcMain.handle("list-sessions", (_event, limit?: number, offset?: number) => {
     const conn = getConnectionConfig();
     if (conn.mode === "ssh" && conn.ssh) return sshListSessions(conn.ssh, limit, offset);
+    if (isRemoteOnlyMode()) return remoteManage("listSessions", { limit, offset });
     return listSessions(limit, offset);
   });
 
   ipcMain.handle("get-session-messages", (_event, sessionId: string) => {
     const conn = getConnectionConfig();
     if (conn.mode === "ssh" && conn.ssh) return sshGetSessionMessages(conn.ssh, sessionId);
+    if (isRemoteOnlyMode()) return remoteManage("getSessionMessages", { sessionId });
     return getSessionMessages(sessionId);
   });
 
@@ -719,20 +738,25 @@ function setupIPC(): void {
   ipcMain.handle("list-profiles", async () => {
     const conn = getConnectionConfig();
     if (conn.mode === "ssh" && conn.ssh) return sshListProfiles(conn.ssh);
+    if (isRemoteOnlyMode()) return remoteManage("listProfiles", {});
     return listProfiles();
   });
   ipcMain.handle("create-profile", (_event, name: string, clone: boolean) => {
     const conn = getConnectionConfig();
     if (conn.mode === "ssh" && conn.ssh) return sshCreateProfile(conn.ssh, name, clone);
+    if (isRemoteOnlyMode()) return remoteManage("createProfile", { name, clone });
     return createProfile(name, clone);
   });
   ipcMain.handle("delete-profile", (_event, name: string) => {
     const conn = getConnectionConfig();
     if (conn.mode === "ssh" && conn.ssh) return sshDeleteProfile(conn.ssh, name);
+    if (isRemoteOnlyMode()) return remoteManage("deleteProfile", { name });
     return deleteProfile(name);
   });
   ipcMain.handle("set-active-profile", (_event, name: string) => {
-    if (getConnectionConfig().mode !== "ssh") setActiveProfile(name);
+    const conn = getConnectionConfig();
+    if (conn.mode !== "ssh" && !isRemoteOnlyMode()) setActiveProfile(name);
+    if (isRemoteOnlyMode()) return remoteManage("setActiveProfile", { name });
     return true;
   });
 
@@ -740,6 +764,7 @@ function setupIPC(): void {
   ipcMain.handle("read-memory", (_event, profile?: string) => {
     const conn = getConnectionConfig();
     if (conn.mode === "ssh" && conn.ssh) return sshReadMemory(conn.ssh, profile);
+    if (isRemoteOnlyMode()) return remoteManage("readMemory", { profile });
     return readMemory(profile);
   });
   ipcMain.handle(
@@ -747,6 +772,7 @@ function setupIPC(): void {
     (_event, content: string, profile?: string) => {
       const conn = getConnectionConfig();
       if (conn.mode === "ssh" && conn.ssh) return sshAddMemoryEntry(conn.ssh, content, profile);
+      if (isRemoteOnlyMode()) return remoteManage("addMemoryEntry", { content, profile });
       return addMemoryEntry(content, profile);
     },
   );
@@ -755,6 +781,7 @@ function setupIPC(): void {
     (_event, index: number, content: string, profile?: string) => {
       const conn = getConnectionConfig();
       if (conn.mode === "ssh" && conn.ssh) return sshUpdateMemoryEntry(conn.ssh, index, content, profile);
+      if (isRemoteOnlyMode()) return remoteManage("updateMemoryEntry", { index, content, profile });
       return updateMemoryEntry(index, content, profile);
     },
   );
@@ -763,6 +790,7 @@ function setupIPC(): void {
     (_event, index: number, profile?: string) => {
       const conn = getConnectionConfig();
       if (conn.mode === "ssh" && conn.ssh) return sshRemoveMemoryEntry(conn.ssh, index, profile);
+      if (isRemoteOnlyMode()) return remoteManage("removeMemoryEntry", { index, profile });
       return removeMemoryEntry(index, profile);
     },
   );
@@ -771,6 +799,7 @@ function setupIPC(): void {
     (_event, content: string, profile?: string) => {
       const conn = getConnectionConfig();
       if (conn.mode === "ssh" && conn.ssh) return sshWriteUserProfile(conn.ssh, content, profile);
+      if (isRemoteOnlyMode()) return remoteManage("writeUserProfile", { content, profile });
       return writeUserProfile(content, profile);
     },
   );
@@ -779,16 +808,19 @@ function setupIPC(): void {
   ipcMain.handle("read-soul", (_event, profile?: string) => {
     const conn = getConnectionConfig();
     if (conn.mode === "ssh" && conn.ssh) return sshReadSoul(conn.ssh, profile);
+    if (isRemoteOnlyMode()) return remoteManage("readSoul", { profile });
     return readSoul(profile);
   });
   ipcMain.handle("write-soul", (_event, content: string, profile?: string) => {
     const conn = getConnectionConfig();
     if (conn.mode === "ssh" && conn.ssh) return sshWriteSoul(conn.ssh, content, profile);
+    if (isRemoteOnlyMode()) return remoteManage("writeSoul", { content, profile });
     return writeSoul(content, profile);
   });
   ipcMain.handle("reset-soul", (_event, profile?: string) => {
     const conn = getConnectionConfig();
     if (conn.mode === "ssh" && conn.ssh) return sshResetSoul(conn.ssh, profile);
+    if (isRemoteOnlyMode()) return remoteManage("resetSoul", { profile });
     return resetSoul(profile);
   });
 
@@ -796,6 +828,7 @@ function setupIPC(): void {
   ipcMain.handle("get-toolsets", (_event, profile?: string) => {
     const conn = getConnectionConfig();
     if (conn.mode === "ssh" && conn.ssh) return sshGetToolsets(conn.ssh, profile);
+    if (isRemoteOnlyMode()) return remoteManage("getToolsets", { profile });
     return getToolsets(profile);
   });
   ipcMain.handle(
@@ -803,6 +836,7 @@ function setupIPC(): void {
     (_event, key: string, enabled: boolean, profile?: string) => {
       const conn = getConnectionConfig();
       if (conn.mode === "ssh" && conn.ssh) return sshSetToolsetEnabled(conn.ssh, key, enabled, profile);
+      if (isRemoteOnlyMode()) return remoteManage("setToolsetEnabled", { key, enabled, profile });
       return setToolsetEnabled(key, enabled, profile);
     },
   );
@@ -811,16 +845,19 @@ function setupIPC(): void {
   ipcMain.handle("list-installed-skills", (_event, profile?: string) => {
     const conn = getConnectionConfig();
     if (conn.mode === "ssh" && conn.ssh) return sshListInstalledSkills(conn.ssh, profile);
+    if (isRemoteOnlyMode()) return remoteManage("listInstalledSkills", { profile });
     return listInstalledSkills(profile);
   });
   ipcMain.handle("list-bundled-skills", () => {
     const conn = getConnectionConfig();
     if (conn.mode === "ssh" && conn.ssh) return sshListBundledSkills(conn.ssh);
+    if (isRemoteOnlyMode()) return remoteManage("listBundledSkills", {});
     return listBundledSkills();
   });
   ipcMain.handle("get-skill-content", (_event, skillPath: string) => {
     const conn = getConnectionConfig();
     if (conn.mode === "ssh" && conn.ssh) return sshGetSkillContent(conn.ssh, skillPath);
+    if (isRemoteOnlyMode()) return remoteManage("getSkillContent", { skillPath });
     return getSkillContent(skillPath);
   });
   ipcMain.handle(
@@ -828,12 +865,14 @@ function setupIPC(): void {
     (_event, identifier: string, _profile?: string) => {
       const conn = getConnectionConfig();
       if (conn.mode === "ssh" && conn.ssh) return sshInstallSkill(conn.ssh, identifier);
+      if (isRemoteOnlyMode()) return remoteManage("installSkill", { identifier, profile: _profile });
       return installSkill(identifier, _profile);
     },
   );
   ipcMain.handle("uninstall-skill", (_event, name: string, _profile?: string) => {
     const conn = getConnectionConfig();
     if (conn.mode === "ssh" && conn.ssh) return sshUninstallSkill(conn.ssh, name);
+    if (isRemoteOnlyMode()) return remoteManage("uninstallSkill", { name, profile: _profile });
     return uninstallSkill(name, _profile);
   });
 
@@ -843,24 +882,29 @@ function setupIPC(): void {
     (_event, limit?: number, offset?: number) => {
       const conn = getConnectionConfig();
       if (conn.mode === "ssh" && conn.ssh) return sshListCachedSessions(conn.ssh, limit, offset);
+      if (isRemoteOnlyMode()) return remoteManage("listCachedSessions", { limit, offset });
       return listCachedSessions(limit, offset);
     },
   );
   ipcMain.handle("sync-session-cache", () => {
     const conn = getConnectionConfig();
     if (conn.mode === "ssh" && conn.ssh) return sshListCachedSessions(conn.ssh, 50);
+    if (isRemoteOnlyMode()) return remoteManage("syncSessionCache", {});
     return syncSessionCache();
   });
   ipcMain.handle(
     "update-session-title",
-    (_event, sessionId: string, title: string) =>
-      updateSessionTitle(sessionId, title),
+    (_event, sessionId: string, title: string) => {
+      if (isRemoteOnlyMode()) return remoteManage("updateSessionTitle", { sessionId, title });
+      return updateSessionTitle(sessionId, title);
+    },
   );
 
   // Session search
   ipcMain.handle("search-sessions", (_event, query: string, limit?: number) => {
     const conn = getConnectionConfig();
     if (conn.mode === "ssh" && conn.ssh) return sshSearchSessions(conn.ssh, query, limit);
+    if (isRemoteOnlyMode()) return remoteManage("searchSessions", { query, limit });
     return searchSessions(query, limit);
   });
 
@@ -882,18 +926,26 @@ function setupIPC(): void {
   ipcMain.handle("list-models", () => {
     const conn = getConnectionConfig();
     if (conn.mode === "ssh" && conn.ssh) return sshListModels(conn.ssh);
+    if (isRemoteOnlyMode()) return remoteManage("listModels", {});
     return listModels();
   });
   ipcMain.handle(
     "add-model",
-    (_event, name: string, provider: string, model: string, baseUrl: string) =>
-      addModel(name, provider, model, baseUrl),
+    (_event, name: string, provider: string, model: string, baseUrl: string) => {
+      if (isRemoteOnlyMode()) return remoteManage("addModel", { name, provider, model, baseUrl });
+      return addModel(name, provider, model, baseUrl);
+    },
   );
-  ipcMain.handle("remove-model", (_event, id: string) => removeModel(id));
+  ipcMain.handle("remove-model", (_event, id: string) => {
+    if (isRemoteOnlyMode()) return remoteManage("removeModel", { id });
+    return removeModel(id);
+  });
   ipcMain.handle(
     "update-model",
-    (_event, id: string, fields: Record<string, string>) =>
-      updateModel(id, fields),
+    (_event, id: string, fields: Record<string, string>) => {
+      if (isRemoteOnlyMode()) return remoteManage("updateModel", { id, fields });
+      return updateModel(id, fields);
+    },
   );
 
   // Claw3D
@@ -942,8 +994,10 @@ function setupIPC(): void {
   // Cron Jobs
   ipcMain.handle(
     "list-cron-jobs",
-    (_event, includeDisabled?: boolean, profile?: string) =>
-      listCronJobs(includeDisabled, profile),
+    (_event, includeDisabled?: boolean, profile?: string) => {
+      if (isRemoteOnlyMode()) return remoteManage("listCronJobs", { includeDisabled, profile });
+      return listCronJobs(includeDisabled, profile);
+    },
   );
   ipcMain.handle(
     "create-cron-job",
@@ -954,20 +1008,29 @@ function setupIPC(): void {
       name?: string,
       deliver?: string,
       profile?: string,
-    ) => createCronJob(schedule, prompt, name, deliver, profile),
+    ) => {
+      if (isRemoteOnlyMode()) return remoteManage("createCronJob", { schedule, prompt, name, deliver, profile });
+      return createCronJob(schedule, prompt, name, deliver, profile);
+    },
   );
-  ipcMain.handle("remove-cron-job", (_event, jobId: string, profile?: string) =>
-    removeCronJob(jobId, profile),
-  );
-  ipcMain.handle("pause-cron-job", (_event, jobId: string, profile?: string) =>
-    pauseCronJob(jobId, profile),
-  );
-  ipcMain.handle("resume-cron-job", (_event, jobId: string, profile?: string) =>
-    resumeCronJob(jobId, profile),
-  );
+  ipcMain.handle("remove-cron-job", (_event, jobId: string, profile?: string) => {
+    if (isRemoteOnlyMode()) return remoteManage("removeCronJob", { jobId, profile });
+    return removeCronJob(jobId, profile);
+  });
+  ipcMain.handle("pause-cron-job", (_event, jobId: string, profile?: string) => {
+    if (isRemoteOnlyMode()) return remoteManage("pauseCronJob", { jobId, profile });
+    return pauseCronJob(jobId, profile);
+  });
+  ipcMain.handle("resume-cron-job", (_event, jobId: string, profile?: string) => {
+    if (isRemoteOnlyMode()) return remoteManage("resumeCronJob", { jobId, profile });
+    return resumeCronJob(jobId, profile);
+  });
   ipcMain.handle(
     "trigger-cron-job",
-    (_event, jobId: string, profile?: string) => triggerCronJob(jobId, profile),
+    (_event, jobId: string, profile?: string) => {
+      if (isRemoteOnlyMode()) return remoteManage("triggerCronJob", { jobId, profile });
+      return triggerCronJob(jobId, profile);
+    },
   );
 
   // Shell
@@ -993,9 +1056,10 @@ function setupIPC(): void {
   });
 
   // MCP servers
-  ipcMain.handle("list-mcp-servers", (_event, profile?: string) =>
-    listMcpServers(profile),
-  );
+  ipcMain.handle("list-mcp-servers", (_event, profile?: string) => {
+    if (isRemoteOnlyMode()) return remoteManage("listMcpServers", { profile });
+    return listMcpServers(profile);
+  });
 
   // Memory providers
   ipcMain.handle("discover-memory-providers", (_event, profile?: string) => {
