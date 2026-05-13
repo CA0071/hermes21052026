@@ -183,7 +183,7 @@ function sendMessageViaApi(
   messages.push({ role: "user", content: message });
 
   const body = JSON.stringify({
-    model: model || mc.model || "hermes-agent",
+    model: isRemoteMode() ? undefined : (model || mc.model || "hermes-agent"),
     messages,
     stream: true,
   });
