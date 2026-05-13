@@ -8,7 +8,7 @@ import {
   HERMES_HOME,
   HERMES_REPO,
   HERMES_PYTHON,
-  HERMES_SCRIPT,
+  hermesCliArgs,
   getEnhancedPath,
 } from "./installer";
 import {
@@ -464,7 +464,7 @@ function sendMessageViaCli(
   const mc = getModelConfig(profile);
   const profileEnv = readEnv(profile);
 
-  const args = [HERMES_SCRIPT];
+  const args = hermesCliArgs();
   if (profile && profile !== "default") {
     args.push("-p", profile);
   }
@@ -772,7 +772,7 @@ export function startGateway(profile?: string): boolean {
     }
   }
 
-  gatewayProcess = spawn(HERMES_PYTHON, [HERMES_SCRIPT, "gateway"], {
+  gatewayProcess = spawn(HERMES_PYTHON, hermesCliArgs(["gateway"]), {
     cwd: HERMES_REPO,
     env: gatewayEnv,
     stdio: "ignore",
