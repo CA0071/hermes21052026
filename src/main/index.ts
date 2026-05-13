@@ -78,6 +78,8 @@ import {
   setConnectionConfig,
   getPlatformEnabled,
   setPlatformEnabled,
+  getAutoConnect,
+  setAutoConnect,
 } from "./config";
 import { listSessions, getSessionMessages, searchSessions } from "./sessions";
 import {
@@ -684,6 +686,13 @@ function setupIPC(): void {
     },
   );
 
+  // Auto-connect toggle
+  ipcMain.handle("get-autoconnect", () => getAutoConnect());
+  ipcMain.handle("set-autoconnect", (_event, enabled: boolean) => {
+    setAutoConnect(enabled);
+    return true;
+  });
+
   // Sessions
   ipcMain.handle("list-sessions", (_event, limit?: number, offset?: number) => {
     const conn = getConnectionConfig();
@@ -1181,6 +1190,16 @@ app.whenReady().then(() => {
   setupIPC();
   createWindow();
   setupUpdater();
+
+  // Reconnect loop: restart local gateway if autoconnect is enabled and it went offline
+  setInterval(async () => {
+    const conn = getConnectionConfig();
+    if (conn.mode !== "local") return;
+    if (!getAutoConnect()) return;
+    if (!isGatewayRunning()) {
+      await startGateway();
+    }
+  }, 30000);
 
   // Auto-start SSH tunnel if configured
   const conn = getConnectionConfig();

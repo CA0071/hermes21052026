@@ -73,6 +73,17 @@ export function setConnectionConfig(config: ConnectionConfig): void {
   writeDesktopConfig(data);
 }
 
+export function getAutoConnect(): boolean {
+  const data = readDesktopConfig();
+  return data.autoConnect === true;
+}
+
+export function setAutoConnect(enabled: boolean): void {
+  const data = readDesktopConfig();
+  data.autoConnect = enabled;
+  writeDesktopConfig(data);
+}
+
 // ── In-memory cache with TTL ─────────────────────────────
 const CACHE_TTL = 5000; // 5 seconds
 const _cache = new Map<string, { data: unknown; ts: number }>();

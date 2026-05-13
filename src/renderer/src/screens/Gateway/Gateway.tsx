@@ -5,6 +5,7 @@ import { useI18n } from "../../components/useI18n";
 function Gateway({ profile }: { profile?: string }): React.JSX.Element {
   const { t } = useI18n();
   const [gatewayRunning, setGatewayRunning] = useState(false);
+  const [autoConnect, setAutoConnectState] = useState(false);
   const [env, setEnv] = useState<Record<string, string>>({});
   const [platformEnabled, setPlatformEnabled] = useState<
     Record<string, boolean>
@@ -21,6 +22,8 @@ function Gateway({ profile }: { profile?: string }): React.JSX.Element {
     setGatewayRunning(gwStatus);
     const platforms = await window.hermesAPI.getPlatformEnabled(profile);
     setPlatformEnabled(platforms);
+    const ac = await window.hermesAPI.getAutoConnect();
+    setAutoConnectState(ac);
   }, [profile]);
 
   useEffect(() => {
@@ -35,6 +38,12 @@ function Gateway({ profile }: { profile?: string }): React.JSX.Element {
     }, 10000);
     return () => clearInterval(interval);
   }, []);
+
+  async function toggleAutoConnect(): Promise<void> {
+    const next = !autoConnect;
+    setAutoConnectState(next);
+    await window.hermesAPI.setAutoConnect(next);
+  }
 
   async function toggleGateway(): Promise<void> {
     if (gatewayStatusTimeoutRef.current) {
@@ -128,6 +137,20 @@ function Gateway({ profile }: { profile?: string }): React.JSX.Element {
             </button>
           </div>
           <div className="settings-field-hint">{t("gateway.gatewayHint")}</div>
+        </div>
+        <div className="settings-field">
+          <label className="settings-field-label">{t("gateway.autoConnect")}</label>
+          <div className="settings-gateway-row">
+            <label className="tools-toggle">
+              <input
+                type="checkbox"
+                checked={autoConnect}
+                onChange={toggleAutoConnect}
+              />
+              <span className="tools-toggle-track" />
+            </label>
+          </div>
+          <div className="settings-field-hint">{t("gateway.autoConnectHint")}</div>
         </div>
       </div>
 
