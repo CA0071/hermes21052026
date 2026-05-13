@@ -231,6 +231,9 @@ const hermesAPI = {
   startGateway: (): Promise<boolean> => ipcRenderer.invoke("start-gateway"),
   stopGateway: (): Promise<boolean> => ipcRenderer.invoke("stop-gateway"),
   gatewayStatus: (): Promise<boolean> => ipcRenderer.invoke("gateway-status"),
+  getAutoConnect: (): Promise<boolean> => ipcRenderer.invoke("get-autoconnect"),
+  setAutoConnect: (enabled: boolean): Promise<boolean> =>
+    ipcRenderer.invoke("set-autoconnect", enabled),
 
   // Platform toggles
   getPlatformEnabled: (profile?: string): Promise<Record<string, boolean>> =>

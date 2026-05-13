@@ -7,6 +7,9 @@ export default {
   stopped: "Stopped",
   gatewayHint:
     "Connects Hermes to Telegram, Discord, Slack, and other platforms",
+  autoConnect: "Auto-reconnect",
+  autoConnectHint:
+    "Automatically restart the gateway if it goes offline",
   tunnel: {
     title: "Cloudflare Tunnel",
     status: "Tunnel Status",

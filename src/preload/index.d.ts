@@ -132,6 +132,8 @@ interface HermesAPI {
   startGateway: () => Promise<boolean>;
   stopGateway: () => Promise<boolean>;
   gatewayStatus: () => Promise<boolean>;
+  getAutoConnect: () => Promise<boolean>;
+  setAutoConnect: (enabled: boolean) => Promise<boolean>;
 
   // Platform toggles
   getPlatformEnabled: (profile?: string) => Promise<Record<string, boolean>>;
