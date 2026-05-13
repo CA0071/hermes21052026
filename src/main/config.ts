@@ -393,6 +393,30 @@ export function setPlatformEnabled(
   safeWriteFile(configFile, content);
 }
 
+// ── Cloudflare Tunnel Config ─────────────────────────────
+
+export interface CloudflareTunnelConfig {
+  mode: "quick" | "named";
+  tunnelName: string;
+  hostname: string;
+}
+
+export function getTunnelConfig(): CloudflareTunnelConfig {
+  const data = readDesktopConfig();
+  const cfg = (data.cloudflareTunnel as Partial<CloudflareTunnelConfig>) ?? {};
+  return {
+    mode: (cfg.mode as "quick" | "named") || "quick",
+    tunnelName: (cfg.tunnelName as string) || "",
+    hostname: (cfg.hostname as string) || "",
+  };
+}
+
+export function setTunnelConfig(config: CloudflareTunnelConfig): void {
+  const data = readDesktopConfig();
+  data.cloudflareTunnel = config;
+  writeDesktopConfig(data);
+}
+
 // ── Credential Pool (auth.json) ──────────────────────────
 
 function authFilePath(): string {

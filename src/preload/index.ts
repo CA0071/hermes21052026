@@ -680,6 +680,49 @@ const hermesAPI = {
     lines?: number,
   ): Promise<{ content: string; path: string }> =>
     ipcRenderer.invoke("read-logs", logFile, lines),
+
+  // Cloudflare Tunnel
+  getTunnelConfig: (): Promise<{
+    mode: "quick" | "named";
+    tunnelName: string;
+    hostname: string;
+  }> => ipcRenderer.invoke("get-tunnel-config"),
+
+  saveTunnelConfig: (config: {
+    mode: "quick" | "named";
+    tunnelName: string;
+    hostname: string;
+  }): Promise<{ ok: boolean }> =>
+    ipcRenderer.invoke("save-tunnel-config", config),
+
+  getTunnelStatus: (): Promise<{
+    status: "idle" | "starting" | "active" | "error";
+    url: string | null;
+    error?: string;
+  }> => ipcRenderer.invoke("get-tunnel-status"),
+
+  startTunnel: (): Promise<boolean> => ipcRenderer.invoke("start-tunnel"),
+
+  stopTunnel: (): Promise<boolean> => ipcRenderer.invoke("stop-tunnel"),
+
+  onTunnelStatus: (
+    callback: (state: {
+      status: "idle" | "starting" | "active" | "error";
+      url: string | null;
+      error?: string;
+    }) => void,
+  ): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, state: unknown): void =>
+      callback(
+        state as {
+          status: "idle" | "starting" | "active" | "error";
+          url: string | null;
+          error?: string;
+        },
+      );
+    ipcRenderer.on("tunnel-status", handler);
+    return () => ipcRenderer.removeListener("tunnel-status", handler);
+  },
 };
 
 if (process.contextIsolated) {

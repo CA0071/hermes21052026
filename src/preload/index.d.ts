@@ -467,6 +467,32 @@ interface HermesAPI {
     logFile?: string,
     lines?: number,
   ) => Promise<{ content: string; path: string }>;
+
+  // Cloudflare Tunnel
+  getTunnelConfig: () => Promise<{
+    mode: "quick" | "named";
+    tunnelName: string;
+    hostname: string;
+  }>;
+  saveTunnelConfig: (config: {
+    mode: "quick" | "named";
+    tunnelName: string;
+    hostname: string;
+  }) => Promise<{ ok: boolean }>;
+  getTunnelStatus: () => Promise<{
+    status: "idle" | "starting" | "active" | "error";
+    url: string | null;
+    error?: string;
+  }>;
+  startTunnel: () => Promise<boolean>;
+  stopTunnel: () => Promise<boolean>;
+  onTunnelStatus: (
+    callback: (state: {
+      status: "idle" | "starting" | "active" | "error";
+      url: string | null;
+      error?: string;
+    }) => void,
+  ) => () => void;
 }
 
 declare global {
