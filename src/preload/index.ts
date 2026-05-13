@@ -161,6 +161,7 @@ const hermesAPI = {
     profile?: string,
     resumeSessionId?: string,
     history?: Array<{ role: string; content: string }>,
+    model?: string,
   ): Promise<{ response: string; sessionId?: string }> =>
     ipcRenderer.invoke(
       "send-message",
@@ -168,6 +169,7 @@ const hermesAPI = {
       profile,
       resumeSessionId,
       history,
+      model,
     ),
 
   abortChat: (): Promise<void> => ipcRenderer.invoke("abort-chat"),
@@ -231,6 +233,9 @@ const hermesAPI = {
   startGateway: (): Promise<boolean> => ipcRenderer.invoke("start-gateway"),
   stopGateway: (): Promise<boolean> => ipcRenderer.invoke("stop-gateway"),
   gatewayStatus: (): Promise<boolean> => ipcRenderer.invoke("gateway-status"),
+  getAutoConnect: (): Promise<boolean> => ipcRenderer.invoke("get-autoconnect"),
+  setAutoConnect: (enabled: boolean): Promise<boolean> =>
+    ipcRenderer.invoke("set-autoconnect", enabled),
 
   // Platform toggles
   getPlatformEnabled: (profile?: string): Promise<Record<string, boolean>> =>
@@ -680,6 +685,49 @@ const hermesAPI = {
     lines?: number,
   ): Promise<{ content: string; path: string }> =>
     ipcRenderer.invoke("read-logs", logFile, lines),
+
+  // Cloudflare Tunnel
+  getTunnelConfig: (): Promise<{
+    mode: "quick" | "named";
+    tunnelName: string;
+    hostname: string;
+  }> => ipcRenderer.invoke("get-tunnel-config"),
+
+  saveTunnelConfig: (config: {
+    mode: "quick" | "named";
+    tunnelName: string;
+    hostname: string;
+  }): Promise<{ ok: boolean }> =>
+    ipcRenderer.invoke("save-tunnel-config", config),
+
+  getTunnelStatus: (): Promise<{
+    status: "idle" | "starting" | "active" | "error";
+    url: string | null;
+    error?: string;
+  }> => ipcRenderer.invoke("get-tunnel-status"),
+
+  startTunnel: (): Promise<boolean> => ipcRenderer.invoke("start-tunnel"),
+
+  stopTunnel: (): Promise<boolean> => ipcRenderer.invoke("stop-tunnel"),
+
+  onTunnelStatus: (
+    callback: (state: {
+      status: "idle" | "starting" | "active" | "error";
+      url: string | null;
+      error?: string;
+    }) => void,
+  ): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, state: unknown): void =>
+      callback(
+        state as {
+          status: "idle" | "starting" | "active" | "error";
+          url: string | null;
+          error?: string;
+        },
+      );
+    ipcRenderer.on("tunnel-status", handler);
+    return () => ipcRenderer.removeListener("tunnel-status", handler);
+  },
 };
 
 if (process.contextIsolated) {

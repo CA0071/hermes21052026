@@ -78,7 +78,12 @@ import {
   setConnectionConfig,
   getPlatformEnabled,
   setPlatformEnabled,
+  getTunnelConfig,
+  setTunnelConfig,
+  getAutoConnect,
+  setAutoConnect,
 } from "./config";
+import * as cloudflareTunnel from "./cloudflare-tunnel";
 import { listSessions, getSessionMessages, searchSessions } from "./sessions";
 import {
   syncSessionCache,
@@ -180,6 +185,10 @@ process.on("unhandledRejection", (reason) => {
 
 let mainWindow: BrowserWindow | null = null;
 let currentChatAbort: (() => void) | null = null;
+
+cloudflareTunnel.events.on("status", (state) => {
+  mainWindow?.webContents.send("tunnel-status", state);
+});
 
 function openExternalUrl(rawUrl: unknown): void {
   if (!isAllowedExternalUrl(rawUrl)) {
@@ -547,6 +556,7 @@ function setupIPC(): void {
       profile?: string,
       resumeSessionId?: string,
       history?: Array<{ role: string; content: string }>,
+      model?: string,
     ) => {
       if (!isRemoteMode() && !isGatewayRunning()) {
         startGateway(profile);
@@ -629,6 +639,7 @@ function setupIPC(): void {
         profile,
         resumeSessionId,
         history,
+        model,
       );
 
       currentChatAbort = handle.abort;
@@ -683,6 +694,13 @@ function setupIPC(): void {
       return true;
     },
   );
+
+  // Auto-connect toggle
+  ipcMain.handle("get-autoconnect", () => getAutoConnect());
+  ipcMain.handle("set-autoconnect", (_event, enabled: boolean) => {
+    setAutoConnect(enabled);
+    return true;
+  });
 
   // Sessions
   ipcMain.handle("list-sessions", (_event, limit?: number, offset?: number) => {
@@ -992,6 +1010,28 @@ function setupIPC(): void {
     if (conn.mode === "ssh" && conn.ssh) return sshReadLogs(conn.ssh, logFile, lines);
     return readLogs(logFile, lines);
   });
+
+  // Cloudflare Tunnel
+  ipcMain.handle("get-tunnel-config", () => getTunnelConfig());
+
+  ipcMain.handle("save-tunnel-config", (_event, config) => {
+    setTunnelConfig(config);
+    cloudflareTunnel.restart(8642, config);
+    return { ok: true };
+  });
+
+  ipcMain.handle("get-tunnel-status", () => cloudflareTunnel.getStatus());
+
+  ipcMain.handle("start-tunnel", () => {
+    const config = getTunnelConfig();
+    cloudflareTunnel.start(8642, config);
+    return true;
+  });
+
+  ipcMain.handle("stop-tunnel", () => {
+    cloudflareTunnel.stop();
+    return true;
+  });
 }
 
 function buildMenu(): void {
@@ -1182,6 +1222,16 @@ app.whenReady().then(() => {
   createWindow();
   setupUpdater();
 
+  // Reconnect loop: restart local gateway if autoconnect is enabled and it went offline
+  setInterval(async () => {
+    const conn = getConnectionConfig();
+    if (conn.mode !== "local") return;
+    if (!getAutoConnect()) return;
+    if (!isGatewayRunning()) {
+      await startGateway();
+    }
+  }, 30000);
+
   // Auto-start SSH tunnel if configured
   const conn = getConnectionConfig();
   if (conn.mode === "ssh" && conn.ssh.host) {
@@ -1207,6 +1257,7 @@ app.on("window-all-closed", () => {
     stopGateway();
     stopSshTunnel();
     stopClaw3d();
+    cloudflareTunnel.stop();
     app.quit();
   }
 });
@@ -1220,4 +1271,5 @@ app.on("before-quit", () => {
   stopGateway();
   stopSshTunnel();
   stopClaw3d();
+  cloudflareTunnel.stop();
 });
