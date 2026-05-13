@@ -65,7 +65,11 @@ const URL_KEY_MAP: Array<{ pattern: RegExp; envKey: string }> = [
 ];
 
 function isCustomProvider(provider: string): boolean {
-  return provider === "custom" || LOCAL_PROVIDERS.has(provider) || provider.startsWith("custom:");
+  return (
+    provider === "custom" ||
+    LOCAL_PROVIDERS.has(provider) ||
+    provider.startsWith("custom:")
+  );
 }
 
 function resolveApiKeyForBaseUrl(
@@ -103,7 +107,11 @@ function applyCustomRuntimeEnv(
   // Keep OPENAI_BASE_URL for older Hermes Agent builds and OpenAI-compatible helpers.
   targetEnv.OPENAI_BASE_URL = normalizedBaseUrl;
 
-  let resolvedKey = resolveApiKeyForBaseUrl(normalizedBaseUrl, profileEnv, targetEnv);
+  let resolvedKey = resolveApiKeyForBaseUrl(
+    normalizedBaseUrl,
+    profileEnv,
+    targetEnv,
+  );
 
   // Local servers (localhost/127.0.0.1) don't need a real key, but the SDK
   // path still requires a non-empty bearer string.
@@ -120,12 +128,11 @@ function applyCustomRuntimeEnv(
   delete targetEnv.OPENROUTER_BASE_URL;
 }
 
-
 const YAT_STUDIO_IDENTITY_PROMPT =
-  'You are Yat Studio. If the user asks your name, product name, identity, app name, or what model you are, answer as Yat Studio. Do not disclose or emphasize the underlying model/provider name unless the user explicitly asks for technical runtime details.';
+  "You are Yat Studio. If the user asks your name, product name, identity, app name, or what model you are, answer as Yat Studio. Do not disclose or emphasize the underlying model/provider name unless the user explicitly asks for technical runtime details.";
 
 function withYatStudioIdentity(message: string): string {
-  if (message.startsWith('/')) return message;
+  if (message.startsWith("/")) return message;
   return `${YAT_STUDIO_IDENTITY_PROMPT}
 
 User: ${message}`;
@@ -134,7 +141,6 @@ User: ${message}`;
 interface ChatHandle {
   abort: () => void;
 }
-
 
 export type EngineStatus = {
   mode: "remote" | "local";
@@ -166,21 +172,28 @@ function probeApiServer(): Promise<{ ready: boolean; latencyMs: number }> {
       url,
       { method: "GET", timeout: 1500, headers: getRemoteAuthHeader() },
       (res) => {
-        resolve({ ready: res.statusCode === 200, latencyMs: Math.round(performance.now() - started) });
+        resolve({
+          ready: res.statusCode === 200,
+          latencyMs: Math.round(performance.now() - started),
+        });
         res.resume();
       },
     );
-    req.on("error", () => resolve({ ready: false, latencyMs: Math.round(performance.now() - started) }));
+    req.on("error", () =>
+      resolve({
+        ready: false,
+        latencyMs: Math.round(performance.now() - started),
+      }),
+    );
     req.on("timeout", () => {
       req.destroy();
-      resolve({ ready: false, latencyMs: Math.round(performance.now() - started) });
+      resolve({
+        ready: false,
+        latencyMs: Math.round(performance.now() - started),
+      });
     });
     req.end();
   });
-}
-
-function isApiServerReady(): Promise<boolean> {
-  return probeApiServer().then((probe) => probe.ready);
 }
 
 // ────────────────────────────────────────────────────
@@ -521,7 +534,14 @@ function sendMessageViaCli(
   if (profile && profile !== "default") {
     args.push("-p", profile);
   }
-  args.push("chat", "-q", withYatStudioIdentity(message), "-Q", "--source", "desktop");
+  args.push(
+    "chat",
+    "-q",
+    withYatStudioIdentity(message),
+    "-Q",
+    "--source",
+    "desktop",
+  );
 
   if (resumeSessionId) {
     args.push("--resume", resumeSessionId);
@@ -665,6 +685,43 @@ function sendMessageViaCli(
 // ────────────────────────────────────────────────────
 
 let apiServerAvailable: boolean | null = null; // cached after first check
+let apiProbeInFlight: Promise<{ ready: boolean; latencyMs: number }> | null =
+  null;
+let apiWarmupPromise: Promise<boolean> | null = null;
+
+async function probeApiServerCached(): Promise<{
+  ready: boolean;
+  latencyMs: number;
+}> {
+  if (apiProbeInFlight) return apiProbeInFlight;
+  apiProbeInFlight = probeApiServer().finally(() => {
+    apiProbeInFlight = null;
+  });
+  return apiProbeInFlight;
+}
+
+async function waitForApiServer(timeoutMs: number): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  do {
+    const probe = await probeApiServerCached();
+    apiServerAvailable = probe.ready;
+    if (probe.ready) return true;
+    if (Date.now() >= deadline) break;
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  } while (Date.now() < deadline);
+  return false;
+}
+
+function beginApiWarmup(profile?: string): Promise<boolean> {
+  if (apiWarmupPromise) return apiWarmupPromise;
+  if (!isRemoteMode() && !isGatewayRunning()) {
+    startGateway(profile);
+  }
+  apiWarmupPromise = waitForApiServer(12000).finally(() => {
+    apiWarmupPromise = null;
+  });
+  return apiWarmupPromise;
+}
 
 export async function sendMessage(
   message: string,
@@ -680,20 +737,9 @@ export async function sendMessage(
     return sendMessageViaApi(message, cb, profile, resumeSessionId);
   }
 
-  // Fast path: avoid spawning the CLI when the bundled API server is still warming up.
-  if (apiServerAvailable !== true && !isGatewayRunning()) {
-    startGateway(profile);
-  }
-
-  const firstProbe = await probeApiServer();
-  apiServerAvailable = firstProbe.ready;
-  if (!apiServerAvailable && isGatewayRunning()) {
-    const deadline = Date.now() + 12000;
-    while (!apiServerAvailable && Date.now() < deadline) {
-      await new Promise((resolve) => setTimeout(resolve, 350));
-      const probe = await probeApiServer();
-      apiServerAvailable = probe.ready;
-    }
+  // Fast path: once the API server is known healthy, skip per-message health probes.
+  if (apiServerAvailable !== true) {
+    await beginApiWarmup(profile);
   }
 
   if (apiServerAvailable) {
@@ -713,6 +759,8 @@ function ensureInitialized(): void {
   _initialized = true;
   if (!isRemoteMode()) {
     ensureApiServerConfig();
+    // Warm the gateway immediately so the first chat does not pay the startup cost.
+    void beginApiWarmup();
   }
   startHealthPolling();
 }
@@ -720,7 +768,7 @@ function ensureInitialized(): void {
 function startHealthPolling(): void {
   if (_healthCheckInterval) return;
   _healthCheckInterval = setInterval(async () => {
-    apiServerAvailable = await isApiServerReady();
+    apiServerAvailable = (await probeApiServerCached()).ready;
     // Stop polling once API is confirmed available — only re-check on demand
     if (apiServerAvailable && _healthCheckInterval) {
       clearInterval(_healthCheckInterval);
@@ -785,9 +833,9 @@ export function startGateway(profile?: string): boolean {
 
   gatewayStartedByApp = true;
 
-  // Wait a bit then check if API server came up
+  // Wait a bit then check if API server came up.
   setTimeout(async () => {
-    apiServerAvailable = await isApiServerReady();
+    apiServerAvailable = (await probeApiServerCached()).ready;
   }, 3000);
 
   return true;
@@ -854,7 +902,6 @@ export function isApiReady(): boolean {
   return apiServerAvailable === true;
 }
 
-
 export async function getEngineStatus(): Promise<EngineStatus> {
   if (isRemoteMode()) {
     const probe = await probeApiServer();
@@ -893,7 +940,11 @@ export async function warmupEngine(profile?: string): Promise<EngineStatus> {
   }
   const deadline = Date.now() + 9000;
   let status = await getEngineStatus();
-  while (!isRemoteMode() && status.state === "starting" && Date.now() < deadline) {
+  while (
+    !isRemoteMode() &&
+    status.state === "starting" &&
+    Date.now() < deadline
+  ) {
     await new Promise((resolve) => setTimeout(resolve, 350));
     status = await getEngineStatus();
   }
@@ -908,10 +959,11 @@ export async function runEngineBenchmark(): Promise<EngineBenchmark> {
     mode: status.mode,
     path: status.path,
     healthLatencyMs: probe.ready ? probe.latencyMs : null,
-    error: probe.ready ? undefined : "API server is not ready; chat will use CLI fallback.",
+    error: probe.ready
+      ? undefined
+      : "API server is not ready; chat will use CLI fallback.",
   };
 }
-
 
 export function testRemoteConnection(
   url: string,
