@@ -15,6 +15,7 @@ interface WelcomeProps {
   error: string | null;
   onStart: () => void;
   onRecheck: () => void;
+  onSetupRemote?: () => void;
 }
 
 type ConnectionPanel = "none" | "remote" | "ssh";
@@ -23,6 +24,7 @@ function Welcome({
   error,
   onStart,
   onRecheck,
+  onSetupRemote,
 }: WelcomeProps): React.JSX.Element {
   const { t } = useI18n();
   const [panel, setPanel] = useState<ConnectionPanel>("none");
@@ -373,6 +375,15 @@ function Welcome({
               <Globe size={16} />
               Connect to Remote Hermes
             </button>
+            {onSetupRemote && (
+              <button
+                className="btn btn-secondary welcome-recheck-btn"
+                onClick={onSetupRemote}
+              >
+                <ArrowRight size={16} />
+                Setup Remote Server
+              </button>
+            )}
           </div>
         </>
       ) : (
@@ -405,6 +416,17 @@ function Welcome({
             <Globe size={16} />
             {t("welcome.connectRemote")}
           </button>
+
+          {onSetupRemote && (
+            <button
+              className="btn btn-secondary welcome-recheck-btn"
+              onClick={onSetupRemote}
+              style={{ marginTop: 12 }}
+            >
+              <ArrowRight size={16} />
+              Setup Remote Server
+            </button>
+          )}
         </>
       )}
     </div>

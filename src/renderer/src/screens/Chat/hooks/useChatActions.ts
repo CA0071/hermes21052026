@@ -17,6 +17,7 @@ interface UseChatActionsArgs {
   onSessionStarted?: () => void;
   chatInputRef: React.RefObject<ChatInputHandle | null>;
   localCommands: LocalCommands;
+  currentModel?: string;
 }
 
 interface UseChatActionsResult {
@@ -43,6 +44,7 @@ export function useChatActions({
   onSessionStarted,
   chatInputRef,
   localCommands,
+  currentModel,
 }: UseChatActionsArgs): UseChatActionsResult {
   const messagesRef = useRef(messages);
   const isLoadingRef = useRef(isLoading);
@@ -61,6 +63,11 @@ export function useChatActions({
     [setMessages],
   );
 
+  const currentModelRef = useRef(currentModel);
+  useEffect(() => {
+    currentModelRef.current = currentModel;
+  });
+
   const sendToAgent = useCallback(
     async (text: string): Promise<void> => {
       try {
@@ -72,6 +79,7 @@ export function useChatActions({
             role: m.role,
             content: m.content,
           })),
+          currentModelRef.current || undefined,
         );
       } catch {
         // onChatError IPC already surfaces this to the user

@@ -73,6 +73,17 @@ export function setConnectionConfig(config: ConnectionConfig): void {
   writeDesktopConfig(data);
 }
 
+export function getAutoConnect(): boolean {
+  const data = readDesktopConfig();
+  return data.autoConnect === true;
+}
+
+export function setAutoConnect(enabled: boolean): void {
+  const data = readDesktopConfig();
+  data.autoConnect = enabled;
+  writeDesktopConfig(data);
+}
+
 // ── In-memory cache with TTL ─────────────────────────────
 const CACHE_TTL = 5000; // 5 seconds
 const _cache = new Map<string, { data: unknown; ts: number }>();
@@ -391,6 +402,30 @@ export function setPlatformEnabled(
   }
 
   safeWriteFile(configFile, content);
+}
+
+// ── Cloudflare Tunnel Config ─────────────────────────────
+
+export interface CloudflareTunnelConfig {
+  mode: "quick" | "named";
+  tunnelName: string;
+  hostname: string;
+}
+
+export function getTunnelConfig(): CloudflareTunnelConfig {
+  const data = readDesktopConfig();
+  const cfg = (data.cloudflareTunnel as Partial<CloudflareTunnelConfig>) ?? {};
+  return {
+    mode: (cfg.mode as "quick" | "named") || "quick",
+    tunnelName: (cfg.tunnelName as string) || "",
+    hostname: (cfg.hostname as string) || "",
+  };
+}
+
+export function setTunnelConfig(config: CloudflareTunnelConfig): void {
+  const data = readDesktopConfig();
+  data.cloudflareTunnel = config;
+  writeDesktopConfig(data);
 }
 
 // ── Credential Pool (auth.json) ──────────────────────────

@@ -111,6 +111,7 @@ interface HermesAPI {
     profile?: string,
     resumeSessionId?: string,
     history?: Array<{ role: string; content: string }>,
+    model?: string,
   ) => Promise<{ response: string; sessionId?: string }>;
   abortChat: () => Promise<void>;
   onChatChunk: (callback: (chunk: string) => void) => () => void;
@@ -132,6 +133,8 @@ interface HermesAPI {
   startGateway: () => Promise<boolean>;
   stopGateway: () => Promise<boolean>;
   gatewayStatus: () => Promise<boolean>;
+  getAutoConnect: () => Promise<boolean>;
+  setAutoConnect: (enabled: boolean) => Promise<boolean>;
 
   // Platform toggles
   getPlatformEnabled: (profile?: string) => Promise<Record<string, boolean>>;
@@ -378,6 +381,7 @@ interface HermesAPI {
     callback: (info: { percent: number }) => void,
   ) => () => void;
   onUpdateDownloaded: (callback: () => void) => () => void;
+  onUpdateError: (callback: (message: string) => void) => () => void;
 
   // Menu events
   onMenuNewChat: (callback: () => void) => () => void;
@@ -467,6 +471,38 @@ interface HermesAPI {
     logFile?: string,
     lines?: number,
   ) => Promise<{ content: string; path: string }>;
+
+  // Cloudflare Tunnel
+  getTunnelConfig: () => Promise<{
+    mode: "quick" | "named";
+    tunnelName: string;
+    hostname: string;
+  }>;
+  saveTunnelConfig: (config: {
+    mode: "quick" | "named";
+    tunnelName: string;
+    hostname: string;
+  }) => Promise<{ ok: boolean }>;
+  getTunnelStatus: () => Promise<{
+    status: "idle" | "starting" | "active" | "error";
+    url: string | null;
+    error?: string;
+  }>;
+  startTunnel: () => Promise<boolean>;
+  stopTunnel: () => Promise<boolean>;
+  onTunnelStatus: (
+    callback: (state: {
+      status: "idle" | "starting" | "active" | "error";
+      url: string | null;
+      error?: string;
+    }) => void,
+  ) => () => void;
+  testSshPassword: (host: string, port: number, username: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  deployRemoteServer: (host: string, port: number, username: string, password: string) => Promise<{ success: boolean; apiKey: string; error?: string }>;
+  onDeployProgress: (callback: (step: { step: number; total: number; label: string; error?: string }) => void) => () => void;
+  configureCloudflare: (apiToken: string, tunnelToken: string, hostname: string) => Promise<{ success: boolean; publicUrl: string; accountId: string; tunnelId: string; error?: string }>;
+  installCloudflared: (host: string, port: number, username: string, password: string, tunnelToken: string) => Promise<{ success: boolean; error?: string }>;
+  setupRemoteSshKey: (host: string, port: number, username: string, password: string) => Promise<{ success: boolean; keyPath: string; error?: string }>;
 }
 
 declare global {

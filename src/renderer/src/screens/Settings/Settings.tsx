@@ -3,7 +3,7 @@ import { useTheme } from "../../components/ThemeProvider";
 import { THEME_OPTIONS } from "../../constants";
 import { useI18n } from "../../components/useI18n";
 import { APP_LOCALES, type AppLocale } from "../../../../shared/i18n";
-import { Download, Upload, FileText, Send } from "lucide-react";
+import { Download, Upload, FileText, Send, Eye, EyeOff } from "lucide-react";
 
 const TELEGRAM_COMMUNITY_URL = "https://t.me/hermes_agent_desktop";
 
@@ -74,6 +74,7 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
   const [connMode, setConnMode] = useState<"local" | "remote" | "ssh">("local");
   const [connRemoteUrl, setConnRemoteUrl] = useState("");
   const [connApiKey, setConnApiKey] = useState("");
+  const [showApiKey, setShowApiKey] = useState(false);
   const [connTesting, setConnTesting] = useState(false);
   const [connStatus, setConnStatus] = useState<string | null>(null);
   const connLoaded = useRef(false);
@@ -567,14 +568,35 @@ function Settings({ profile }: { profile?: string }): React.JSX.Element {
               <label className="settings-field-label">
                 {t("settings.remoteApiKey")}
               </label>
-              <input
-                className="input"
-                type="password"
-                value={connApiKey}
-                onChange={(e) => setConnApiKey(e.target.value)}
-                placeholder={t("settings.remoteApiKey")}
-                onBlur={handleSaveConnection}
-              />
+              <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                <input
+                  className="input"
+                  type={showApiKey ? "text" : "password"}
+                  value={connApiKey}
+                  onChange={(e) => setConnApiKey(e.target.value)}
+                  placeholder={t("settings.remoteApiKey")}
+                  onBlur={handleSaveConnection}
+                  style={{ paddingRight: "2.5rem", flex: 1 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowApiKey((v) => !v)}
+                  style={{
+                    position: "absolute",
+                    right: "0.5rem",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: "0.25rem",
+                    color: "var(--text-muted, #888)",
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                  tabIndex={-1}
+                >
+                  {showApiKey ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
               <div className="settings-field-hint">
                 {t("settings.remoteApiKeyHint")}
               </div>

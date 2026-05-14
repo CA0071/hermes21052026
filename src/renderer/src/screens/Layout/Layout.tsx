@@ -12,7 +12,6 @@ import Office from "../Office/Office";
 import Models from "../Models/Models";
 import Providers from "../Providers/Providers";
 import Schedules from "../Schedules/Schedules";
-import RemoteNotice from "../../components/RemoteNotice";
 import VerifyWarningBanner from "../../components/VerifyWarningBanner";
 import hermeslogo from "../../assets/hermes.png";
 import {
@@ -86,9 +85,6 @@ function Layout({
   const [visitedViews, setVisitedViews] = useState<Set<View>>(
     () => new Set<View>(["chat"]),
   );
-  // Remote-only mode — SSH tunnel has full access; only pure HTTP remote mode restricts screens
-  const [remoteMode, setRemoteMode] = useState(false);
-
   const paneStyle = (target: View): React.CSSProperties => ({
     display: view === target ? "flex" : "none",
     flex: 1,
@@ -101,22 +97,20 @@ function Layout({
     setView(v);
   }, []);
 
-  // Re-check remote mode on tab switch (picks up Settings changes)
-  useEffect(() => {
-    window.hermesAPI.isRemoteOnlyMode().then(setRemoteMode);
-  }, [view]);
-
   // Auto-update state
   const [updateVersion, setUpdateVersion] = useState<string | null>(null);
   const [updateState, setUpdateState] = useState<
-    "available" | "downloading" | "ready" | null
+    "available" | "downloading" | "ready" | "error" | null
   >(null);
   const [downloadPercent, setDownloadPercent] = useState(0);
+  const [updateError, setUpdateError] = useState<string | null>(null);
 
   useEffect(() => {
     const cleanupAvailable = window.hermesAPI.onUpdateAvailable((info) => {
       setUpdateVersion(info.version);
       setUpdateState("available");
+      setUpdateError(null);
+      setDownloadPercent(0);
     });
     const cleanupProgress = window.hermesAPI.onUpdateDownloadProgress(
       (info) => {
@@ -125,18 +119,33 @@ function Layout({
     );
     const cleanupDownloaded = window.hermesAPI.onUpdateDownloaded(() => {
       setUpdateState("ready");
+      setUpdateError(null);
+    });
+    const cleanupError = window.hermesAPI.onUpdateError((message) => {
+      setUpdateState("error");
+      setUpdateError(message);
+      setDownloadPercent(0);
     });
     return () => {
       cleanupAvailable();
       cleanupProgress();
       cleanupDownloaded();
+      cleanupError();
     };
   }, []);
 
   async function handleUpdate(): Promise<void> {
-    if (updateState === "available") {
+    if (updateState === "available" || updateState === "error") {
+      setUpdateError(null);
+      setDownloadPercent(0);
       setUpdateState("downloading");
-      await window.hermesAPI.downloadUpdate();
+      try {
+        const ok = await window.hermesAPI.downloadUpdate();
+        if (!ok) setUpdateState("error");
+      } catch (err) {
+        setUpdateError(err instanceof Error ? err.message : String(err));
+        setUpdateState("error");
+      }
     } else if (updateState === "ready") {
       await window.hermesAPI.installUpdate();
     }
@@ -207,7 +216,14 @@ function Layout({
 
         <div className="sidebar-footer">
           {updateState && (
-            <button className="sidebar-update-btn" onClick={handleUpdate}>
+            <button
+              className={`sidebar-update-btn ${
+                updateState === "error" ? "error" : ""
+              }`}
+              onClick={handleUpdate}
+              disabled={updateState === "downloading"}
+              title={updateError ?? undefined}
+            >
               <Download size={13} />
               {updateState === "available" && (
                 <span>
@@ -221,6 +237,9 @@ function Layout({
               )}
               {updateState === "ready" && (
                 <span>{t("common.restartToUpdate")}</span>
+              )}
+              {updateState === "error" && (
+                <span>{t("common.updateFailed")}</span>
               )}
             </button>
           )}
@@ -249,32 +268,24 @@ function Layout({
 
         {visitedViews.has("sessions") && (
           <div style={paneStyle("sessions")}>
-            {remoteMode ? (
-              <RemoteNotice feature="Sessions" />
-            ) : (
-              <Sessions
-                onResumeSession={handleResumeSession}
-                onNewChat={handleNewChat}
-                currentSessionId={currentSessionId}
-              />
-            )}
+            <Sessions
+              onResumeSession={handleResumeSession}
+              onNewChat={handleNewChat}
+              currentSessionId={currentSessionId}
+            />
           </div>
         )}
 
         {visitedViews.has("agents") && (
           <div style={paneStyle("agents")}>
-            {remoteMode ? (
-              <RemoteNotice feature="Profiles" />
-            ) : (
-              <Agents
-                activeProfile={activeProfile}
-                onSelectProfile={handleSelectProfile}
-                onChatWith={(name: string) => {
-                  handleSelectProfile(name);
-                  goTo("chat");
-                }}
-              />
-            )}
+            <Agents
+              activeProfile={activeProfile}
+              onSelectProfile={handleSelectProfile}
+              onChatWith={(name: string) => {
+                handleSelectProfile(name);
+                goTo("chat");
+              }}
+            />
           </div>
         )}
 
@@ -292,54 +303,34 @@ function Layout({
 
         {visitedViews.has("providers") && (
           <div style={paneStyle("providers")}>
-            {remoteMode ? (
-              <RemoteNotice feature="Providers" />
-            ) : (
-              <Providers
-                profile={activeProfile}
-                visible={view === "providers"}
-              />
-            )}
+            <Providers
+              profile={activeProfile}
+              visible={view === "providers"}
+            />
           </div>
         )}
 
         {visitedViews.has("skills") && (
           <div style={paneStyle("skills")}>
-            {remoteMode ? (
-              <RemoteNotice feature="Skills" />
-            ) : (
-              <Skills profile={activeProfile} />
-            )}
+            <Skills profile={activeProfile} />
           </div>
         )}
 
         {visitedViews.has("soul") && (
           <div style={paneStyle("soul")}>
-            {remoteMode ? (
-              <RemoteNotice feature="Persona" />
-            ) : (
-              <Soul profile={activeProfile} />
-            )}
+            <Soul profile={activeProfile} />
           </div>
         )}
 
         {visitedViews.has("memory") && (
           <div style={paneStyle("memory")}>
-            {remoteMode ? (
-              <RemoteNotice feature="Memory" />
-            ) : (
-              <Memory profile={activeProfile} />
-            )}
+            <Memory profile={activeProfile} />
           </div>
         )}
 
         {visitedViews.has("tools") && (
           <div style={paneStyle("tools")}>
-            {remoteMode ? (
-              <RemoteNotice feature="Tools" />
-            ) : (
-              <Tools profile={activeProfile} />
-            )}
+            <Tools profile={activeProfile} />
           </div>
         )}
 
@@ -351,11 +342,7 @@ function Layout({
 
         {visitedViews.has("gateway") && (
           <div style={paneStyle("gateway")}>
-            {remoteMode ? (
-              <RemoteNotice feature="Gateway" />
-            ) : (
-              <Gateway profile={activeProfile} />
-            )}
+            <Gateway profile={activeProfile} />
           </div>
         )}
 

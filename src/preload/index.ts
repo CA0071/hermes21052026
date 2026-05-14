@@ -161,6 +161,7 @@ const hermesAPI = {
     profile?: string,
     resumeSessionId?: string,
     history?: Array<{ role: string; content: string }>,
+    model?: string,
   ): Promise<{ response: string; sessionId?: string }> =>
     ipcRenderer.invoke(
       "send-message",
@@ -168,6 +169,7 @@ const hermesAPI = {
       profile,
       resumeSessionId,
       history,
+      model,
     ),
 
   abortChat: (): Promise<void> => ipcRenderer.invoke("abort-chat"),
@@ -231,6 +233,9 @@ const hermesAPI = {
   startGateway: (): Promise<boolean> => ipcRenderer.invoke("start-gateway"),
   stopGateway: (): Promise<boolean> => ipcRenderer.invoke("stop-gateway"),
   gatewayStatus: (): Promise<boolean> => ipcRenderer.invoke("gateway-status"),
+  getAutoConnect: (): Promise<boolean> => ipcRenderer.invoke("get-autoconnect"),
+  setAutoConnect: (enabled: boolean): Promise<boolean> =>
+    ipcRenderer.invoke("set-autoconnect", enabled),
 
   // Platform toggles
   getPlatformEnabled: (profile?: string): Promise<Record<string, boolean>> =>
@@ -559,6 +564,13 @@ const hermesAPI = {
     return () => ipcRenderer.removeListener("update-downloaded", handler);
   },
 
+  onUpdateError: (callback: (message: string) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, message: unknown): void =>
+      callback(String(message));
+    ipcRenderer.on("update-error", handler);
+    return () => ipcRenderer.removeListener("update-error", handler);
+  },
+
   // Menu events (from native menu bar)
   onMenuNewChat: (callback: () => void): (() => void) => {
     const handler = (): void => callback();
@@ -680,6 +692,84 @@ const hermesAPI = {
     lines?: number,
   ): Promise<{ content: string; path: string }> =>
     ipcRenderer.invoke("read-logs", logFile, lines),
+
+  // Cloudflare Tunnel
+  getTunnelConfig: (): Promise<{
+    mode: "quick" | "named";
+    tunnelName: string;
+    hostname: string;
+  }> => ipcRenderer.invoke("get-tunnel-config"),
+
+  saveTunnelConfig: (config: {
+    mode: "quick" | "named";
+    tunnelName: string;
+    hostname: string;
+  }): Promise<{ ok: boolean }> =>
+    ipcRenderer.invoke("save-tunnel-config", config),
+
+  getTunnelStatus: (): Promise<{
+    status: "idle" | "starting" | "active" | "error";
+    url: string | null;
+    error?: string;
+  }> => ipcRenderer.invoke("get-tunnel-status"),
+
+  startTunnel: (): Promise<boolean> => ipcRenderer.invoke("start-tunnel"),
+
+  stopTunnel: (): Promise<boolean> => ipcRenderer.invoke("stop-tunnel"),
+
+  onTunnelStatus: (
+    callback: (state: {
+      status: "idle" | "starting" | "active" | "error";
+      url: string | null;
+      error?: string;
+    }) => void,
+  ): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, state: unknown): void =>
+      callback(
+        state as {
+          status: "idle" | "starting" | "active" | "error";
+          url: string | null;
+          error?: string;
+        },
+      );
+    ipcRenderer.on("tunnel-status", handler);
+    return () => ipcRenderer.removeListener("tunnel-status", handler);
+  },
+
+  // Remote setup wizard
+  testSshPassword: (
+    host: string, port: number, username: string, password: string,
+  ): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke("test-ssh-password", host, port, username, password),
+
+  deployRemoteServer: (
+    host: string, port: number, username: string, password: string,
+  ): Promise<{ success: boolean; apiKey: string; error?: string }> =>
+    ipcRenderer.invoke("deploy-remote-server", host, port, username, password),
+
+  onDeployProgress: (
+    callback: (step: { step: number; total: number; label: string; error?: string }) => void,
+  ): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: unknown): void =>
+      callback(data as { step: number; total: number; label: string; error?: string });
+    ipcRenderer.on("deploy-progress", handler);
+    return () => ipcRenderer.removeListener("deploy-progress", handler);
+  },
+
+  configureCloudflare: (
+    apiToken: string, tunnelToken: string, hostname: string,
+  ): Promise<{ success: boolean; publicUrl: string; accountId: string; tunnelId: string; error?: string }> =>
+    ipcRenderer.invoke("configure-cloudflare", apiToken, tunnelToken, hostname),
+
+  installCloudflared: (
+    host: string, port: number, username: string, password: string, tunnelToken: string,
+  ): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke("install-cloudflared", host, port, username, password, tunnelToken),
+
+  setupRemoteSshKey: (
+    host: string, port: number, username: string, password: string,
+  ): Promise<{ success: boolean; keyPath: string; error?: string }> =>
+    ipcRenderer.invoke("setup-remote-ssh-key", host, port, username, password),
 };
 
 if (process.contextIsolated) {

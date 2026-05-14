@@ -115,6 +115,7 @@ function Chat({
     onSessionStarted,
     chatInputRef,
     localCommands,
+    currentModel: modelConfig.currentModel,
   });
 
   const handleSuggestion = useCallback((text: string) => {
