@@ -80,7 +80,7 @@ import {
   getPlatformEnabled,
   setPlatformEnabled,
 } from "./config";
-import { listSessions, getSessionMessages, searchSessions } from "./sessions";
+import { listSessions, getSessionMessages, searchSessions, deleteSession } from "./sessions";
 import {
   syncSessionCache,
   listCachedSessions,
@@ -568,6 +568,13 @@ function setupIPC(): void {
       profile?: string,
       resumeSessionId?: string,
       history?: Array<{ role: string; content: string }>,
+      attachments?: Array<{
+        id: string;
+        name: string;
+        mimeType: string;
+        data: string;
+        isImage: boolean;
+      }>,
     ) => {
       if (!isRemoteMode() && !isGatewayRunning()) {
         startGateway(profile);
@@ -650,6 +657,7 @@ function setupIPC(): void {
         profile,
         resumeSessionId,
         history,
+        attachments,
       );
 
       currentChatAbort = handle.abort;
@@ -858,6 +866,13 @@ function setupIPC(): void {
     "update-session-title",
     (_event, sessionId: string, title: string) =>
       updateSessionTitle(sessionId, title),
+  );
+
+  ipcMain.handle(
+    "delete-session",
+    (_event, sessionId: string) => {
+      deleteSession(sessionId);
+    },
   );
 
   // Session search

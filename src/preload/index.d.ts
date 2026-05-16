@@ -195,6 +195,13 @@ interface HermesAPI {
     profile?: string,
     resumeSessionId?: string,
     history?: Array<{ role: string; content: string }>,
+    attachments?: Array<{
+      id: string;
+      name: string;
+      mimeType: string;
+      data: string;
+      isImage: boolean;
+    }>,
   ) => Promise<{ response: string; sessionId?: string }>;
   abortChat: () => Promise<void>;
   onChatChunk: (callback: (chunk: string) => void) => () => void;
@@ -363,6 +370,7 @@ interface HermesAPI {
     }>
   >;
   updateSessionTitle: (sessionId: string, title: string) => Promise<void>;
+  deleteSession: (sessionId: string) => Promise<void>;
 
   // Session search
   searchSessions: (

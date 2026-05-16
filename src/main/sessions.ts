@@ -1,9 +1,63 @@
 import Database from "better-sqlite3";
 import { join } from "path";
 import { existsSync } from "fs";
-import { HERMES_HOME } from "./installer";
+import { HERMES_HOME, getProfilePath } from "./installer";
+import { removeSessionFromCache } from "./session-cache";
 
-const DB_PATH = join(HERMES_HOME, "state.db");
+/**
+ * All candidate DB paths, in priority order:
+ *   1. Active profile DB (~/.hermes/profiles/<profile>/state.db)
+ *   2. Top-level ~/.hermes/state.db  (default hermes-agent write target)
+ *   3. Any other profile subdirectories
+ *
+ * We try each in order and return the first one that exists on disk.
+ * For getSessionMessages we go further and try ALL of them until we
+ * find one that actually contains the requested session — this handles
+ * the case where the JSON session cache was built from a different DB
+ * than the one resolveDbPath() would pick first.
+ */
+function candidateDbPaths(): string[] {
+  const paths: string[] = [];
+  const profile = getProfilePath();
+  const profileDb = join(profile, "state.db");
+  if (existsSync(profileDb)) paths.push(profileDb);
+
+  const topLevel = join(HERMES_HOME, "state.db");
+  if (existsSync(topLevel) && !paths.includes(topLevel)) paths.push(topLevel);
+
+  // Also try "default" profile explicitly
+  const defaultDb = join(HERMES_HOME, "profiles", "default", "state.db");
+  if (existsSync(defaultDb) && !paths.includes(defaultDb)) paths.push(defaultDb);
+
+  // Scan all profile subdirs we haven't covered yet
+  try {
+    const profilesDir = join(HERMES_HOME, "profiles");
+    if (existsSync(profilesDir)) {
+      const { readdirSync } = require("fs");
+      for (const dir of readdirSync(profilesDir)) {
+        const candidate = join(profilesDir, dir, "state.db");
+        if (existsSync(candidate) && !paths.includes(candidate)) {
+          paths.push(candidate);
+        }
+      }
+    }
+  } catch {
+    // non-fatal
+  }
+
+  return paths;
+}
+
+function resolveDbPath(): string {
+  const candidates = candidateDbPaths();
+  return candidates[0] ?? join(HERMES_HOME, "state.db");
+}
+
+function getDb(): Database.Database | null {
+  const dbPath = resolveDbPath();
+  if (!existsSync(dbPath)) return null;
+  return new Database(dbPath, { readonly: true });
+}
 
 export interface SessionSummary {
   id: string;
@@ -33,17 +87,11 @@ export interface SearchResult {
   snippet: string;
 }
 
-function getDb(): Database.Database | null {
-  if (!existsSync(DB_PATH)) return null;
-  return new Database(DB_PATH, { readonly: true });
-}
-
 export function listSessions(limit = 30, offset = 0): SessionSummary[] {
   const db = getDb();
   if (!db) return [];
 
   try {
-    // Simple query without correlated subquery — titles come from session cache
     const rows = db
       .prepare(
         `SELECT
@@ -97,7 +145,6 @@ export function searchSessions(query: string, limit = 20): SearchResult[] {
 
     if (!tableCheck) return [];
 
-    // Sanitize query for FTS5: wrap each word with quotes for safety, add * for prefix
     const sanitized = query
       .trim()
       .split(/\s+/)
@@ -150,32 +197,69 @@ export function searchSessions(query: string, limit = 20): SearchResult[] {
   }
 }
 
+/**
+ * Try every candidate DB until one returns messages for this session.
+ * This handles the case where the session cache was built from a different
+ * DB than the one resolveDbPath() picks (e.g. sessions created under a
+ * different profile than the currently active one).
+ */
 export function getSessionMessages(sessionId: string): SessionMessage[] {
-  const db = getDb();
-  if (!db) return [];
+  const QUERY = `
+    SELECT id, role, content, timestamp
+    FROM messages
+    WHERE session_id = ?
+      AND role IN ('user', 'assistant', 'human', 'ai')
+      AND content IS NOT NULL
+    ORDER BY timestamp, id`;
 
-  try {
-    const rows = db
-      .prepare(
-        `SELECT id, role, content, timestamp
-         FROM messages
-         WHERE session_id = ? AND role IN ('user', 'assistant') AND content IS NOT NULL
-         ORDER BY timestamp, id`,
-      )
-      .all(sessionId) as Array<{
-      id: number;
-      role: string;
-      content: string;
-      timestamp: number;
-    }>;
+  for (const dbPath of candidateDbPaths()) {
+    let db: Database.Database | null = null;
+    try {
+      db = new Database(dbPath, { readonly: true });
+      const rows = db.prepare(QUERY).all(sessionId) as Array<{
+        id: number;
+        role: string;
+        content: string;
+        timestamp: number;
+      }>;
 
-    return rows.map((r) => ({
-      id: r.id,
-      role: r.role as "user" | "assistant",
-      content: r.content,
-      timestamp: r.timestamp,
-    }));
-  } finally {
-    db.close();
+      if (rows.length > 0) {
+        return rows.map((r) => ({
+          id: r.id,
+          // Normalise to standard roles
+          role: (r.role === "human" ? "user" : r.role === "ai" ? "assistant" : r.role) as
+            | "user"
+            | "assistant",
+          content: r.content,
+          timestamp: r.timestamp,
+        }));
+      }
+    } catch {
+      // DB may not have a messages table — try next
+    } finally {
+      db?.close();
+    }
   }
+
+  return [];
+}
+
+/**
+ * Delete a session (and its messages) from ALL candidate DBs, then
+ * remove it from the local JSON cache.
+ */
+export function deleteSession(sessionId: string): void {
+  for (const dbPath of candidateDbPaths()) {
+    let db: Database.Database | null = null;
+    try {
+      db = new Database(dbPath);
+      db.prepare("DELETE FROM messages WHERE session_id = ?").run(sessionId);
+      db.prepare("DELETE FROM sessions WHERE id = ?").run(sessionId);
+    } catch {
+      // DB may not have these tables — skip silently
+    } finally {
+      db?.close();
+    }
+  }
+  removeSessionFromCache(sessionId);
 }
