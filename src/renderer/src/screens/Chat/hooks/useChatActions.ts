@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { ChatInputHandle } from "../ChatInput";
-import type { ChatMessage } from "../types";
+import type { ChatMessage, Attachment } from "../types";
 
 interface LocalCommands {
   isLocal: (text: string) => boolean;
@@ -20,7 +20,7 @@ interface UseChatActionsArgs {
 }
 
 interface UseChatActionsResult {
-  handleSend: (text: string) => Promise<void>;
+  handleSend: (text: string, attachments?: Attachment[]) => Promise<void>;
   handleQuickAsk: (text: string) => Promise<void>;
   handleAbort: () => void;
   handleApprove: () => void;
@@ -52,18 +52,29 @@ export function useChatActions({
   });
 
   const pushUser = useCallback(
-    (content: string, idPrefix = "user") => {
+    (content: string, idPrefix = "user", attachments?: Attachment[]) => {
       setMessages((prev) => [
         ...prev,
-        { id: `${idPrefix}-${Date.now()}`, role: "user", content },
+        {
+          id: `${idPrefix}-${Date.now()}`,
+          role: "user",
+          content,
+          attachments,
+        },
       ]);
     },
     [setMessages],
   );
 
   const sendToAgent = useCallback(
-    async (text: string): Promise<void> => {
+    async (text: string, attachments?: Attachment[]): Promise<void> => {
       try {
+        // Build serialisable attachment payload — strip the heavy dataUrl
+        // (data is the raw base64 we need; dataUrl is just for display)
+        const serialisableAtts = attachments?.map(({ id, name, mimeType, data, isImage }) => ({
+          id, name, mimeType, data, isImage,
+        }));
+
         await window.hermesAPI.sendMessage(
           text,
           profile,
@@ -72,6 +83,7 @@ export function useChatActions({
             role: m.role,
             content: m.content,
           })),
+          serialisableAtts,
         );
       } catch {
         // onChatError IPC already surfaces this to the user
@@ -81,10 +93,11 @@ export function useChatActions({
   );
 
   const handleSend = useCallback(
-    async (text: string): Promise<void> => {
-      if (!text || isLoadingRef.current) return;
+    async (text: string, attachments?: Attachment[]): Promise<void> => {
+      if (!text && (!attachments || attachments.length === 0)) return;
+      if (isLoadingRef.current) return;
 
-      if (localCommands.isLocal(text)) {
+      if (text && localCommands.isLocal(text)) {
         const cmd = text.split(/\s+/)[0].toLowerCase();
         if (cmd !== "/new" && cmd !== "/clear") pushUser(text);
         await localCommands.executeLocal(text);
@@ -92,9 +105,9 @@ export function useChatActions({
       }
 
       setIsLoading(true);
-      pushUser(text);
+      pushUser(text, "user", attachments);
       onSessionStarted?.();
-      await sendToAgent(text);
+      await sendToAgent(text, attachments);
     },
     [localCommands, pushUser, onSessionStarted, sendToAgent, setIsLoading],
   );
