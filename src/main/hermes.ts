@@ -165,27 +165,45 @@ export interface ChatCallbacks {
   }) => void;
 }
 
+type ContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } };
+
+function buildMessageContent(
+  text: string,
+  images?: string[],
+): string | ContentPart[] {
+  if (!images || images.length === 0) return text;
+  const parts: ContentPart[] = [];
+  if (text) parts.push({ type: "text", text });
+  for (const url of images) {
+    parts.push({ type: "image_url", image_url: { url } });
+  }
+  return parts;
+}
+
 function sendMessageViaApi(
   message: string,
   cb: ChatCallbacks,
   profile?: string,
   _resumeSessionId?: string,
-  history?: Array<{ role: string; content: string }>,
+  history?: Array<{ role: string; content: string; images?: string[] }>,
+  images?: string[],
 ): ChatHandle {
   const mc = getModelConfig(profile);
   const controller = new AbortController();
 
   // Build full conversation from history + current message (standard OpenAI format)
-  const messages: Array<{ role: string; content: string }> = [];
+  const messages: Array<{ role: string; content: string | ContentPart[] }> = [];
   if (history && history.length > 0) {
     for (const msg of history) {
       messages.push({
         role: msg.role === "agent" ? "assistant" : msg.role,
-        content: msg.content,
+        content: buildMessageContent(msg.content, msg.images),
       });
     }
   }
-  messages.push({ role: "user", content: message });
+  messages.push({ role: "user", content: buildMessageContent(message, images) });
 
   const body = JSON.stringify({
     model: mc.model || "hermes-agent",
@@ -657,13 +675,14 @@ export async function sendMessage(
   cb: ChatCallbacks,
   profile?: string,
   resumeSessionId?: string,
-  history?: Array<{ role: string; content: string }>,
+  history?: Array<{ role: string; content: string; images?: string[] }>,
+  images?: string[],
 ): Promise<ChatHandle> {
   ensureInitialized();
 
   // Remote mode: always use API, no CLI fallback
   if (isRemoteMode()) {
-    return sendMessageViaApi(message, cb, profile, resumeSessionId, history);
+    return sendMessageViaApi(message, cb, profile, resumeSessionId, history, images);
   }
 
   // Check API server availability (cache the result, re-check periodically)
@@ -672,7 +691,7 @@ export async function sendMessage(
   }
 
   if (apiServerAvailable) {
-    return sendMessageViaApi(message, cb, profile, resumeSessionId, history);
+    return sendMessageViaApi(message, cb, profile, resumeSessionId, history, images);
   }
 
   // Fallback to CLI

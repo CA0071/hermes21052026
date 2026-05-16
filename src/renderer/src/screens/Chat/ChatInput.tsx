@@ -7,7 +7,7 @@ import {
   forwardRef,
   useImperativeHandle,
 } from "react";
-import { Send, Square as Stop, Slash } from "lucide-react";
+import { Send, Square as Stop, Slash, X } from "lucide-react";
 import { isImeComposing } from "./keyboard";
 import { useI18n } from "../../components/useI18n";
 import { SLASH_COMMANDS, type SlashCommand } from "./slashCommands";
@@ -22,8 +22,8 @@ export interface ChatInputHandle {
 interface ChatInputProps {
   isLoading: boolean;
   hasSession: boolean;
-  onSubmit: (text: string) => void;
-  onQuickAsk: (text: string) => void;
+  onSubmit: (text: string, images?: string[]) => void;
+  onQuickAsk: (text: string, images?: string[]) => void;
   onAbort: () => void;
 }
 
@@ -34,6 +34,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
   ): React.JSX.Element {
     const { t } = useI18n();
     const [input, setInput] = useState("");
+    const [attachments, setAttachments] = useState<string[]>([]);
     const [slashMenuOpen, setSlashMenuOpen] = useState(false);
     const [slashFilter, setSlashFilter] = useState("");
     const [slashSelectedIndex, setSlashSelectedIndex] = useState(0);
@@ -130,22 +131,25 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
     function clearAfterSend(text: string): void {
       history.push(text);
       setInput("");
+      setAttachments([]);
       if (inputRef.current) inputRef.current.style.height = "auto";
     }
 
     function handleSend(): void {
       const text = input.trim();
-      if (!text || isLoading) return;
+      if ((!text && attachments.length === 0) || isLoading) return;
       setSlashMenuOpen(false);
-      clearAfterSend(text);
-      onSubmit(text);
+      const imgs = attachments.length > 0 ? [...attachments] : undefined;
+      clearAfterSend(text || "(image)");
+      onSubmit(text || "(image)", imgs);
     }
 
     function handleQuickAsk(): void {
       const text = input.trim();
-      if (!text || isLoading) return;
-      clearAfterSend(text);
-      onQuickAsk(text);
+      if ((!text && attachments.length === 0) || isLoading) return;
+      const imgs = attachments.length > 0 ? [...attachments] : undefined;
+      clearAfterSend(text || "(image)");
+      onQuickAsk(text || "(image)", imgs);
     }
 
     function handleSlashSelect(cmd: SlashCommand): void {
@@ -160,6 +164,30 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
       // Backend commands that take arguments: insert prefix and wait for the user
       setInput(cmd.name + " ");
       inputRef.current?.focus();
+    }
+
+    function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>): void {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.startsWith("image/")) {
+          e.preventDefault();
+          const blob = item.getAsFile();
+          if (!blob) continue;
+          const reader = new FileReader();
+          reader.onload = () => {
+            const dataUrl = reader.result as string;
+            setAttachments((prev) => [...prev, dataUrl]);
+          };
+          reader.readAsDataURL(blob);
+          return;
+        }
+      }
+    }
+
+    function removeAttachment(index: number): void {
+      setAttachments((prev) => prev.filter((_, i) => i !== index));
     }
 
     function handleInputChange(
@@ -262,6 +290,21 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
             </div>
           </div>
         )}
+        {attachments.length > 0 && (
+          <div className="chat-attachments">
+            {attachments.map((src, i) => (
+              <div key={i} className="chat-attachment-item">
+                <img src={src} alt="" className="chat-attachment-thumb" />
+                <button
+                  className="chat-attachment-remove"
+                  onClick={() => removeAttachment(i)}
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="chat-input-wrapper">
           <textarea
             ref={inputRef}
@@ -270,6 +313,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
             value={input}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             rows={1}
             autoFocus
           />
@@ -295,7 +339,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
               <button
                 className="chat-send-btn"
                 onClick={handleSend}
-                disabled={!input.trim()}
+                disabled={!input.trim() && attachments.length === 0}
                 title={t("chat.send")}
               >
                 <Send size={16} />

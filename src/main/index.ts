@@ -567,7 +567,8 @@ function setupIPC(): void {
       message: string,
       profile?: string,
       resumeSessionId?: string,
-      history?: Array<{ role: string; content: string }>,
+      history?: Array<{ role: string; content: string; images?: string[] }>,
+      images?: string[],
     ) => {
       if (!isRemoteMode() && !isGatewayRunning()) {
         startGateway(profile);
@@ -650,6 +651,7 @@ function setupIPC(): void {
         profile,
         resumeSessionId,
         history,
+        images,
       );
 
       currentChatAbort = handle.abort;

@@ -52,7 +52,16 @@ export const MessageRow = memo(function MessageRow({
         {msg.role === "agent" ? (
           <AgentMarkdown>{msg.content}</AgentMarkdown>
         ) : (
-          msg.content
+          <>
+            {msg.images && msg.images.length > 0 && (
+              <div className="chat-message-images">
+                {msg.images.map((src, i) => (
+                  <img key={i} src={src} alt="" className="chat-message-image" />
+                ))}
+              </div>
+            )}
+            {msg.content !== "(image)" && msg.content}
+          </>
         )}
       </div>
       {showApprovalBar && (
