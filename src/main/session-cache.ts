@@ -88,11 +88,11 @@ export function syncSessionCache(): CachedSession[] {
     const rows = db
       .prepare(
         `SELECT s.id, s.started_at, s.source, s.message_count, s.model, s.title
-         FROM sessions s
-         WHERE s.started_at > ?
-         ORDER BY s.started_at DESC`,
+         FROM sessions s 
+         WHERE s.updated_at > ?
+         ORDER BY s.updated_at DESC`,
       )
-      .all(cache.lastSync > 0 ? cache.lastSync - 300 : 0) as Array<{
+      .all(cache.lastSync > 0 ? cache.lastSync - 300000 : 0) as Array<{
       id: string;
       started_at: number;
       source: string;
@@ -105,38 +105,38 @@ export function syncSessionCache(): CachedSession[] {
     // O(1) instead of O(N). Without this, syncing N existing sessions
     // against N new rows is O(N²) and visibly slows app startup once a
     // user has accumulated thousands of sessions (issue #16).
-    const existingById = new Map<string, CachedSession>();
-    for (const s of cache.sessions) existingById.set(s.id, s);
-    const newSessions: CachedSession[] = [];
+    const sessionMap = new Map<string, CachedSession>();
+    for (const s of cache.sessions) sessionMap.set(s.id, s);
 
     for (const row of rows) {
-      const existing = existingById.get(row.id);
-      if (existing) {
-        // Update existing entry (message count may have changed)
-        existing.messageCount = row.message_count;
-        continue;
-      }
-
       // Generate title from first user message
-      let title = row.title || "";
-      if (!title) {
-        try {
-          const msg = db
-            .prepare(
-              `SELECT content FROM messages
-               WHERE session_id = ? AND role = 'user' AND content IS NOT NULL
-               ORDER BY timestamp, id LIMIT 1`,
-            )
-            .get(row.id) as { content: string } | undefined;
-          title = msg
-            ? generateTitle(msg.content)
-            : t("sessions.newConversation", getAppLocale());
-        } catch {
-          title = t("sessions.newConversation", getAppLocale());
+      let title = row.title;
+      if (!title || title.startsWith("New conversation")) {
+        const existing = sessionMap.get(row.id);
+        if (existing && existing.title && !existing.title.startsWith("New conversation")) {
+          title = existing.title;
+        } else {
+          try {
+            const msg = db
+              .prepare(
+                `SELECT content FROM messages 
+                 WHERE session_id = ? AND role = 'user' AND content IS NOT NULL 
+                 ORDER BY timestamp, id LIMIT 1`,
+              )
+              .get(row.id) as { content: string } | undefined;
+            if (msg && msg.content) {
+              title = generateTitle(msg.content);
+            } else {
+              // Keep the existing title if there's no new message content
+              title = existing?.title || t("sessions.newConversation", getAppLocale());
+            }
+          } catch {
+            title = existing?.title || t("sessions.newConversation", getAppLocale());
+          }
         }
       }
 
-      newSessions.push({
+      sessionMap.set(row.id, {
         id: row.id,
         title,
         startedAt: row.started_at,
@@ -146,9 +146,8 @@ export function syncSessionCache(): CachedSession[] {
       });
     }
 
-    // Merge: new sessions first (most recent), then existing
-    const allSessions = [...newSessions, ...cache.sessions];
-    // Sort by startedAt descending
+    // Convert map back to array and sort
+    const allSessions = Array.from(sessionMap.values());
     allSessions.sort((a, b) => b.startedAt - a.startedAt);
 
     const updated: CacheData = {
