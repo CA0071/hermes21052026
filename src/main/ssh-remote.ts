@@ -930,8 +930,24 @@ export async function sshReadRemoteApiKey(config: SshConfig): Promise<string> {
 // ── Versions ──────────────────────────────────────────────────────────────────
 
 export async function sshGetHermesVersion(config: SshConfig): Promise<string | null> {
+  // The full version string (Engine / Released / Python / OpenAI SDK) the
+  // Settings UI parses only comes from the real hermes Python entrypoint.
+  // Many production deploys ship a `/usr/local/bin/hermes` sudo-wrapper that
+  // refuses to run as the hermes service user itself (sudoers policy), so
+  // calling bare `hermes` returns nothing useful. Probe the venv binaries at
+  // their well-known install paths first; fall back to PATH only if none of
+  // those exist.
+  const candidates = [
+    "$HOME/hermes-agent/.venv/bin/hermes",
+    "$HOME/.hermes/hermes-agent/.venv/bin/hermes",
+    "/opt/hermes/hermes-agent/.venv/bin/hermes",
+  ];
+  const probe = candidates.map((p) => `[ -x ${p} ] && exec ${p} --version`).join("; ");
   try {
-    const out = await sshExec(config, `hermes --version 2>/dev/null || hermes version 2>/dev/null || echo ""`);
+    const out = await sshExec(
+      config,
+      `bash -c '${probe}; command -v hermes >/dev/null && exec hermes --version; echo ""'`,
+    );
     return out.trim() || null;
   } catch {
     return null;
