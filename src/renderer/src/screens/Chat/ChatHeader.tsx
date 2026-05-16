@@ -1,16 +1,19 @@
-import { memo } from "react";
-import { Trash2 as Trash, Plus, Zap } from "lucide-react";
+import { memo, useState, useRef, useEffect } from "react";
+import { Trash2 as Trash, Plus, Zap, Pencil, Download } from "lucide-react";
 import { useI18n } from "../../components/useI18n";
 import type { UsageState } from "./types";
 
 interface ChatHeaderProps {
   sessionId: string | null;
+  sessionTitle?: string | null;
   usage: UsageState | null;
   fastMode: boolean;
   hasMessages: boolean;
   onToggleFast: () => void;
   onNewChat?: () => void;
   onClear: () => void;
+  onRenameSession?: (sessionId: string, newTitle: string) => void;
+  onExport?: () => void;
 }
 
 function UsageBadge({ usage }: { usage: UsageState }): React.JSX.Element {
@@ -31,24 +34,83 @@ function UsageBadge({ usage }: { usage: UsageState }): React.JSX.Element {
 
 export const ChatHeader = memo(function ChatHeader({
   sessionId,
+  sessionTitle,
   usage,
   fastMode,
   hasMessages,
   onToggleFast,
   onNewChat,
   onClear,
+  onRenameSession,
+  onExport,
 }: ChatHeaderProps): React.JSX.Element {
   const { t } = useI18n();
+  const [renaming, setRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
+  const renameInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (renaming && renameInputRef.current) {
+      renameInputRef.current.focus();
+      renameInputRef.current.select();
+    }
+  }, [renaming]);
+
+  function startRename(): void {
+    const current = sessionTitle || (sessionId ? t("chat.sessionTitle", { id: sessionId.slice(-6) }) : "");
+    setRenameValue(current);
+    setRenaming(true);
+  }
+
+  function commitRename(): void {
+    const trimmed = renameValue.trim();
+    if (trimmed && sessionId && onRenameSession) {
+      onRenameSession(sessionId, trimmed);
+    }
+    setRenaming(false);
+  }
+
+  function handleRenameKeyDown(e: React.KeyboardEvent<HTMLInputElement>): void {
+    if (e.key === "Enter") { e.preventDefault(); commitRename(); }
+    if (e.key === "Escape") { e.preventDefault(); setRenaming(false); }
+  }
+
+  const displayTitle = sessionTitle
+    ? sessionTitle
+    : sessionId
+    ? t("chat.sessionTitle", { id: sessionId.slice(-6) })
+    : t("chat.title");
 
   return (
     <div className="chat-header">
       <div className="chat-header-left">
-        <div className="chat-header-title">
-          {sessionId
-            ? t("chat.sessionTitle", { id: sessionId.slice(-6) })
-            : t("chat.title")}
-        </div>
-        {usage && <UsageBadge usage={usage} />}
+        {renaming ? (
+          <input
+            ref={renameInputRef}
+            className="chat-header-rename-input"
+            value={renameValue}
+            onChange={(e) => setRenameValue(e.target.value)}
+            onKeyDown={handleRenameKeyDown}
+            onBlur={commitRename}
+          />
+        ) : (
+          <div className="chat-header-title-group">
+            <div className="chat-header-title">{displayTitle}</div>
+            {sessionId && (
+              <span className="chat-header-session-id">#{sessionId.slice(-6)}</span>
+            )}
+            {sessionId && onRenameSession && (
+              <button
+                className="btn-ghost chat-rename-btn"
+                onClick={startRename}
+                title="Rename session"
+              >
+                <Pencil size={13} />
+              </button>
+            )}
+          </div>
+        )}
+        {usage && !renaming && <UsageBadge usage={usage} />}
       </div>
       <div className="chat-header-actions">
         <div className="chat-fast-wrapper">
@@ -67,6 +129,15 @@ export const ChatHeader = memo(function ChatHeader({
             </span>
           </div>
         </div>
+        {hasMessages && onExport && (
+          <button
+            className="btn-ghost chat-clear-btn"
+            onClick={onExport}
+            title="Export as HTML"
+          >
+            <Download size={16} />
+          </button>
+        )}
         {onNewChat && (
           <button
             className="btn-ghost chat-clear-btn"
