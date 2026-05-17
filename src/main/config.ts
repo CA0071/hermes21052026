@@ -44,6 +44,116 @@ function writeDesktopConfig(data: Record<string, unknown>): void {
   writeFileSync(desktopConfigFile(), JSON.stringify(data, null, 2), "utf-8");
 }
 
+function getConfigSection(content: string, section: string): string {
+  const lines = content.split("\n");
+  const start = lines.findIndex((line) =>
+    new RegExp(`^${escapeRegex(section)}:\\s*$`).test(line),
+  );
+  if (start === -1) return "";
+
+  const body: string[] = [];
+  for (let i = start + 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (/^[A-Za-z_][\w-]*:/.test(line)) break;
+    body.push(line);
+  }
+  return body.join("\n");
+}
+
+function readYamlValue(content: string, key: string, section?: string): string | null {
+  const source = section ? getConfigSection(content, section) : content;
+  const regex = new RegExp(
+    `^\\s*${escapeRegex(key)}:\\s*["']?([^"'\\n#]+)["']?`,
+    "m",
+  );
+  const match = source.match(regex);
+  return match ? match[1].trim() : null;
+}
+
+function ensureTopLevelSection(content: string, section: string): string {
+  if (new RegExp(`^${escapeRegex(section)}:\\s*$`, "m").test(content)) {
+    return content;
+  }
+  return `${content.trimEnd()}\n${section}:\n`;
+}
+
+function setYamlValueInSection(
+  content: string,
+  section: string,
+  key: string,
+  value: string,
+): string {
+  content = ensureTopLevelSection(content, section);
+  const lines = content.split("\n");
+  const start = lines.findIndex((line) =>
+    new RegExp(`^${escapeRegex(section)}:\\s*$`).test(line),
+  );
+  if (start === -1) return content;
+
+  let end = lines.length;
+  for (let i = start + 1; i < lines.length; i++) {
+    if (/^[A-Za-z_][\w-]*:/.test(lines[i])) {
+      end = i;
+      break;
+    }
+  }
+
+  const body = lines.slice(start + 1, end).join("\n");
+  const valueRegex = new RegExp(
+    `^(\\s*${escapeRegex(key)}:\\s*)["']?[^"'\\n#]*["']?`,
+    "m",
+  );
+  const nextBody = valueRegex.test(body)
+    ? body.replace(valueRegex, `$1"${value}"`)
+    : `${body.trimEnd()}\n  ${key}: "${value}"\n`;
+
+  lines.splice(start + 1, end - start - 1, ...nextBody.split("\n"));
+  return lines.join("\n");
+}
+
+async function setModelConfigViaApi(
+  provider: string,
+  model: string,
+  profile?: string,
+): Promise<boolean> {
+  if (profile && profile !== "default") return false;
+
+  try {
+    const { getApiUrl, getRemoteAuthHeader, isGatewayRunning } = await import(
+      "./hermes"
+    );
+    if (!isGatewayRunning()) return false;
+
+    const res = await fetch(`${getApiUrl()}/api/model/set`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getRemoteAuthHeader(),
+      },
+      body: JSON.stringify({ scope: "main", provider, model }),
+    });
+    if (!res.ok) {
+      console.error("Failed to set model via Hermes API:", await res.text());
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("Failed to set model via Hermes API:", err);
+    return false;
+  }
+}
+
+export function readDesktopSetting<T>(key: string): T | undefined {
+  const data = readDesktopConfig();
+  return data[key] as T | undefined;
+}
+
+export function writeDesktopSetting(key: string, value: unknown): void {
+  const data = readDesktopConfig();
+  data[key] = value;
+  writeDesktopConfig(data);
+}
+
 export function getConnectionConfig(): ConnectionConfig {
   const data = readDesktopConfig();
   const ssh = (data.sshConfig as Partial<SshConnectionConfig>) ?? {};
@@ -231,51 +341,40 @@ export function getModelConfig(profile?: string): {
 
   const content = readFileSync(configFile, "utf-8");
 
-  const providerMatch = content.match(/^\s*provider:\s*["']?([^"'\n#]+)["']?/m);
-  const modelMatch = content.match(/^\s*default:\s*["']?([^"'\n#]+)["']?/m);
-  const baseUrlMatch = content.match(/^\s*base_url:\s*["']?([^"'\n#]+)["']?/m);
-
   const result = {
-    provider: providerMatch ? providerMatch[1].trim() : defaults.provider,
-    model: modelMatch ? modelMatch[1].trim() : defaults.model,
-    baseUrl: baseUrlMatch ? baseUrlMatch[1].trim() : defaults.baseUrl,
+    provider: readYamlValue(content, "provider", "model") || defaults.provider,
+    model: readYamlValue(content, "default", "model") || defaults.model,
+    baseUrl: readYamlValue(content, "base_url", "model") || defaults.baseUrl,
   };
 
   setCache(cacheKey, result);
   return result;
 }
 
-export function setModelConfig(
+export async function setModelConfig(
   provider: string,
   model: string,
   baseUrl: string,
   profile?: string,
-): void {
+): Promise<void> {
   invalidateCache(`mc:${profile || "default"}`);
+
+  const savedByApi = await setModelConfigViaApi(provider, model, profile);
   const { configFile } = profilePaths(profile);
-  if (!existsSync(configFile)) return;
+  let content = existsSync(configFile) ? readFileSync(configFile, "utf-8") : "";
 
-  let content = readFileSync(configFile, "utf-8");
-
-  const providerRegex = /^(\s*provider:\s*)["']?[^"'\n#]*["']?/m;
-  if (providerRegex.test(content)) {
-    content = content.replace(providerRegex, `$1"${provider}"`);
+  if (!savedByApi) {
+    content = setYamlValueInSection(content, "model", "provider", provider);
+    content = setYamlValueInSection(content, "model", "default", model);
   }
 
-  const modelRegex = /^(\s*default:\s*)["']?[^"'\n#]*["']?/m;
-  if (modelRegex.test(content)) {
-    content = content.replace(modelRegex, `$1"${model}"`);
-  }
-
-  const baseUrlRegex = /^(\s*base_url:\s*)["']?[^"'\n#]*["']?/m;
-  if (baseUrlRegex.test(content)) {
-    content = content.replace(baseUrlRegex, `$1"${baseUrl}"`);
-  } else if (baseUrl && provider !== "auto") {
-    // Append base_url line after the provider line in the model section
-    content = content.replace(
-      /^(\s*provider:\s*"[^"]*"\s*\n)/m,
-      `$1  base_url: "${baseUrl}"\n`
-    );
+  if (baseUrl) {
+    content = setYamlValueInSection(content, "model", "base_url", baseUrl);
+  } else {
+    const modelSection = getConfigSection(content, "model");
+    if (readYamlValue(modelSection, "base_url")) {
+      content = setYamlValueInSection(content, "model", "base_url", "");
+    }
   }
 
   // Disable smart_model_routing

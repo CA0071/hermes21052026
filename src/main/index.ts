@@ -472,7 +472,7 @@ function setupIPC(): void {
         return true;
       }
       const prev = getModelConfig(profile);
-      setModelConfig(provider, model, baseUrl, profile);
+      await setModelConfig(provider, model, baseUrl, profile);
 
       // Restart gateway when provider, model, or endpoint changes so it picks up new config
       if (
