@@ -241,6 +241,26 @@ function Setup({
               </button>
             </div>
 
+            <label className="setup-label" style={{ marginTop: 16 }}>
+              {t("setup.modelName")} {" "}
+              <span className="setup-label-optional">
+                {t("common.optional")}
+              </span>
+            </label>
+            <input
+              className="input"
+              type="text"
+              placeholder={t("setup.modelNamePlaceholder")}
+              value={modelName}
+              onChange={(e) => {
+                setModelName(e.target.value);
+                setError("");
+              }}
+            />
+            <div className="setup-field-hint">
+              {t("setup.defaultModelHint")}
+            </div>
+
             <button
               className="setup-link"
               onClick={() => window.hermesAPI.openExternal(provider.url)}

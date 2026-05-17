@@ -359,14 +359,14 @@ export async function setModelConfig(
 ): Promise<void> {
   invalidateCache(`mc:${profile || "default"}`);
 
-  const savedByApi = await setModelConfigViaApi(provider, model, profile);
+  await setModelConfigViaApi(provider, model, profile);
   const { configFile } = profilePaths(profile);
   let content = existsSync(configFile) ? readFileSync(configFile, "utf-8") : "";
+  const existingModel = readYamlValue(content, "default", "model") || "";
+  const nextModel = model.trim() || existingModel;
 
-  if (!savedByApi) {
-    content = setYamlValueInSection(content, "model", "provider", provider);
-    content = setYamlValueInSection(content, "model", "default", model);
-  }
+  content = setYamlValueInSection(content, "model", "provider", provider);
+  content = setYamlValueInSection(content, "model", "default", nextModel);
 
   if (baseUrl) {
     content = setYamlValueInSection(content, "model", "base_url", baseUrl);

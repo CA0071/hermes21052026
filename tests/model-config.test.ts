@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 
@@ -56,5 +56,57 @@ describe("model config persistence", () => {
     const content = readFileSync(configPath, "utf-8");
     expect(content).toContain('provider: "anthropic"');
     expect(content).toContain('default: "claude-sonnet-4-5"');
+  });
+
+  it("preserves an existing default model when provider changes with an empty model", async () => {
+    const { getModelConfig, setModelConfig } = await loadConfigModule();
+    const configPath = join(testHome, "config.yaml");
+
+    writeFileSync(
+      configPath,
+      [
+        "model:",
+        '  provider: "gemini"',
+        '  default: "gemini-2.5-flash"',
+        "",
+      ].join("\n"),
+      "utf-8",
+    );
+
+    await setModelConfig("google", "", "");
+
+    expect(getModelConfig()).toEqual({
+      provider: "google",
+      model: "gemini-2.5-flash",
+      baseUrl: "",
+    });
+
+    const content = readFileSync(configPath, "utf-8");
+    expect(content).toContain('provider: "google"');
+    expect(content).toContain('default: "gemini-2.5-flash"');
+  });
+
+  it("still persists provider and model to config when gateway api update succeeds", async () => {
+    vi.resetModules();
+    vi.doMock("../src/main/installer", () => ({ HERMES_HOME: testHome }));
+    vi.doMock("../src/main/hermes", () => ({
+      getApiUrl: () => "http://127.0.0.1:8642",
+      getRemoteAuthHeader: () => ({}),
+      isGatewayRunning: () => true,
+    }));
+
+    const { getModelConfig, setModelConfig } = await import("../src/main/config");
+
+    await setModelConfig("google", "gemini-2.5-flash", "");
+
+    expect(getModelConfig()).toEqual({
+      provider: "google",
+      model: "gemini-2.5-flash",
+      baseUrl: "",
+    });
+
+    const content = readFileSync(join(testHome, "config.yaml"), "utf-8");
+    expect(content).toContain('provider: "google"');
+    expect(content).toContain('default: "gemini-2.5-flash"');
   });
 });
