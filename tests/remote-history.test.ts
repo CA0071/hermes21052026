@@ -1,7 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "fs";
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "fs";
 import { join } from "path";
-import { tmpdir } from "os";
 
 const ROOT = join(__dirname, "..");
 const hermesSrc = readFileSync(join(ROOT, "src/main/hermes.ts"), "utf-8");
@@ -45,7 +44,7 @@ describe("Remote/SSH Mode History Preservation", () => {
   it("sendMessageViaApi builds messages from history + current message", () => {
     // Extract sendMessageViaApi function
     const funcMatch = hermesSrc.match(
-      /function sendMessageViaApi\([\s\S]*?\): ChatHandle \{[\s\S]*?const messages: Array<\{ role: string; content: string \}> = \[\];[\s\S]*?if \(history && history\.length > 0\) \{[\s\S]*?for \(const msg of history\) \{[\s\S]*?messages\.push\(\{[\s\S]*?role: msg\.role === "agent" \? "assistant" : msg\.role,[\s\S]*?content: msg\.content,[\s\S]*?\}\);[\s\S]*?\}[\s\S]*?\}[\s\S]*?messages\.push\(\{ role: "user", content: message \}\);/,
+      /function sendMessageViaApi\([\s\S]*?\): ChatHandle \{[\s\S]*?const messages: Array<\{ role: string; content: ChatMessageContent \}> = \[\];[\s\S]*?if \(history && history\.length > 0\) \{[\s\S]*?for \(const msg of history\) \{[\s\S]*?messages\.push\(\{[\s\S]*?role: msg\.role === "agent" \? "assistant" : msg\.role,[\s\S]*?content: msg\.content,[\s\S]*?\}\);[\s\S]*?\}[\s\S]*?\}[\s\S]*?messages\.push\(\{ role: "user", content: imagePayload\.content \}\);/,
     );
 
     expect(funcMatch).toBeDefined();
@@ -64,7 +63,9 @@ describe("Remote/SSH Mode History Preservation", () => {
     expect(funcCode).toContain('msg.role === "agent" ? "assistant" : msg.role');
     
     // Check current message is appended
-    expect(funcCode).toContain('messages.push({ role: "user", content: message })');
+    expect(funcCode).toContain(
+      'messages.push({ role: "user", content: imagePayload.content })',
+    );
   });
 
   it("local API available branch also passes history", () => {

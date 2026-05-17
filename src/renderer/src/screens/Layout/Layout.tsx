@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import Chat, { ChatMessage } from "../Chat/Chat";
 import Sessions from "../Sessions/Sessions";
 import Agents from "../Agents/Agents";
@@ -117,11 +117,17 @@ function Layout({
   >(null);
   const [downloadPercent, setDownloadPercent] = useState(0);
   const [updateError, setUpdateError] = useState<string | null>(null);
+  const updateStateRef = useRef<typeof updateState>(null);
+
+  function setTrackedUpdateState(next: typeof updateState): void {
+    updateStateRef.current = next;
+    setUpdateState(next);
+  }
 
   useEffect(() => {
     const cleanupAvailable = window.hermesAPI.onUpdateAvailable((info) => {
       setUpdateVersion(info.version);
-      setUpdateState("available");
+      setTrackedUpdateState("available");
       setUpdateError(null);
       setDownloadPercent(0);
     });
@@ -131,11 +137,12 @@ function Layout({
       },
     );
     const cleanupDownloaded = window.hermesAPI.onUpdateDownloaded(() => {
-      setUpdateState("ready");
+      setTrackedUpdateState("ready");
       setUpdateError(null);
     });
     const cleanupError = window.hermesAPI.onUpdateError((message) => {
-      setUpdateState("error");
+      if (updateStateRef.current !== "downloading") return;
+      setTrackedUpdateState("error");
       setUpdateError(message);
       setDownloadPercent(0);
     });
@@ -151,13 +158,13 @@ function Layout({
     if (updateState === "available" || updateState === "error") {
       setUpdateError(null);
       setDownloadPercent(0);
-      setUpdateState("downloading");
+      setTrackedUpdateState("downloading");
       try {
         const ok = await window.hermesAPI.downloadUpdate();
-        if (!ok) setUpdateState("error");
+        if (!ok) setTrackedUpdateState("error");
       } catch (err) {
         setUpdateError(err instanceof Error ? err.message : String(err));
-        setUpdateState("error");
+        setTrackedUpdateState("error");
       }
     } else if (updateState === "ready") {
       await window.hermesAPI.installUpdate();

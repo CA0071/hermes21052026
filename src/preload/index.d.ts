@@ -190,6 +190,7 @@ interface HermesAPI {
   stopSshTunnel: () => Promise<boolean>;
 
   // Chat
+  saveClipboardImage: () => Promise<string | null>;
   sendMessage: (
     message: string,
     profile?: string,

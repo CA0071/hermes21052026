@@ -2,12 +2,16 @@ import {
   app,
   shell,
   BrowserWindow,
+  clipboard,
   ipcMain,
   Menu,
   Notification,
   dialog,
 } from "electron";
 import { join } from "path";
+import { mkdirSync, writeFileSync } from "fs";
+import { randomBytes } from "crypto";
+import { tmpdir } from "os";
 import { electronApp, optimizer, is } from "@electron-toolkit/utils";
 import type { AppUpdater } from "electron-updater";
 import icon from "../../resources/icon.png?asset";
@@ -557,6 +561,20 @@ function setupIPC(): void {
   ipcMain.handle("stop-ssh-tunnel", () => {
     stopSshTunnel();
     return true;
+  });
+
+  ipcMain.handle("save-clipboard-image", () => {
+    const image = clipboard.readImage();
+    if (image.isEmpty()) return null;
+
+    const dir = join(tmpdir(), "hermes-desktop-clipboard");
+    mkdirSync(dir, { recursive: true });
+    const filePath = join(
+      dir,
+      `clipboard-${Date.now()}-${randomBytes(4).toString("hex")}.png`,
+    );
+    writeFileSync(filePath, image.toPNG());
+    return filePath;
   });
 
   // Chat — lazy-start gateway on first message

@@ -1588,17 +1588,32 @@ body {
 
 .chat-input-wrapper {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   gap: 8px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-bright);
   border-radius: var(--radius-lg);
-  padding: 6px 6px 6px 16px;
+  padding: 8px 8px 8px 16px;
   transition: border-color var(--transition);
+}
+
+.chat-input-wrapper-with-attachments {
+  align-items: stretch;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 12px 10px 16px;
 }
 
 .chat-input-wrapper:focus-within {
   border-color: var(--border-focus);
+}
+
+.chat-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  flex: 1;
 }
 
 .chat-input {
@@ -1619,6 +1634,53 @@ body {
 
 .chat-input::placeholder {
   color: var(--text-muted);
+}
+
+.chat-attachments-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.chat-attachment-preview {
+  position: relative;
+  width: 82px;
+  height: 82px;
+  flex: none;
+  overflow: visible;
+}
+
+.chat-attachment-preview-image {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
+}
+
+.chat-attachment-remove {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--text-primary);
+  color: var(--bg-primary);
+  cursor: pointer;
+  padding: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+.chat-attachment-remove:hover {
+  background: var(--text-secondary);
 }
 
 .chat-send-btn {
@@ -5319,4 +5381,3 @@ body {
   font-size: 11px;
   color: var(--text-muted);
 }
-

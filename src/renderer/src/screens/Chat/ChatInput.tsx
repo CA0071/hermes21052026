@@ -7,7 +7,7 @@ import {
   forwardRef,
   useImperativeHandle,
 } from "react";
-import { Send, Square as Stop, Slash } from "lucide-react";
+import { Send, Square as Stop, Slash, X } from "lucide-react";
 import { isImeComposing } from "./keyboard";
 import { useI18n } from "../../components/useI18n";
 import { SLASH_COMMANDS, type SlashCommand } from "./slashCommands";
@@ -37,8 +37,10 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
     const [slashMenuOpen, setSlashMenuOpen] = useState(false);
     const [slashFilter, setSlashFilter] = useState("");
     const [slashSelectedIndex, setSlashSelectedIndex] = useState(0);
+    const [attachedImagePaths, setAttachedImagePaths] = useState<string[]>([]);
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const slashMenuRef = useRef<HTMLDivElement>(null);
+    const canSend = input.trim().length > 0 || attachedImagePaths.length > 0;
 
     const autoResize = useCallback((): void => {
       const el = inputRef.current;
@@ -78,6 +80,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
         },
         clear(): void {
           setInput("");
+          setAttachedImagePaths([]);
           if (inputRef.current) inputRef.current.style.height = "auto";
         },
         focus(): void {
@@ -130,15 +133,32 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
     function clearAfterSend(text: string): void {
       history.push(text);
       setInput("");
+      setAttachedImagePaths([]);
       if (inputRef.current) inputRef.current.style.height = "auto";
+    }
+
+    function buildSubmitText(text: string): string {
+      if (attachedImagePaths.length === 0) return text;
+      const markers = attachedImagePaths
+        .map((path) => `[[HERMES_DESKTOP_IMAGE:${path}]]`)
+        .join("\n");
+      return text ? `${markers}\n${text}` : markers;
+    }
+
+    function previewUrlForPath(path: string): string {
+      return `file://${path
+        .split("/")
+        .map((part) => encodeURIComponent(part))
+        .join("/")}`;
     }
 
     function handleSend(): void {
       const text = input.trim();
-      if (!text || isLoading) return;
+      if (!canSend || isLoading) return;
       setSlashMenuOpen(false);
-      clearAfterSend(text);
-      onSubmit(text);
+      const submitText = buildSubmitText(text);
+      clearAfterSend(text || "[image]");
+      onSubmit(submitText);
     }
 
     function handleQuickAsk(): void {
@@ -153,6 +173,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
       // Local / info commands dispatch immediately — let parent route through onSubmit
       if (cmd.local || cmd.category === "info") {
         setInput("");
+        setAttachedImagePaths([]);
         if (inputRef.current) inputRef.current.style.height = "auto";
         onSubmit(cmd.name);
         return;
@@ -182,6 +203,30 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
       } else if (slashMenuOpen) {
         setSlashMenuOpen(false);
       }
+    }
+
+    async function handlePaste(
+      e: React.ClipboardEvent<HTMLTextAreaElement>,
+    ): Promise<void> {
+      const hasImage = Array.from(e.clipboardData.items).some((item) =>
+        item.type.startsWith("image/"),
+      );
+      if (!hasImage) return;
+
+      e.preventDefault();
+      const imagePath = await window.hermesAPI.saveClipboardImage();
+      if (imagePath) {
+        setAttachedImagePaths((paths) => [...paths, imagePath]);
+      }
+    }
+
+    function removeAttachedImage(index: number): void {
+      setAttachedImagePaths((paths) => paths.filter((_, i) => i !== index));
+      inputRef.current?.focus();
+    }
+
+    function removeLastAttachedImage(): void {
+      removeAttachedImage(attachedImagePaths.length - 1);
     }
 
     function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>): void {
@@ -235,6 +280,15 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
         e.preventDefault();
         handleSend();
       }
+
+      if (
+        (e.key === "Backspace" || e.key === "Delete") &&
+        input.length === 0 &&
+        attachedImagePaths.length > 0
+      ) {
+        e.preventDefault();
+        removeLastAttachedImage();
+      }
     }
 
     return (
@@ -262,46 +316,72 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
             </div>
           </div>
         )}
-        <div className="chat-input-wrapper">
-          <textarea
-            ref={inputRef}
-            className="chat-input"
-            placeholder={t("chat.typeMessage")}
-            value={input}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            rows={1}
-            autoFocus
-          />
-          {isLoading ? (
-            <button
-              className="chat-send-btn chat-stop-btn"
-              onClick={onAbort}
-              title={t("common.stop")}
-            >
-              <Stop size={14} />
-            </button>
-          ) : (
-            <>
-              {input.trim() && hasSession && (
-                <button
-                  className="chat-btw-btn"
-                  onClick={handleQuickAsk}
-                  title={t("chat.quickAskTitle")}
-                >
-                  💭
-                </button>
-              )}
-              <button
-                className="chat-send-btn"
-                onClick={handleSend}
-                disabled={!input.trim()}
-                title={t("chat.send")}
-              >
-                <Send size={16} />
-              </button>
-            </>
+        <div
+          className={`chat-input-wrapper ${attachedImagePaths.length > 0 ? "chat-input-wrapper-with-attachments" : ""}`}
+        >
+          {attachedImagePaths.length > 0 && (
+            <div className="chat-attachments-preview">
+              {attachedImagePaths.map((imagePath, index) => (
+                <div className="chat-attachment-preview" key={imagePath}>
+                  <img
+                    className="chat-attachment-preview-image"
+                    src={previewUrlForPath(imagePath)}
+                    alt={`Attached image ${index + 1}`}
+                  />
+                  <button
+                    className="chat-attachment-remove"
+                    type="button"
+                    onClick={() => removeAttachedImage(index)}
+                    title="Remove image"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
           )}
+          <div className="chat-input-row">
+            <textarea
+              ref={inputRef}
+              className="chat-input"
+              placeholder={t("chat.typeMessage")}
+              value={input}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
+              rows={1}
+              autoFocus
+            />
+            {isLoading ? (
+              <button
+                className="chat-send-btn chat-stop-btn"
+                onClick={onAbort}
+                title={t("common.stop")}
+              >
+                <Stop size={14} />
+              </button>
+            ) : (
+              <>
+                {input.trim() && hasSession && (
+                  <button
+                    className="chat-btw-btn"
+                    onClick={handleQuickAsk}
+                    title={t("chat.quickAskTitle")}
+                  >
+                    💭
+                  </button>
+                )}
+                <button
+                  className="chat-send-btn"
+                  onClick={handleSend}
+                  disabled={!canSend}
+                  title={t("chat.send")}
+                >
+                  <Send size={16} />
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </>
     );

@@ -156,6 +156,9 @@ const hermesAPI = {
     ipcRenderer.invoke("stop-ssh-tunnel"),
 
   // Chat
+  saveClipboardImage: (): Promise<string | null> =>
+    ipcRenderer.invoke("save-clipboard-image"),
+
   sendMessage: (
     message: string,
     profile?: string,

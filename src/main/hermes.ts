@@ -95,6 +95,65 @@ interface ChatHandle {
   abort: () => void;
 }
 
+type ChatMessageContent =
+  | string
+  | Array<
+      | { type: "text"; text: string }
+      | { type: "image_url"; image_url: { url: string } }
+    >;
+
+interface DesktopImagePayload {
+  text: string;
+  content: ChatMessageContent;
+  imagePaths: string[];
+}
+
+const DESKTOP_IMAGE_MARKER_RE = /^\[\[HERMES_DESKTOP_IMAGE:([^\]\n]+)\]\]\n?/gm;
+
+function imageMimeTypeForPath(filePath: string): string {
+  const lower = filePath.toLowerCase();
+  if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+  if (lower.endsWith(".webp")) return "image/webp";
+  if (lower.endsWith(".gif")) return "image/gif";
+  return "image/png";
+}
+
+function extractDesktopImagePayload(message: string): DesktopImagePayload {
+  const imagePaths: string[] = [];
+  const text = message
+    .replace(DESKTOP_IMAGE_MARKER_RE, (_match, imagePath: string) => {
+      imagePaths.push(imagePath);
+      return "";
+    })
+    .trim();
+
+  if (imagePaths.length === 0) {
+    return { text: message, content: message, imagePaths };
+  }
+
+  const userText = text || "Please analyze the attached image.";
+  const content: Exclude<ChatMessageContent, string> = [
+    { type: "text", text: userText },
+  ];
+
+  for (const imagePath of imagePaths) {
+    if (!existsSync(imagePath)) continue;
+    const data = readFileSync(imagePath).toString("base64");
+    content.push({
+      type: "image_url",
+      image_url: {
+        url: `data:${imageMimeTypeForPath(imagePath)};base64,${data}`,
+      },
+    });
+  }
+
+  return {
+    text: userText,
+    content: content.length > 1 ? content : userText,
+    imagePaths,
+  };
+}
+
 // ────────────────────────────────────────────────────
 //  API Server health check
 // ────────────────────────────────────────────────────
@@ -174,9 +233,10 @@ function sendMessageViaApi(
 ): ChatHandle {
   const mc = getModelConfig(profile);
   const controller = new AbortController();
+  const imagePayload = extractDesktopImagePayload(message);
 
   // Build full conversation from history + current message (standard OpenAI format)
-  const messages: Array<{ role: string; content: string }> = [];
+  const messages: Array<{ role: string; content: ChatMessageContent }> = [];
   if (history && history.length > 0) {
     for (const msg of history) {
       messages.push({
@@ -185,7 +245,7 @@ function sendMessageViaApi(
       });
     }
   }
-  messages.push({ role: "user", content: message });
+  messages.push({ role: "user", content: imagePayload.content });
 
   const body = JSON.stringify({
     model: mc.model || "hermes-agent",
@@ -220,7 +280,7 @@ function sendMessageViaApi(
     // When streaming returns empty, make a non-streaming request to surface the real error
     const probeBody = JSON.stringify({
       model: mc.model || "hermes-agent",
-      messages: [{ role: "user", content: message }],
+      messages: [{ role: "user", content: imagePayload.content }],
       stream: false,
     });
     const probeUrl = `${getApiUrl()}/v1/chat/completions`;
@@ -448,12 +508,16 @@ function sendMessageViaCli(
 ): ChatHandle {
   const mc = getModelConfig(profile);
   const profileEnv = readEnv(profile);
+  const imagePayload = extractDesktopImagePayload(message);
 
   const args = hermesCliArgs();
   if (profile && profile !== "default") {
     args.push("-p", profile);
   }
-  args.push("chat", "-q", message, "-Q", "--source", "desktop");
+  args.push("chat", "-q", imagePayload.text, "-Q", "--source", "desktop");
+  for (const imagePath of imagePayload.imagePaths) {
+    if (existsSync(imagePath)) args.push("--image", imagePath);
+  }
 
   if (resumeSessionId) {
     args.push("--resume", resumeSessionId);
