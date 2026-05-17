@@ -463,6 +463,11 @@ const hermesAPI = {
 
   updateModel: (id: string, fields: Record<string, string>): Promise<boolean> =>
     ipcRenderer.invoke("update-model", id, fields),
+  fetchAvailableModels: (
+    baseUrl: string,
+    apiKey?: string,
+  ): Promise<Array<{ id: string; name: string }>> =>
+    ipcRenderer.invoke("fetch-available-models", baseUrl, apiKey),
 
   // Claw3D
   claw3dStatus: (): Promise<{

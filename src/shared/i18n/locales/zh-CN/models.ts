@@ -23,4 +23,10 @@ export default {
   apiKeyLabel: "API Key",
   apiKeyHint:
     "保存为环境变量。会按 URL 匹配对应的环境变量名,否则使用 CUSTOM_API_KEY。",
+  fetchModels: "获取可用模型",
+  fetchingModels: "正在加载模型...",
+  selectFetchedModel: "选择已发现的模型",
+  modelsFound: "找到 {{count}} 个模型",
+  fetchNeedsBaseUrl: "请先设置 Base URL 再获取模型。",
+  fetchFailed: "无法加载模型列表。",
 } as const;

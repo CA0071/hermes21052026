@@ -24,4 +24,10 @@ export default {
   apiKeyLabel: "API Key",
   apiKeyHint:
     "Stored as an environment variable. Picks the matching env key based on the URL, or CUSTOM_API_KEY otherwise.",
+  fetchModels: "Fetch available models",
+  fetchingModels: "Loading models...",
+  selectFetchedModel: "Choose a discovered model",
+  modelsFound: "{{count}} models available",
+  fetchNeedsBaseUrl: "Set a base URL before fetching models.",
+  fetchFailed: "Could not load the model list.",
 } as const;

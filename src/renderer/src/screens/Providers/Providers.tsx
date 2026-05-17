@@ -2,6 +2,12 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { SETTINGS_SECTIONS, PROVIDERS } from "../../constants";
 import { useI18n } from "../../components/useI18n";
 import BrandLogo from "../../components/common/BrandLogo";
+import { resolveCatalogTarget } from "../../lib/modelCatalog";
+
+interface AvailableModel {
+  id: string;
+  name: string;
+}
 
 function Providers({
   profile,
@@ -22,6 +28,9 @@ function Providers({
   const [modelName, setModelName] = useState("");
   const [modelBaseUrl, setModelBaseUrl] = useState("");
   const [modelSaved, setModelSaved] = useState(false);
+  const [availableModels, setAvailableModels] = useState<AvailableModel[]>([]);
+  const [fetchingModels, setFetchingModels] = useState(false);
+  const [fetchModelsError, setFetchModelsError] = useState("");
   const modelLoaded = useRef(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -91,6 +100,42 @@ function Providers({
     setModelSaved(true);
     setTimeout(() => setModelSaved(false), 2000);
   }, [modelProvider, modelName, modelBaseUrl, profile]);
+
+  async function handleFetchModels(): Promise<void> {
+    const target = resolveCatalogTarget(modelProvider, modelBaseUrl, env);
+    if (!target) {
+      setFetchModelsError(t("providers.fetchNeedsBaseUrl"));
+      setAvailableModels([]);
+      return;
+    }
+
+    setFetchingModels(true);
+    setFetchModelsError("");
+    try {
+      const discovered = await window.hermesAPI.fetchAvailableModels(
+        target.baseUrl,
+        target.apiKey,
+      );
+      setAvailableModels(discovered);
+      await Promise.all(
+        discovered.map((entry) =>
+          window.hermesAPI.addModel(
+            entry.name,
+            modelProvider === "auto" ? "custom" : modelProvider,
+            entry.id,
+            target.baseUrl,
+          ),
+        ),
+      );
+    } catch (error) {
+      setFetchModelsError(
+        error instanceof Error ? error.message : t("providers.fetchFailed"),
+      );
+      setAvailableModels([]);
+    } finally {
+      setFetchingModels(false);
+    }
+  }
 
   useEffect(() => {
     if (!modelLoaded.current) return;
@@ -211,6 +256,54 @@ function Providers({
             placeholder={t("settings.modelNamePlaceholder")}
           />
           <div className="settings-field-hint">{t("settings.modelHint")}</div>
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              marginTop: 10,
+              alignItems: "center",
+              flexWrap: "wrap",
+            }}
+          >
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => void handleFetchModels()}
+              disabled={
+                fetchingModels ||
+                !resolveCatalogTarget(modelProvider, modelBaseUrl, env)
+              }
+              type="button"
+            >
+              {fetchingModels
+                ? t("providers.fetchingModels")
+                : t("providers.fetchModels")}
+            </button>
+            {availableModels.length > 0 && (
+              <span className="settings-field-hint" style={{ margin: 0 }}>
+                {t("providers.modelsFound", { count: availableModels.length })}
+              </span>
+            )}
+          </div>
+          {availableModels.length > 0 && (
+            <select
+              className="input settings-select"
+              style={{ marginTop: 10 }}
+              value={modelName}
+              onChange={(e) => setModelName(e.target.value)}
+            >
+              <option value="">{t("providers.selectFetchedModel")}</option>
+              {availableModels.map((entry) => (
+                <option key={entry.id} value={entry.id}>
+                  {entry.id}
+                </option>
+              ))}
+            </select>
+          )}
+          {fetchModelsError && (
+            <div className="settings-field-hint" style={{ color: "var(--error)" }}>
+              {fetchModelsError}
+            </div>
+          )}
         </div>
 
         {isCustomProvider && (

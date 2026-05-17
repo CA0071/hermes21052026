@@ -415,6 +415,10 @@ interface HermesAPI {
   }>;
   removeModel: (id: string) => Promise<boolean>;
   updateModel: (id: string, fields: Record<string, string>) => Promise<boolean>;
+  fetchAvailableModels: (
+    baseUrl: string,
+    apiKey?: string,
+  ) => Promise<Array<{ id: string; name: string }>>;
 
   // Claw3D
   claw3dStatus: () => Promise<{

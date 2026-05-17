@@ -87,6 +87,7 @@ import {
   updateSessionTitle,
 } from "./session-cache";
 import { listModels, addModel, removeModel, updateModel } from "./models";
+import { fetchAvailableModels } from "./provider-models";
 import {
   listProfiles,
   createProfile,
@@ -897,6 +898,11 @@ function setupIPC(): void {
     "update-model",
     (_event, id: string, fields: Record<string, string>) =>
       updateModel(id, fields),
+  );
+  ipcMain.handle(
+    "fetch-available-models",
+    (_event, baseUrl: string, apiKey?: string) =>
+      fetchAvailableModels(baseUrl, apiKey),
   );
 
   // Claw3D

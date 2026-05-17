@@ -3,6 +3,10 @@ import { Plus, Trash, Search, X } from "../../assets/icons";
 import { PROVIDERS } from "../../constants";
 import { useI18n } from "../../components/useI18n";
 import BrandLogo from "../../components/common/BrandLogo";
+import {
+  resolveCatalogTarget,
+  resolveCatalogEnvKey,
+} from "../../lib/modelCatalog";
 
 interface SavedModel {
   id: string;
@@ -11,6 +15,11 @@ interface SavedModel {
   model: string;
   baseUrl: string;
   createdAt: number;
+}
+
+interface AvailableModel {
+  id: string;
+  name: string;
 }
 
 function providerLabelKey(value: string): string {
@@ -34,6 +43,10 @@ function Models(): React.JSX.Element {
   const [formApiKey, setFormApiKey] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [formError, setFormError] = useState("");
+  const [env, setEnv] = useState<Record<string, string>>({});
+  const [availableModels, setAvailableModels] = useState<AvailableModel[]>([]);
+  const [fetchingModels, setFetchingModels] = useState(false);
+  const [fetchModelsError, setFetchModelsError] = useState("");
 
   function resolveCustomEnvKey(url: string): string {
     if (!url) return "CUSTOM_API_KEY";
@@ -52,8 +65,12 @@ function Models(): React.JSX.Element {
   }
 
   const loadModels = useCallback(async () => {
-    const list = await window.hermesAPI.listModels();
+    const [list, envData] = await Promise.all([
+      window.hermesAPI.listModels(),
+      window.hermesAPI.getEnv(),
+    ]);
     setModels(list);
+    setEnv(envData);
     setLoading(false);
   }, []);
 
@@ -70,6 +87,8 @@ function Models(): React.JSX.Element {
     setFormApiKey("");
     setShowApiKey(false);
     setFormError("");
+    setAvailableModels([]);
+    setFetchModelsError("");
     setShowModal(true);
   }
 
@@ -82,6 +101,8 @@ function Models(): React.JSX.Element {
     setFormApiKey("");
     setShowApiKey(false);
     setFormError("");
+    setAvailableModels([]);
+    setFetchModelsError("");
     setShowModal(true);
   }
 
@@ -89,6 +110,46 @@ function Models(): React.JSX.Element {
     setShowModal(false);
     setEditingModel(null);
     setFormError("");
+    setFetchModelsError("");
+  }
+
+  function resolveFormCatalogTarget() {
+    const envWithOverride = { ...env };
+    const envKey = resolveCatalogEnvKey(formProvider, formBaseUrl.trim());
+    if (formApiKey.trim() && envKey) {
+      envWithOverride[envKey] = formApiKey.trim();
+    }
+    return resolveCatalogTarget(formProvider, formBaseUrl, envWithOverride);
+  }
+
+  async function handleFetchModels(): Promise<void> {
+    const target = resolveFormCatalogTarget();
+    if (!target) {
+      setFetchModelsError(t("models.fetchNeedsBaseUrl"));
+      setAvailableModels([]);
+      return;
+    }
+
+    setFetchingModels(true);
+    setFetchModelsError("");
+    try {
+      const discovered = await window.hermesAPI.fetchAvailableModels(
+        target.baseUrl,
+        target.apiKey,
+      );
+      setAvailableModels(discovered);
+      if (!formModel && discovered[0]) {
+        setFormModel(discovered[0].id);
+        setFormName(discovered[0].name);
+      }
+    } catch (error) {
+      setFetchModelsError(
+        error instanceof Error ? error.message : t("models.fetchFailed"),
+      );
+      setAvailableModels([]);
+    } finally {
+      setFetchingModels(false);
+    }
   }
 
   async function handleSave(): Promise<void> {
@@ -301,9 +362,63 @@ function Models(): React.JSX.Element {
                   className="input"
                   type="text"
                   value={formModel}
-                  onChange={(e) => setFormModel(e.target.value)}
+                  onChange={(e) => {
+                    setFormModel(e.target.value);
+                    if (!formName.trim()) {
+                      setFormName(e.target.value.split("/").pop() || e.target.value);
+                    }
+                  }}
                   placeholder={t("models.modelIdPlaceholder")}
                 />
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    marginTop: 10,
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => void handleFetchModels()}
+                    disabled={fetchingModels || !resolveFormCatalogTarget()}
+                    type="button"
+                  >
+                    {fetchingModels
+                      ? t("models.fetchingModels")
+                      : t("models.fetchModels")}
+                  </button>
+                  {availableModels.length > 0 && (
+                    <span className="models-modal-hint">
+                      {t("models.modelsFound", { count: availableModels.length })}
+                    </span>
+                  )}
+                </div>
+                {availableModels.length > 0 && (
+                  <select
+                    className="input"
+                    style={{ marginTop: 10 }}
+                    value={formModel}
+                    onChange={(e) => {
+                      const next = availableModels.find((m) => m.id === e.target.value);
+                      setFormModel(e.target.value);
+                      if (next) setFormName(next.name);
+                    }}
+                  >
+                    <option value="">{t("models.selectFetchedModel")}</option>
+                    {availableModels.map((entry) => (
+                      <option key={entry.id} value={entry.id}>
+                        {entry.id}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {fetchModelsError && (
+                  <div className="models-error" style={{ marginTop: 10 }}>
+                    {fetchModelsError}
+                  </div>
+                )}
               </div>
 
               <div className="models-modal-field">
