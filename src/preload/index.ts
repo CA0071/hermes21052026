@@ -161,6 +161,13 @@ const hermesAPI = {
     profile?: string,
     resumeSessionId?: string,
     history?: Array<{ role: string; content: string }>,
+    attachments?: Array<{
+      id: string;
+      name: string;
+      mimeType: string;
+      data: string;
+      isImage: boolean;
+    }>,
   ): Promise<{ response: string; sessionId?: string }> =>
     ipcRenderer.invoke(
       "send-message",
@@ -168,6 +175,7 @@ const hermesAPI = {
       profile,
       resumeSessionId,
       history,
+      attachments,
     ),
 
   abortChat: (): Promise<void> => ipcRenderer.invoke("abort-chat"),
@@ -405,6 +413,9 @@ const hermesAPI = {
 
   updateSessionTitle: (sessionId: string, title: string): Promise<void> =>
     ipcRenderer.invoke("update-session-title", sessionId, title),
+
+  deleteSession: (sessionId: string): Promise<void> =>
+    ipcRenderer.invoke("delete-session", sessionId),
 
   // Session search
   searchSessions: (

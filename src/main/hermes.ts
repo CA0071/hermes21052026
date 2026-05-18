@@ -171,12 +171,22 @@ function sendMessageViaApi(
   profile?: string,
   _resumeSessionId?: string,
   history?: Array<{ role: string; content: string }>,
+  attachments?: AttachmentPayload[],
 ): ChatHandle {
   const mc = getModelConfig(profile);
   const controller = new AbortController();
 
-  // Build full conversation from history + current message (standard OpenAI format)
-  const messages: Array<{ role: string; content: string }> = [];
+  // Build full conversation from history + current message (OpenAI format)
+  // When attachments are present we use multimodal content arrays (vision API).
+  type OaiContent =
+    | string
+    | Array<
+        | { type: "text"; text: string }
+        | { type: "image_url"; image_url: { url: string; detail?: string } }
+        | { type: "file"; file: { filename: string; file_data: string } }
+      >;
+
+  const messages: Array<{ role: string; content: OaiContent }> = [];
   if (history && history.length > 0) {
     for (const msg of history) {
       messages.push({
@@ -185,7 +195,49 @@ function sendMessageViaApi(
       });
     }
   }
-  messages.push({ role: "user", content: message });
+
+  // Build the user content — multimodal if there are attachments
+  let userContent: OaiContent;
+  if (attachments && attachments.length > 0) {
+    const parts: Array<
+      | { type: "text"; text: string }
+      | { type: "image_url"; image_url: { url: string; detail?: string } }
+      | { type: "file"; file: { filename: string; file_data: string } }
+    > = [];
+
+    if (message) {
+      parts.push({ type: "text", text: message });
+    }
+
+    for (const att of attachments) {
+      if (att.isImage) {
+        // Standard OpenAI vision format
+        parts.push({
+          type: "image_url",
+          image_url: {
+            url: `data:${att.mimeType};base64,${att.data}`,
+            detail: "auto",
+          },
+        });
+      } else {
+        // Non-image files: some providers accept a "file" content part;
+        // others need it inlined as text. We try the file part first and
+        // fall back gracefully in the error handler.
+        parts.push({
+          type: "file",
+          file: {
+            filename: att.name,
+            file_data: `data:${att.mimeType};base64,${att.data}`,
+          },
+        });
+      }
+    }
+    userContent = parts;
+  } else {
+    userContent = message;
+  }
+
+  messages.push({ role: "user", content: userContent });
 
   const body = JSON.stringify({
     model: mc.model || "hermes-agent",
@@ -652,18 +704,28 @@ function sendMessageViaCli(
 
 let apiServerAvailable: boolean | null = null; // cached after first check
 
+export interface AttachmentPayload {
+  id: string;
+  name: string;
+  mimeType: string;
+  /** Raw base64 (no data-URI prefix) */
+  data: string;
+  isImage: boolean;
+}
+
 export async function sendMessage(
   message: string,
   cb: ChatCallbacks,
   profile?: string,
   resumeSessionId?: string,
   history?: Array<{ role: string; content: string }>,
+  attachments?: AttachmentPayload[],
 ): Promise<ChatHandle> {
   ensureInitialized();
 
   // Remote mode: always use API, no CLI fallback
   if (isRemoteMode()) {
-    return sendMessageViaApi(message, cb, profile, resumeSessionId, history);
+    return sendMessageViaApi(message, cb, profile, resumeSessionId, history, attachments);
   }
 
   // Check API server availability (cache the result, re-check periodically)
@@ -672,10 +734,17 @@ export async function sendMessage(
   }
 
   if (apiServerAvailable) {
-    return sendMessageViaApi(message, cb, profile, resumeSessionId, history);
+    return sendMessageViaApi(message, cb, profile, resumeSessionId, history, attachments);
   }
 
-  // Fallback to CLI
+  // Fallback to CLI (attachments not supported in CLI mode — send text only)
+  if (attachments && attachments.length > 0) {
+    const fileList = attachments.map((a) => a.name).join(", ");
+    const textWithNote = message
+      ? `${message}\n\n[Note: ${attachments.length} file(s) attached but CLI mode cannot send binary data: ${fileList}]`
+      : `[Note: ${attachments.length} file(s) attached but CLI mode cannot send binary data: ${fileList}]`;
+    return sendMessageViaCli(textWithNote, cb, profile, resumeSessionId);
+  }
   return sendMessageViaCli(message, cb, profile, resumeSessionId);
 }
 

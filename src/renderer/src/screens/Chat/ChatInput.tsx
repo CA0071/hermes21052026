@@ -7,11 +7,12 @@ import {
   forwardRef,
   useImperativeHandle,
 } from "react";
-import { Send, Square as Stop, Slash } from "lucide-react";
+import { Send, Square as Stop, Slash, Paperclip, X, FileText } from "lucide-react";
 import { isImeComposing } from "./keyboard";
 import { useI18n } from "../../components/useI18n";
 import { SLASH_COMMANDS, type SlashCommand } from "./slashCommands";
 import { useInputHistory } from "./hooks/useInputHistory";
+import type { Attachment } from "./types";
 
 export interface ChatInputHandle {
   setText(text: string): void;
@@ -22,9 +23,30 @@ export interface ChatInputHandle {
 interface ChatInputProps {
   isLoading: boolean;
   hasSession: boolean;
-  onSubmit: (text: string) => void;
+  onSubmit: (text: string, attachments?: Attachment[]) => void;
   onQuickAsk: (text: string) => void;
   onAbort: () => void;
+}
+
+/** Read a File as base64, returning an Attachment */
+function readFileAsAttachment(file: File): Promise<Attachment> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      const base64 = dataUrl.split(",")[1];
+      resolve({
+        id: `att-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        name: file.name,
+        mimeType: file.type || "application/octet-stream",
+        data: base64,
+        dataUrl,
+        isImage: file.type.startsWith("image/"),
+      });
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
 }
 
 export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
@@ -34,11 +56,13 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
   ): React.JSX.Element {
     const { t } = useI18n();
     const [input, setInput] = useState("");
+    const [attachments, setAttachments] = useState<Attachment[]>([]);
     const [slashMenuOpen, setSlashMenuOpen] = useState(false);
     const [slashFilter, setSlashFilter] = useState("");
     const [slashSelectedIndex, setSlashSelectedIndex] = useState(0);
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const slashMenuRef = useRef<HTMLDivElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const autoResize = useCallback((): void => {
       const el = inputRef.current;
@@ -78,6 +102,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
         },
         clear(): void {
           setInput("");
+          setAttachments([]);
           if (inputRef.current) inputRef.current.style.height = "auto";
         },
         focus(): void {
@@ -117,6 +142,32 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
       active?.scrollIntoView({ block: "nearest" });
     }, [slashSelectedIndex, slashMenuOpen]);
 
+    // Paste handler — pick up images pasted from clipboard
+    useEffect(() => {
+      async function handlePaste(e: ClipboardEvent): Promise<void> {
+        const items = Array.from(e.clipboardData?.items ?? []);
+        const fileItems = items.filter((i) => i.kind === "file");
+        if (fileItems.length === 0) return;
+        const files = fileItems.map((i) => i.getAsFile()).filter(Boolean) as File[];
+        const newAtts = await Promise.all(files.map(readFileAsAttachment));
+        setAttachments((prev) => [...prev, ...newAtts]);
+      }
+      document.addEventListener("paste", handlePaste);
+      return () => document.removeEventListener("paste", handlePaste);
+    }, []);
+
+    // Drag-and-drop onto the whole input area
+    function handleDragOver(e: React.DragEvent): void {
+      e.preventDefault();
+    }
+    async function handleDrop(e: React.DragEvent): Promise<void> {
+      e.preventDefault();
+      const files = Array.from(e.dataTransfer.files);
+      if (files.length === 0) return;
+      const newAtts = await Promise.all(files.map(readFileAsAttachment));
+      setAttachments((prev) => [...prev, ...newAtts]);
+    }
+
     const filteredSlashCommands = useMemo(
       () =>
         slashMenuOpen
@@ -130,15 +181,17 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
     function clearAfterSend(text: string): void {
       history.push(text);
       setInput("");
+      setAttachments([]);
       if (inputRef.current) inputRef.current.style.height = "auto";
     }
 
     function handleSend(): void {
       const text = input.trim();
-      if (!text || isLoading) return;
+      if ((!text && attachments.length === 0) || isLoading) return;
       setSlashMenuOpen(false);
+      const atts = attachments.length > 0 ? [...attachments] : undefined;
       clearAfterSend(text);
-      onSubmit(text);
+      onSubmit(text, atts);
     }
 
     function handleQuickAsk(): void {
@@ -150,14 +203,12 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
 
     function handleSlashSelect(cmd: SlashCommand): void {
       setSlashMenuOpen(false);
-      // Local / info commands dispatch immediately — let parent route through onSubmit
       if (cmd.local || cmd.category === "info") {
         setInput("");
         if (inputRef.current) inputRef.current.style.height = "auto";
         onSubmit(cmd.name);
         return;
       }
-      // Backend commands that take arguments: insert prefix and wait for the user
       setInput(cmd.name + " ");
       inputRef.current?.focus();
     }
@@ -187,7 +238,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
     function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>): void {
       if (isImeComposing(e)) return;
 
-      // Slash menu keyboard navigation
       if (slashMenuOpen && filteredSlashCommands.length > 0) {
         if (e.key === "ArrowDown") {
           e.preventDefault();
@@ -215,7 +265,6 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
         }
       }
 
-      // History navigation: ArrowUp/Down when not in a multiline draft (or already navigating)
       if (!slashMenuOpen && (history.isNavigating() || !input.includes("\n"))) {
         if (e.key === "ArrowUp" && history.size() > 0) {
           if (history.recallPrev()) {
@@ -236,6 +285,23 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
         handleSend();
       }
     }
+
+    async function handleFileChange(
+      e: React.ChangeEvent<HTMLInputElement>,
+    ): Promise<void> {
+      const files = Array.from(e.target.files ?? []);
+      if (files.length === 0) return;
+      const newAtts = await Promise.all(files.map(readFileAsAttachment));
+      setAttachments((prev) => [...prev, ...newAtts]);
+      // Reset so the same file can be picked again
+      e.target.value = "";
+    }
+
+    function removeAttachment(id: string): void {
+      setAttachments((prev) => prev.filter((a) => a.id !== id));
+    }
+
+    const canSend = (input.trim().length > 0 || attachments.length > 0) && !isLoading;
 
     return (
       <>
@@ -262,7 +328,63 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
             </div>
           </div>
         )}
-        <div className="chat-input-wrapper">
+
+        {/* Attachment previews */}
+        {attachments.length > 0 && (
+          <div className="chat-attachments">
+            {attachments.map((att) => (
+              <div key={att.id} className="chat-attachment-chip">
+                {att.isImage ? (
+                  <img
+                    src={att.dataUrl}
+                    alt={att.name}
+                    className="chat-attachment-thumb"
+                  />
+                ) : (
+                  <FileText size={14} className="chat-attachment-icon" />
+                )}
+                <span className="chat-attachment-name" title={att.name}>
+                  {att.name.length > 20
+                    ? att.name.slice(0, 9) + "…" + att.name.slice(-8)
+                    : att.name}
+                </span>
+                <button
+                  className="chat-attachment-remove"
+                  onClick={() => removeAttachment(att.id)}
+                  title="Remove"
+                >
+                  <X size={11} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div
+          className="chat-input-wrapper"
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+        >
+          {/* Hidden real file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept="image/*,application/pdf,text/*,.csv,.json,.md,.txt,.py,.js,.ts,.tsx,.jsx,.yaml,.yml"
+            style={{ display: "none" }}
+            onChange={handleFileChange}
+          />
+
+          {/* Attach button */}
+          <button
+            className="chat-attach-btn"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isLoading}
+            title="Attach file or image"
+          >
+            <Paperclip size={15} />
+          </button>
+
           <textarea
             ref={inputRef}
             className="chat-input"
@@ -295,7 +417,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
               <button
                 className="chat-send-btn"
                 onClick={handleSend}
-                disabled={!input.trim()}
+                disabled={!canSend}
                 title={t("chat.send")}
               >
                 <Send size={16} />

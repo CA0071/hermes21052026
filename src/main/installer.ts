@@ -18,8 +18,23 @@ import { HIDDEN_SUBPROCESS_OPTIONS } from "./process-options";
 
 const IS_WINDOWS = process.platform === "win32";
 
+/** Get the active profile from CLI args or env, defaulting to 'default' */
+export function getActiveProfile(): string {
+  return (
+    process.argv.find((a) => a.startsWith("--profile="))?.split("=")[1] ||
+    process.env.HERMES_PROFILE ||
+    "default"
+  );
+}
+
 export const HERMES_HOME =
   process.env.HERMES_HOME?.trim() || join(homedir(), ".hermes");
+
+/** Get the profile-specific directory within HERMES_HOME */
+export function getProfilePath(): string {
+  return join(HERMES_HOME, "profiles", getActiveProfile());
+}
+
 export const HERMES_REPO = join(HERMES_HOME, "hermes-agent");
 export const HERMES_VENV = join(HERMES_REPO, "venv");
 export const HERMES_PYTHON = IS_WINDOWS
