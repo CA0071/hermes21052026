@@ -198,6 +198,7 @@ interface HermesAPI {
   ) => Promise<{ response: string; sessionId?: string }>;
   abortChat: () => Promise<void>;
   onChatChunk: (callback: (chunk: string) => void) => () => void;
+  onChatReasoning: (callback: (text: string) => void) => () => void;
   onChatDone: (callback: (sessionId?: string) => void) => () => void;
   onChatToolProgress: (callback: (tool: string) => void) => () => void;
   onChatUsage: (

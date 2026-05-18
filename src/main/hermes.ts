@@ -152,6 +152,12 @@ platforms:
 
 export interface ChatCallbacks {
   onChunk: (text: string) => void;
+  /**
+   * Streaming "thinking" content from reasoning models — sourced from
+   * `delta.reasoning_content` (most providers) or `delta.reasoning`
+   * (OpenRouter and some others). Issue #223.
+   */
+  onReasoning?: (text: string) => void;
   onDone: (sessionId?: string) => void;
   onError: (error: string) => void;
   onToolProgress?: (tool: string) => void;
@@ -314,6 +320,20 @@ function sendMessageViaApi(
           rateLimitRemaining: parsed.usage.rate_limit_remaining,
           rateLimitReset: parsed.usage.rate_limit_reset,
         });
+      }
+
+      // Reasoning / thinking-model chain-of-thought streams alongside
+      // regular content. Different upstreams use different field names;
+      // accept both common ones (issue #223). The block-typed
+      // extended-thinking format from Anthropic is not covered here.
+      const reasoning =
+        typeof delta?.reasoning_content === "string"
+          ? delta.reasoning_content
+          : typeof delta?.reasoning === "string"
+            ? delta.reasoning
+            : "";
+      if (reasoning && cb.onReasoning) {
+        cb.onReasoning(reasoning);
       }
 
       if (delta?.content) {

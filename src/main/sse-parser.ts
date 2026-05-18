@@ -13,6 +13,16 @@ export interface ParsedUsage {
 
 export interface SseCallbacks {
   onChunk: (text: string) => void;
+  /**
+   * Streaming "thinking" / chain-of-thought content from reasoning models
+   * (DeepSeek-R1, OpenAI o-series via proxies, Gemini thinking, …).
+   * OpenAI-compatible APIs surface this under `delta.reasoning_content`
+   * (most providers) or `delta.reasoning` (OpenRouter and some others);
+   * we accept both. Anthropic's block-typed extended-thinking is not
+   * covered here — it streams as separate `thinking` blocks rather than
+   * a string field on the chat-completion delta. Issue #223.
+   */
+  onReasoning?: (text: string) => void;
   onToolProgress?: (tool: string) => void;
   onUsage?: (usage: ParsedUsage) => void;
   onError?: (message: string) => void;
@@ -89,6 +99,20 @@ export function processSseData(
         rateLimitRemaining: parsed.usage.rate_limit_remaining,
         rateLimitReset: parsed.usage.rate_limit_reset,
       });
+    }
+
+    // Reasoning / thinking-model chain-of-thought streams alongside
+    // regular content. Different upstreams use slightly different field
+    // names; accept both common ones. Empty/whitespace-only deltas are
+    // skipped (some providers emit a leading empty reasoning chunk).
+    const reasoning =
+      typeof delta?.reasoning_content === "string"
+        ? delta.reasoning_content
+        : typeof delta?.reasoning === "string"
+          ? delta.reasoning
+          : "";
+    if (reasoning && cb.onReasoning) {
+      cb.onReasoning(reasoning);
     }
 
     if (delta?.content) {

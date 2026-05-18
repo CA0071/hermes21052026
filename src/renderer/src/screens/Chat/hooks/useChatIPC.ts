@@ -41,6 +41,32 @@ export function useChatIPC({
       });
     });
 
+    // Reasoning / thinking content from thinking-mode models. Appended to
+    // the current agent bubble's `reasoning` field; the MessageRow renders
+    // it as a collapsible block above the main response. Reasoning chunks
+    // often start arriving BEFORE the first content chunk, so we may need
+    // to create the agent bubble here too. Issue #223.
+    const cleanupReasoning = window.hermesAPI.onChatReasoning((text) => {
+      setMessages((prev) => {
+        const last = prev[prev.length - 1];
+        if (last && last.role === "agent") {
+          return [
+            ...prev.slice(0, -1),
+            { ...last, reasoning: (last.reasoning || "") + text },
+          ];
+        }
+        return [
+          ...prev,
+          {
+            id: `agent-${Date.now()}`,
+            role: "agent",
+            content: "",
+            reasoning: text,
+          },
+        ];
+      });
+    });
+
     const cleanupDone = window.hermesAPI.onChatDone((sessionId) => {
       if (sessionId) setHermesSessionId(sessionId);
       setToolProgress(null);
@@ -75,6 +101,7 @@ export function useChatIPC({
 
     return () => {
       cleanupChunk();
+      cleanupReasoning();
       cleanupDone();
       cleanupError();
       cleanupToolProgress();

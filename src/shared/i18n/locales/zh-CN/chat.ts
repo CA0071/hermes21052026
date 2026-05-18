@@ -19,6 +19,8 @@ export default {
   suggestionAnalyze: "分析数据",
   approve: "批准",
   deny: "拒绝",
+  thinking: "正在思考…",
+  reasoning: "推理过程",
   newChat: "新聊天 (Cmd+N)",
   clearChat: "清空聊天",
   fastMode: "快速模式",

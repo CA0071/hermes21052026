@@ -608,6 +608,9 @@ function setupIPC(): void {
             fullResponse += chunk;
             event.sender.send("chat-chunk", chunk);
           },
+          onReasoning: (text) => {
+            event.sender.send("chat-reasoning", text);
+          },
           onDone: (sessionId) => {
             currentChatAbort = null;
             event.sender.send("chat-done", sessionId || "");

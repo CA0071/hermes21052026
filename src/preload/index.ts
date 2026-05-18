@@ -179,6 +179,13 @@ const hermesAPI = {
     return () => ipcRenderer.removeListener("chat-chunk", handler);
   },
 
+  onChatReasoning: (callback: (text: string) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, text: string): void =>
+      callback(text);
+    ipcRenderer.on("chat-reasoning", handler);
+    return () => ipcRenderer.removeListener("chat-reasoning", handler);
+  },
+
   onChatDone: (callback: (sessionId?: string) => void): (() => void) => {
     const handler = (
       _event: Electron.IpcRendererEvent,

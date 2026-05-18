@@ -20,6 +20,8 @@ export default {
   suggestionAnalyze: "Analyze data",
   approve: "Approve",
   deny: "Deny",
+  thinking: "Thinking…",
+  reasoning: "Reasoning",
   newChat: "New chat (Cmd+N)",
   clearChat: "Clear chat",
   fastMode: "Fast Mode",

@@ -144,6 +144,111 @@ describe("processSseData", () => {
     expect(onChunk).toHaveBeenCalledWith("Hello world");
   });
 
+  // ─── Reasoning / thinking-model deltas (issue #223) ─────
+
+  it("forwards delta.reasoning_content to onReasoning (most providers' shape)", () => {
+    const onChunk = vi.fn();
+    const onReasoning = vi.fn();
+    const state = makeState();
+    const data = JSON.stringify({
+      choices: [
+        {
+          delta: {
+            reasoning_content: "Let me think about this step by step...",
+          },
+        },
+      ],
+    });
+    const result = processSseData(
+      data,
+      { onChunk, onReasoning },
+      state,
+    );
+    expect(result.done).toBe(false);
+    // Reasoning chunks don't count as visible content — onChunk is not
+    // called, and hasContent stays false until the answer actually starts.
+    expect(onChunk).not.toHaveBeenCalled();
+    expect(result.hasContent).toBe(false);
+    expect(onReasoning).toHaveBeenCalledWith(
+      "Let me think about this step by step...",
+    );
+  });
+
+  it("forwards delta.reasoning to onReasoning (OpenRouter shape)", () => {
+    const onReasoning = vi.fn();
+    const state = makeState();
+    const data = JSON.stringify({
+      choices: [{ delta: { reasoning: "First, consider..." } }],
+    });
+    processSseData(data, { onChunk: vi.fn(), onReasoning }, state);
+    expect(onReasoning).toHaveBeenCalledWith("First, consider...");
+  });
+
+  it("emits both onReasoning and onChunk when a chunk carries both", () => {
+    // Some providers emit reasoning and content in the same delta as the
+    // reasoning trails off. Both callbacks should fire.
+    const onChunk = vi.fn();
+    const onReasoning = vi.fn();
+    const state = makeState();
+    const data = JSON.stringify({
+      choices: [
+        {
+          delta: {
+            reasoning_content: "…concluding now.",
+            content: "The answer is 42.",
+          },
+        },
+      ],
+    });
+    processSseData(data, { onChunk, onReasoning }, state);
+    expect(onReasoning).toHaveBeenCalledWith("…concluding now.");
+    expect(onChunk).toHaveBeenCalledWith("The answer is 42.");
+    expect(state.hasContent).toBe(true);
+  });
+
+  it("ignores empty reasoning fields", () => {
+    const onReasoning = vi.fn();
+    const state = makeState();
+    const data = JSON.stringify({
+      choices: [{ delta: { reasoning_content: "" } }],
+    });
+    processSseData(data, { onChunk: vi.fn(), onReasoning }, state);
+    expect(onReasoning).not.toHaveBeenCalled();
+  });
+
+  it("ignores non-string reasoning fields (provider quirk)", () => {
+    const onReasoning = vi.fn();
+    const state = makeState();
+    // Some upstreams briefly emit a null delta.reasoning before the
+    // string form starts; that should be silently skipped.
+    const data = JSON.stringify({
+      choices: [{ delta: { reasoning: null, content: "x" } }],
+    });
+    const onChunk = vi.fn();
+    processSseData(data, { onChunk, onReasoning }, state);
+    expect(onReasoning).not.toHaveBeenCalled();
+    expect(onChunk).toHaveBeenCalledWith("x");
+  });
+
+  it("is a no-op for reasoning when no onReasoning callback is provided", () => {
+    // The callback is optional — its absence must not break the parser
+    // or affect chunk handling.
+    const onChunk = vi.fn();
+    const state = makeState();
+    const data = JSON.stringify({
+      choices: [
+        {
+          delta: {
+            reasoning_content: "ignored",
+            content: "visible",
+          },
+        },
+      ],
+    });
+    expect(() => processSseData(data, { onChunk }, state)).not.toThrow();
+    expect(onChunk).toHaveBeenCalledWith("visible");
+  });
+
   it("extracts usage data including cost and rate limits", () => {
     const onUsage = vi.fn();
     const onChunk = vi.fn();

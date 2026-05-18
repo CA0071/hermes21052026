@@ -1283,6 +1283,64 @@ body {
   white-space: normal;
 }
 
+/* Collapsible "Thinking…" / "Reasoning" block at the top of an agent
+   bubble for chain-of-thought from reasoning models. Issue #223. */
+.chat-reasoning {
+  margin-bottom: 8px;
+  border-left: 3px solid var(--text-muted, #888);
+  padding-left: 8px;
+  opacity: 0.85;
+}
+
+.chat-reasoning-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--text-muted, #888);
+  font-size: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.chat-reasoning-toggle:hover {
+  color: var(--text-default, inherit);
+}
+
+.chat-reasoning-chevron {
+  display: inline-block;
+  width: 0.7em;
+  font-size: 10px;
+}
+
+.chat-reasoning-label {
+  font-style: italic;
+}
+
+.chat-reasoning-streaming .chat-reasoning-label {
+  /* Subtle pulse while reasoning is still arriving and the answer
+     hasn't started — purely a "something is happening" affordance. */
+  animation: chat-reasoning-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes chat-reasoning-pulse {
+  0%, 100% { opacity: 0.6; }
+  50%      { opacity: 1; }
+}
+
+.chat-reasoning-body {
+  margin-top: 6px;
+  font-size: 13px;
+  font-family: var(--font-mono, monospace);
+  white-space: pre-wrap;
+  color: var(--text-muted, #888);
+  line-height: 1.5;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
 .chat-bubble-agent pre,
 .chat-bubble-agent code {
   /* Restore preserved whitespace inside code blocks and inline code. */
