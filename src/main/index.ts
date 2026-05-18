@@ -146,6 +146,8 @@ import {
   isAllowedWebviewUrl,
 } from "./security";
 import type { AppLocale } from "../shared/i18n/types";
+import { setLocale } from "../shared/i18n";
+import { readDesktopConfig } from "./config";
 import {
   sshListInstalledSkills,
   sshGetSkillContent,
@@ -1299,6 +1301,13 @@ function setupUpdater(): void {
 app.whenReady().then(() => {
   app.name = "Hermes";
   electronApp.setAppUserModelId("com.nousresearch.hermes");
+
+  // Restore directly via the shared setter; going through setAppLocale
+  // would needlessly re-write desktop.json with the value we just read.
+  const savedLocale = readDesktopConfig().locale as AppLocale | undefined;
+  if (savedLocale) {
+    setLocale(savedLocale);
+  }
 
   app.on("browser-window-created", (_, window) => {
     optimizer.watchWindowShortcuts(window);
