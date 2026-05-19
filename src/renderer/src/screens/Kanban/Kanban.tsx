@@ -11,6 +11,7 @@ import {
   RotateCcw,
   Sparkles,
 } from "../../assets/icons";
+import { useI18n } from "../../components/useI18n";
 
 interface KanbanProps {
   profile?: string;
@@ -117,6 +118,7 @@ function ageLabel(createdAt: number | null): string {
 }
 
 function Kanban({ profile, visible }: KanbanProps): React.JSX.Element {
+  const { t } = useI18n();
   const [boards, setBoards] = useState<KanbanBoard[]>([]);
   const [tasks, setTasks] = useState<KanbanTask[]>([]);
   const [loading, setLoading] = useState(true);
@@ -459,10 +461,9 @@ function Kanban({ profile, visible }: KanbanProps): React.JSX.Element {
     <div className="kanban-container">
       <div className="kanban-header">
         <div>
-          <h2 className="schedules-title">Kanban</h2>
+          <h2 className="schedules-title">{t("kanban.title")}</h2>
           <p className="schedules-subtitle">
-            Durable multi-agent board for tasks the agent can pick up and
-            finish on its own.
+            {t("kanban.subtitle")}
           </p>
         </div>
         <div className="schedules-header-actions">
@@ -472,7 +473,7 @@ function Kanban({ profile, visible }: KanbanProps): React.JSX.Element {
             disabled={actionBusy !== null}
           >
             <Refresh size={14} />
-            Refresh
+            {t("kanban.refresh")}
           </button>
           <button
             className="btn btn-secondary"
@@ -481,7 +482,7 @@ function Kanban({ profile, visible }: KanbanProps): React.JSX.Element {
             data-tooltip="Run one dispatcher pass — promote ready tasks and spawn workers"
           >
             <Zap size={14} />
-            Dispatch
+            {t("kanban.dispatch")}
           </button>
           <button
             className="btn btn-primary"

@@ -26,6 +26,7 @@ import soulEn from "./locales/en/soul";
 import memoryEn from "./locales/en/memory";
 import installEn from "./locales/en/install";
 import constantsEn from "./locales/en/constants";
+import kanbanEn from "./locales/en/kanban";
 import commonEs from "./locales/es/common";
 import navigationEs from "./locales/es/navigation";
 import welcomeEs from "./locales/es/welcome";
@@ -146,6 +147,27 @@ import soulPt from "./locales/pt-BR/soul";
 import memoryPt from "./locales/pt-BR/memory";
 import installPt from "./locales/pt-BR/install";
 import constantsPt from "./locales/pt-BR/constants";
+import commonRu from "./locales/ru/common";
+import navigationRu from "./locales/ru/navigation";
+import welcomeRu from "./locales/ru/welcome";
+import setupRu from "./locales/ru/setup";
+import chatRu from "./locales/ru/chat";
+import settingsRu from "./locales/ru/settings";
+import toolsRu from "./locales/ru/tools";
+import sessionsRu from "./locales/ru/sessions";
+import modelsRu from "./locales/ru/models";
+import providersRu from "./locales/ru/providers";
+import officeRu from "./locales/ru/office";
+import errorsRu from "./locales/ru/errors";
+import schedulesRu from "./locales/ru/schedules";
+import skillsRu from "./locales/ru/skills";
+import gatewayRu from "./locales/ru/gateway";
+import agentsRu from "./locales/ru/agents";
+import soulRu from "./locales/ru/soul";
+import memoryRu from "./locales/ru/memory";
+import installRu from "./locales/ru/install";
+import constantsRu from "./locales/ru/constants";
+import kanbanRu from "./locales/ru/kanban";
 
 export const resources = {
   en: {
@@ -170,6 +192,7 @@ export const resources = {
       memory: memoryEn,
       install: installEn,
       constants: constantsEn,
+      kanban: kanbanEn,
     },
   },
   es: {
@@ -314,6 +337,31 @@ export const resources = {
       memory: memoryJa,
       install: installJa,
       constants: constantsJa,
+    },
+  },
+  ru: {
+    translation: {
+      common: commonRu,
+      navigation: navigationRu,
+      welcome: welcomeRu,
+      setup: setupRu,
+      chat: chatRu,
+      settings: settingsRu,
+      tools: toolsRu,
+      sessions: sessionsRu,
+      models: modelsRu,
+      providers: providersRu,
+      office: officeRu,
+      errors: errorsRu,
+      schedules: schedulesRu,
+      skills: skillsRu,
+      gateway: gatewayRu,
+      agents: agentsRu,
+      soul: soulRu,
+      memory: memoryRu,
+      install: installRu,
+      constants: constantsRu,
+      kanban: kanbanRu,
     },
   },
 } satisfies Resource;
