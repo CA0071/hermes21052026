@@ -117,6 +117,7 @@ const URL_KEY_MAP: Array<{ pattern: RegExp; envKey: string }> = [
   { pattern: /api\.cerebras\.ai/i, envKey: "CEREBRAS_API_KEY" },
   { pattern: /api\.mistral\.ai/i, envKey: "MISTRAL_API_KEY" },
   { pattern: /api\.perplexity\.ai/i, envKey: "PERPLEXITY_API_KEY" },
+  { pattern: /opencode\.ai/i, envKey: "OPENCODE_GO_API_KEY" },
 ];
 
 interface ChatHandle {
@@ -609,6 +610,8 @@ function sendMessageViaCli(
     "VOICE_TOOLS_OPENAI_KEY",
     "TINKER_API_KEY",
     "WANDB_API_KEY",
+    "OPENCODE_GO_API_KEY",
+    "OPENCODE_ZEN_API_KEY",
   ];
   for (const key of KNOWN_API_KEYS) {
     if (profileEnv[key] && !env[key]) {

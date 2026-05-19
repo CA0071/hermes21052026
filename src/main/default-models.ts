@@ -42,6 +42,34 @@ const DEFAULT_MODELS: DefaultModel[] = [
     baseUrl: "",
   },
 
+  // ── OpenCode Go ──────────────────────────────────────────────────────
+  {
+    name: "DeepSeek v4 Flash",
+    provider: "opencode-go",
+    model: "deepseek-v4-flash",
+    baseUrl: "https://opencode.ai/zen/go/v1",
+  },
+  {
+    name: "DeepSeek v4 Lite",
+    provider: "opencode-go",
+    model: "deepseek-v4-lite",
+    baseUrl: "https://opencode.ai/zen/go/v1",
+  },
+
+  // ── OpenCode Zen ─────────────────────────────────────────────────────
+  {
+    name: "Gemini 2.5 Flash",
+    provider: "opencode-zen",
+    model: "gemini-2.5-flash",
+    baseUrl: "https://opencode.ai/zen/v1",
+  },
+  {
+    name: "Gemini 2.5 Pro",
+    provider: "opencode-zen",
+    model: "gemini-2.5-pro",
+    baseUrl: "https://opencode.ai/zen/v1",
+  },
+
 ];
 
 export default DEFAULT_MODELS;

@@ -5,6 +5,15 @@ export default {
   openrouterName: "OpenRouter",
   openrouterDesc: "200+ model",
   openrouterTag: "Direkomendasikan",
+  // OpenCode Go
+  opencodeGoName: "OpenCode Go",
+  opencodeGoDesc: "Model terbuka biaya rendah (DeepSeek, GLM, dll.)",
+  opencodeGoTag: "",
+  // OpenCode Zen
+  opencodeZenName: "OpenCode Zen",
+  opencodeZenDesc: "Model unggulan terkurasi (GPT, Claude, Gemini)",
+  opencodeZenTag: "Premium",
+
   anthropicName: "Anthropic",
   anthropicDesc: "Model Claude",
   openaiName: "OpenAI",
