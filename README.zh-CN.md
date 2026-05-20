@@ -6,6 +6,7 @@
 
 - 英文：`README.md`
 - 简体中文：`README.zh-CN.md`
+- 日本語：`README.ja-JP.md`
 
 > **本项目仍在积极开发中。** 功能可能会变化，部分内容也可能出现问题。如果你遇到 bug 或有新的想法，欢迎在 GitHub 上提交 issue。
 
